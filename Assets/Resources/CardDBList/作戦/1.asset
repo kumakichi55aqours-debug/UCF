@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a233ef3a7a131ad4e8d55a23cdc88cbe, type: 3}
+  m_Name: 1
+  m_EditorClassIdentifier: 
+  cardName: "\u30B7\u30E3\u30A4\u30CB\u30FC\u30A6\u30A4\u30F3\u30C0\u30E0"
+  cardKind: 2
+  cardId: 1
+  rarity: 0
+  artwork: {fileID: 21300000, guid: bd42d24c9d41a3b43aa13f3931413a54, type: 3}
+  cost: 0
+  category: 
+  skillDescription: "\u30C6\u30B9\u30C8\u7528\u306E\u4F5C\u6226\u30AB\u30FC\u30C9"
+  skills:
+  - rid: 3123607344477634581
+  references:
+    version: 2
+    RefIds:
+    - rid: 3123607344477634581
+      type: {class: ToHandSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": ACT
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 1
+        "\u5834\u6240\u30EA\u30B9\u30C8": 04000000
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 1
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6": []
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u3069\u3053\u304B\u3089": 
+        "\u3044\u308B\u5834\u6240": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u53C2\u7167\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u53C2\u7167\u5834\u6240": 06000000
+        "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0

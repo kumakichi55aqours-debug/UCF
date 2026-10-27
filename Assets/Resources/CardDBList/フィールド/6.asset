@@ -1,0 +1,131 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d56bdb42bbbd5d4bb46f7d95b403299, type: 3}
+  m_Name: 6
+  m_EditorClassIdentifier: 
+  cardName: "\u5915\u713C\u3051\u306E\u8857"
+  cardKind: 3
+  cardId: 6
+  rarity: 0
+  artwork: {fileID: 21300000, guid: 114a75a74ea28c949805001da76f6fb3, type: 3}
+  cost: 0
+  category: 6a000000
+  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u5915\u65B9\nZON \u72B6\u614B\u7570\u5E38\u304C\u4ED8\u4E0E\u3055\u308C\u3066\u3044\u308B\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u304C\u53D7\u3051\u308B\u30C0\u30E1\u30FC\u30B8\u3092++2\u3059\u308B\u3002\nACT
+    B\u30BE\u30FC\u30F3\u306B\u300C\u5B87\u5B99\u4EBA\u300D\u30D0\u30C8\u30E9\u30FC\u3068\u300C\u30A6\u30EB\u30C8\u30E9\u300D\u30D0\u30C8\u30E9\u30FC\u304C\u3044\u308B\u6642\u306B\u767A\u52D5\u3067\u304D\u308B\u3002\u81EA\u5206\u306E\u5893\u5730\u306E\u4F5C\u6226\u30AB\u30FC\u30C91\u679A\u3092\u624B\u672D\u306B\u52A0\u3048\u308B\u3002"
+  skills:
+  - rid: 3123607541896970261
+  - rid: 3123607600000603
+  hp: 5
+  references:
+    version: 2
+    RefIds:
+    - rid: 3123607600000603
+      type: {class: ToHandSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": ACT
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 2
+        "\u5834\u6240\u30EA\u30B9\u30C8": 03000000
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6":
+        - rid: 3123607600000604
+        - rid: 3123607600000605
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u3069\u3053\u304B\u3089": 
+        "\u3044\u308B\u5834\u6240": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u53C2\u7167\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 2
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u53C2\u7167\u5834\u6240": 05000000
+        "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
+        "\u30E9\u30F3\u30C0\u30E0": 0
+    - rid: 3123607600000604
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 0200000008000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 01000000
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
+    - rid: 3123607600000605
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 0200000008000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 02000000
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
+    - rid: 3123607541896970261
+      type: {class: IncomingDamageModifierSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": ZON
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 4
+        "\u5834\u6240\u30EA\u30B9\u30C8": 03000000
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 1
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6": []
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u3069\u3053\u304B\u3089": 
+        "\u3044\u308B\u5834\u6240": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u5897\u6E1B\u5024": 2
+        "\u76F8\u624B\u306E\u307F": 1
+        "\u88AB\u30C0\u30E1\u30FC\u30B8\u6761\u4EF6":
+        - rid: 3123607564161646595
+    - rid: 3123607564161646595
+      type: {class: StatusAilmentCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u72B6\u614B\u7570\u5E38": 00000000

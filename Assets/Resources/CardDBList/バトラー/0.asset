@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be536d0412968f14db8325162c4a2aaf, type: 3}
+  m_Name: 0
+  m_EditorClassIdentifier: 
+  cardName: "\u30B4\u30FC\u30EB\u30C9\u30A6\u30A4\u30F3\u30C0\u30E0"
+  cardKind: 1
+  cardId: 0
+  rarity: 0
+  artwork: {fileID: 21300000, guid: bd42d24c9d41a3b43aa13f3931413a54, type: 3}
+  cost: 0
+  category: 
+  skillDescription: "\u30C6\u30B9\u30C8\u7528\u306E\u30AB\u30FC\u30C9"
+  skills: []
+  type: 2
+  hp: 5
+  "\u5F97\u610F\u5C5E\u6027": 7
+  "\u5C5E\u6027\u8EFD\u6E1B\u5024": 1
+  "\u5F31\u70B9\u5C5E\u6027": 5
+  "\u5C5E\u6027\u5897\u52A0\u5024": 1
+  moveName1: "\u30A6\u30A4\u30F3\u30C0\u30E0\u30D1\u30F3\u30C1"
+  energy1: 0
+  power1: 10
+  moveElement1: 1
+  target1: 1
+  "\u5BFE\u8C61\u50741": 1
+  "\u5BFE\u8C61\u9078\u629E1":
+    "\u9078\u629E\u6570": 1
+    "\u9078\u629E\u65B9\u5F0F": 0
+  description1: 
+  moveName2: "\u30EC\u30FC\u30B6\u30FC\u30B7\u30E7\u30C3\u30C8"
+  energy2: 0
+  power2: 10
+  moveElement2: 4
+  target2: 1
+  "\u5BFE\u8C61\u50742": 1
+  "\u5BFE\u8C61\u9078\u629E2":
+    "\u9078\u629E\u6570": 1
+    "\u9078\u629E\u65B9\u5F0F": 0
+  description2: 
+  summonVoice: {fileID: 8300000, guid: 9635c4b803497c64fa3b83f1c12a9d08, type: 3}
+  references:
+    version: 2
+    RefIds: []
