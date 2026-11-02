@@ -11,8 +11,8 @@ public class ResourceConsumeSkill : SkillDB
     // 0以下なら所持数まで。1以上なら、所持数とこの値の小さい方まで
     [SerializeField] public int 最大消費数 = 0;
 
-    // コンテキストへ書き込むキー名（デフォルトはドロー数に使う）
-    [SerializeField] public string 出力キー = "DrawCount";
+    // 消費した数を、次の効果へ渡す引数。ドローはこのドロー数を読む。
+    [SerializeField] public SkillArg 出力キー = SkillArg.ドロー数;
 
     public override async Task ActivateEffect(SkillContext context)
     {
@@ -23,7 +23,7 @@ public class ResourceConsumeSkill : SkillDB
         int current = GetCurrentAmount(resources);
         if (current <= 0)
         {
-            context.IntVariables[出力キー] = 0;
+            context.SetArg(出力キー, 0);
             return;
         }
 
@@ -51,8 +51,7 @@ public class ResourceConsumeSkill : SkillDB
             SyncConsumption(chosen);
         }
 
-        // コンテキストに選択値を書き込む
-        context.IntVariables[出力キー] = chosen;
+        context.SetArg(出力キー, chosen);
 
         await Task.CompletedTask;
     }

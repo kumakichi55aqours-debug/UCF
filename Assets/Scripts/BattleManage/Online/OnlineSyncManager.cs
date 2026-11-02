@@ -56,6 +56,9 @@ public partial class OnlineSyncManager : MonoBehaviourPunCallbacks
     // 墓地同期
     private List<DeckCard> opponentGrave = new List<DeckCard>();
 
+    // 異次元同期。相手の異次元にあるカード
+    private List<DeckCard> opponentDimension = new List<DeckCard>();
+
     // デッキ同期
     private SyncState deckSyncCompleted = new SyncState();
 

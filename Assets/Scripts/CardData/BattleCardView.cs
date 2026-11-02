@@ -34,6 +34,9 @@ public class BattleCardView : MonoBehaviour
     [Header("カード裏面")]
     [SerializeField] private GameObject onlyBack;
 
+    [Header("トークン")]
+    [SerializeField] private Sprite tokenCardFrame;
+
     public bool IsBack => onlyBack.activeSelf;
 
     BattleManager bm;
@@ -48,6 +51,9 @@ public class BattleCardView : MonoBehaviour
     Color defaultEnergyColor = Color.white;
     bool costColorCached;
     Color defaultCostColor = Color.white;
+    Image battlerFrameImage;
+    Sprite battlerFrameSprite;
+    bool battlerFrameCached;
 
     class StatusIconView
     {
@@ -106,6 +112,7 @@ public class BattleCardView : MonoBehaviour
             onlyTactics.SetActive(false);
             onlyField.SetActive(false);
             onlyBack.SetActive(false);
+            ApplyTokenFrame(cc != null && cc.トークン);
             RefreshStatusIcons();
         }
         else if (model is TacticsModel tactics)
@@ -119,7 +126,7 @@ public class BattleCardView : MonoBehaviour
             onlyField.SetActive(false);
             onlyBack.SetActive(false);
             hpText.transform.parent.gameObject.SetActive(false);
-            typeImage.sprite = CardIconManager.Instance.GetCardKindSprite(CardKind.作戦);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.type);
             HideStatusIcons();
         }
         else if (model is FieldModel field)
@@ -211,6 +218,33 @@ public class BattleCardView : MonoBehaviour
         if (shownPower < basePower)
             return new Color(1f, 0.35f, 0.35f);
         return defaultEnergyColor;
+    }
+
+    void ApplyTokenFrame(bool token)
+    {
+        if (battlerFrameImage == null && onlyBattler != null)
+        {
+            Transform panel = onlyBattler.transform.Find("BattlerPanel");
+            if (panel != null)
+                battlerFrameImage = panel.GetComponent<Image>();
+        }
+
+        if (battlerFrameImage == null)
+            return;
+
+        if (!battlerFrameCached)
+        {
+            battlerFrameSprite = battlerFrameImage.sprite;
+            battlerFrameCached = true;
+        }
+
+        Sprite frame = tokenCardFrame;
+        if (frame == null && CardDetailManager.Instance != null)
+            frame = CardDetailManager.Instance.TokenCardFrame;
+
+        battlerFrameImage.sprite = token && frame != null
+            ? frame
+            : battlerFrameSprite;
     }
 
     public void ShowCardBack()

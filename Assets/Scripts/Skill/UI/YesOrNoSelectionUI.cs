@@ -60,6 +60,7 @@ public class YesOrNoSelectionUI : MonoBehaviour
     {
         onYesCallback = onYes;
         onNoCallback = onNo;
+        PopupDrag.Use(gameObject);
 
         messageText.SetActive(true);
         yesOrNoSelectionUI.SetActive(true);

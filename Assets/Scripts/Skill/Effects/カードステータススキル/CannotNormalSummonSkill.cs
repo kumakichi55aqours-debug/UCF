@@ -5,7 +5,7 @@ using UnityEngine;
 
 /// <summary>
 /// 手札からコストを払ってバトラーを出す通常の登場を禁止する。
-/// 効果による登場（SpecialSummonSkill）は止めない。
+/// 効果による登場（SpecialSummonSkill）とトークン生成は止めない。
 /// カードに付けるときはタイミングをルール効果にする。
 /// </summary>
 [Serializable]
@@ -33,7 +33,7 @@ public class CannotNormalSummonSkill : SkillDB
         if (deckCard == null || deckCard.カード種類 != CardKind.バトラー)
             return false;
 
-        var db = Resources.Load<BattlerDB>($"CardDBList/バトラー/{deckCard.カードID}");
+        var db = BattlerAssets.Load(deckCard.カードID, out _);
         return db?.skills != null && db.skills.Any(s => s is CannotNormalSummonSkill);
     }
 }

@@ -39,6 +39,8 @@ public static class CardZones
                 return localSide ? battle.pFieldZone : battle.eFieldZone;
             case ZoneKind.Grave:
                 return localSide ? battle.pGraveZone : battle.eGraveZone;
+            case ZoneKind.Dimension:
+                return localSide ? battle.pDimensionZone : battle.eDimensionZone;
             case ZoneKind.Deck:
                 return localSide ? battle.pDeckZone : battle.eDeckZone;
             default:
@@ -81,11 +83,13 @@ public static class CardZones
             case CardZoneType.プレイヤーTゾーン:
             case CardZoneType.プレイヤーFゾーン:
             case CardZoneType.プレイヤーデッキ:
+            case CardZoneType.プレイヤー異次元:
             case CardZoneType.相手手札:
             case CardZoneType.相手Bゾーン:
             case CardZoneType.相手Tゾーン:
             case CardZoneType.相手Fゾーン:
             case CardZoneType.相手デッキ:
+            case CardZoneType.相手異次元:
                 return true;
             default:
                 return false;
@@ -102,6 +106,7 @@ public static class CardZones
             case CardZoneType.プレイヤーFゾーン:
             case CardZoneType.プレイヤー墓地:
             case CardZoneType.プレイヤーデッキ:
+            case CardZoneType.プレイヤー異次元:
                 return true;
             default:
                 return false;
@@ -116,6 +121,7 @@ public static class CardZones
         Tactics,
         Field,
         Grave,
+        Dimension,
         Deck
     }
 
@@ -138,6 +144,9 @@ public static class CardZones
             case CardZoneType.プレイヤー墓地:
             case CardZoneType.相手墓地:
                 return ZoneKind.Grave;
+            case CardZoneType.プレイヤー異次元:
+            case CardZoneType.相手異次元:
+                return ZoneKind.Dimension;
             case CardZoneType.プレイヤーデッキ:
             case CardZoneType.相手デッキ:
                 return ZoneKind.Deck;

@@ -18,6 +18,9 @@ public class CardSelectionUI : MonoBehaviour
     private int maxSelect;
     private TaskCompletionSource<List<SelectionItem>> tcs;
     private bool rejectSameKind;
+    private bool rejectSameType;
+    // 選ばれているカードを見て、この候補を選べなくする。真なら押せない。
+    private Func<IReadOnlyList<SelectionItem>, SelectionItem, bool> rejectWhen;
     private readonly List<ShownCard> shownCards = new();
 
     class ShownCard
@@ -39,16 +42,23 @@ public class CardSelectionUI : MonoBehaviour
         IEnumerable<CardController> existing,
         IEnumerable<DeckCard> deckItems,
         int count,
-        bool rejectSameKind = false)
+        bool rejectSameKind = false,
+        bool letCpuChoose = true,
+        bool rejectSameType = false,
+        Func<IReadOnlyList<SelectionItem>, SelectionItem, bool> rejectWhen = null)
     {
-        if (SkillContext.IsOfflineCpuResolving)
-            return PickRandom(existing, deckItems, count, rejectSameKind);
+        // CPUの効果でも、選ぶ側が人間のときはUIを出す。
+        if (letCpuChoose && SkillContext.IsOfflineCpuResolving)
+            return PickRandom(existing, deckItems, count, rejectSameKind, rejectSameType);
 
         this.rejectSameKind = rejectSameKind;
+        this.rejectSameType = rejectSameType;
+        this.rejectWhen = rejectWhen;
         shownCards.Clear();
         maxSelect = Mathf.Max(1, count);
         selectedItems.Clear();
         panel.SetActive(true);
+        PopupDrag.Use(panel);
 
         // クリア
         foreach (Transform c in content)
@@ -125,6 +135,9 @@ public class CardSelectionUI : MonoBehaviour
             TrackShown(go, item);
         }
 
+        RefreshPickLocks();
+        confirmButton.interactable = CanConfirm();
+
         tcs = new TaskCompletionSource<List<SelectionItem>>();
         try
         {
@@ -135,6 +148,8 @@ public class CardSelectionUI : MonoBehaviour
         finally
         {
             rejectSameKind = false;
+            rejectSameType = false;
+            rejectWhen = null;
             shownCards.Clear();
         }
     }
@@ -149,11 +164,14 @@ public class CardSelectionUI : MonoBehaviour
             return new List<int>();
 
         rejectSameKind = false;
+        rejectSameType = false;
+        rejectWhen = null;
         shownCards.Clear();
         int take = Mathf.Min(Mathf.Max(1, count), items.Count);
         maxSelect = take;
         selectedItems.Clear();
         panel.SetActive(true);
+        PopupDrag.Use(panel);
 
         List<SelectionItem> result = null;
         var indexOf = new Dictionary<SelectionItem, int>();
@@ -249,7 +267,8 @@ public class CardSelectionUI : MonoBehaviour
         IEnumerable<CardController> existing,
         IEnumerable<DeckCard> deckItems,
         int count,
-        bool rejectSameKind = false)
+        bool rejectSameKind = false,
+        bool rejectSameType = false)
     {
         var pool = new List<SelectionItem>();
         if (existing != null)
@@ -302,6 +321,21 @@ public class CardSelectionUI : MonoBehaviour
             pool = unique;
         }
 
+        if (rejectSameType)
+        {
+            var uniqueType = new List<SelectionItem>();
+            var seenType = new HashSet<int>();
+            foreach (var item in pool)
+            {
+                if (!item.TryGetBattlerType(out CardTypeList type))
+                    continue;
+                if (!seenType.Add((int)type))
+                    continue;
+                uniqueType.Add(item);
+            }
+            pool = uniqueType;
+        }
+
         int take = Mathf.Min(Mathf.Max(0, count), pool.Count);
         if (take < pool.Count)
             pool.RemoveRange(take, pool.Count - take);
@@ -340,10 +374,13 @@ public class CardSelectionUI : MonoBehaviour
             return new List<SelectionItem>();
 
         rejectSameKind = false;
+        rejectSameType = false;
+        rejectWhen = null;
         shownCards.Clear();
         maxSelect = choose ? Mathf.Max(1, take) : Mathf.Max(1, pool.Count);
         selectedItems.Clear();
         panel.SetActive(true);
+        PopupDrag.Use(panel);
 
         foreach (Transform child in content)
             Destroy(child.gameObject);
@@ -428,8 +465,10 @@ public class CardSelectionUI : MonoBehaviour
         var bm = BattleManager.Instance;
         if (parent == bm.pHandZone) return "手札";
         else if (parent == bm.pGraveZone) return "墓地";
+        else if (parent == bm.pDimensionZone) return "異次元";
         else if (parent == bm.eHandZone) return "敵手札";
         else if (parent == bm.eGraveZone) return "敵墓地";
+        else if (parent == bm.eDimensionZone) return "敵異次元";
         else return "";
     }
 
@@ -447,19 +486,19 @@ public class CardSelectionUI : MonoBehaviour
             var panelGO = go.transform.Find("CanUseMovePanel");
             if (panelGO != null) panelGO.gameObject.SetActive(false);
         }
-        else if (selectedItems.Count < maxSelect && !IsBlockedBySameKind(item))
+        else if (selectedItems.Count < maxSelect && !IsBlocked(item))
         {
             selectedItems.Add(item);
             var panelGO = go.transform.Find("CanUseMovePanel");
             if (panelGO != null) panelGO.gameObject.SetActive(true);
         }
-        RefreshSameKindLocks();
+        RefreshPickLocks();
         confirmButton.interactable = CanConfirm();
     }
 
     void TrackShown(GameObject go, SelectionItem item)
     {
-        if (!rejectSameKind || go == null)
+        if (go == null || !LocksSelection())
             return;
 
         shownCards.Add(new ShownCard
@@ -468,6 +507,16 @@ public class CardSelectionUI : MonoBehaviour
             button = go.GetComponent<Button>(),
             group = go.GetComponent<CanvasGroup>()
         });
+    }
+
+    bool LocksSelection()
+    {
+        return rejectSameKind || rejectSameType || rejectWhen != null;
+    }
+
+    bool IsBlocked(SelectionItem item)
+    {
+        return IsBlockedBySameKind(item) || IsBlockedBySameType(item) || IsRejected(item);
     }
 
     bool IsBlockedBySameKind(SelectionItem item)
@@ -483,9 +532,29 @@ public class CardSelectionUI : MonoBehaviour
         return false;
     }
 
-    void RefreshSameKindLocks()
+    bool IsBlockedBySameType(SelectionItem item)
     {
-        if (!rejectSameKind)
+        if (!rejectSameType || item == null || !item.TryGetBattlerType(out CardTypeList type))
+            return false;
+
+        foreach (var selected in selectedItems)
+        {
+            if (selected == item || !selected.TryGetBattlerType(out CardTypeList selectedType))
+                continue;
+            if (selectedType == type)
+                return true;
+        }
+        return false;
+    }
+
+    bool IsRejected(SelectionItem item)
+    {
+        return rejectWhen != null && item != null && rejectWhen(selectedItems, item);
+    }
+
+    void RefreshPickLocks()
+    {
+        if (!LocksSelection())
             return;
 
         foreach (var shown in shownCards)
@@ -494,7 +563,7 @@ public class CardSelectionUI : MonoBehaviour
                 continue;
 
             bool selected = selectedItems.Contains(shown.item);
-            bool blocked = !selected && IsBlockedBySameKind(shown.item);
+            bool blocked = !selected && IsBlocked(shown.item);
             shown.button.interactable = !blocked;
 
             if (!blocked && shown.group == null)
@@ -516,6 +585,9 @@ public class CardSelectionUI : MonoBehaviour
     {
         if (selectedItems.Count == maxSelect)
             return true;
+        // 異なるタイプは2体とも押す。候補が1体でも、そこを自動では確定しない。
+        if (rejectSameType)
+            return false;
         if (!rejectSameKind || selectedItems.Count == 0 || selectedItems.Count >= maxSelect)
             return false;
 

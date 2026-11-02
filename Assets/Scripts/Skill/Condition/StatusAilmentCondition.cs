@@ -3,23 +3,28 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// そのカードに状態異常が付いているか。
+/// 1枚のカードに状態異常が付いているか。
+/// 発動条件では見るカードの役割を使い、カードだけを渡された判定では発動カードのときだけそのカードを見る。
 /// リストが空、または None を含むときは、どれか1つでも付いていれば成立する。
 /// 種類を並べたときは、そのいずれかが付いていれば成立する。
 /// </summary>
 [Serializable]
 public class StatusAilmentCondition : ISkillCondition
 {
+    [Tooltip("発動条件では、この役割のカードを見る。既定は発動カード。")]
+    [SerializeField] private ContextCardRole 見るカード = ContextCardRole.発動カード;
     [SerializeField] private List<StatusAilmentType> 状態異常 = new List<StatusAilmentType>();
 
     public bool IsConditionMet(CardController card)
     {
+        if (見るカード != ContextCardRole.発動カード)
+            return false;
         return Matches(card);
     }
 
     public bool IsConditionMet(SkillContext context)
     {
-        return Matches(context != null ? context.発動カード : null);
+        return Matches(ContextCardRoles.Resolve(見るカード, context));
     }
 
     public bool Matches(CardController card)

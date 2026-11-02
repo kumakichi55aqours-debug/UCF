@@ -63,7 +63,7 @@ public class DeckCardView : MonoBehaviour
             onlyBattler.SetActive(false);
             onlyField.SetActive(false);
             hpText.transform.parent.gameObject.SetActive(false);
-            typeImage.sprite = CardIconManager.Instance.GetCardKindSprite(CardKind.作戦);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.type);
             moves.SetActive(false);
         }
         else if (model is FieldModel field)

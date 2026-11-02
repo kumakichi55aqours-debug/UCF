@@ -104,6 +104,21 @@ public partial class OnlineSyncManager
 
     private async Task DiscardEnemyCard(CardController card, bool notifyComplete = true)
     {
+        if (card != null && card.トークン)
+        {
+            try
+            {
+                await PlayDefeat(card);
+                TokenExit.VanishLocal(card);
+            }
+            finally
+            {
+                if (notifyComplete)
+                    SendOpponentAnimationComplete();
+            }
+            return;
+        }
+
         try
         {
             await PlayDefeat(card);
@@ -130,6 +145,21 @@ public partial class OnlineSyncManager
 
     private async Task DiscardOwnCard(CardController card, bool notifyComplete = true)
     {
+        if (card != null && card.トークン)
+        {
+            try
+            {
+                await PlayDefeat(card);
+                TokenExit.VanishLocal(card);
+            }
+            finally
+            {
+                if (notifyComplete)
+                    SendOpponentAnimationComplete();
+            }
+            return;
+        }
+
         try
         {
             await PlayDefeat(card);

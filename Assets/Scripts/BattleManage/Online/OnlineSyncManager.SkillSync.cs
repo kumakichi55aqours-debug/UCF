@@ -322,6 +322,24 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
+    /// 技ダメージの無効化を、攻撃者へ残すよう相手側へ通知する。
+    /// </summary>
+    public void SyncRegisterMoveDamageNullification(CardController attacker, int nullificationType, int subtract)
+    {
+        if (!CardAddress.TryFrom(attacker, out CardAddress address))
+            return;
+
+        SendRPC(
+            "ReceiveRegisterMoveDamageNullification",
+            address.Kind.ToString(),
+            address.Id,
+            address.ZoneName,
+            address.Index,
+            nullificationType,
+            subtract);
+    }
+
+    /// <summary>
     /// 相手プレイヤーにYes/No選択を要求し、回答が届くまで待つ
     /// </summary>
     public async Task<bool> RequestOpponentYesNoDecision(CardController sourceCard, string message)
@@ -419,6 +437,26 @@ public partial class OnlineSyncManager
         catch (System.Exception ex)
         {
             Debug.LogError($"[OnlineSyncManager] ReceiveRegisterOpponentMoveCancellationでエラー: {ex.Message}");
+        }
+    }
+
+    [PunRPC]
+    private void ReceiveRegisterMoveDamageNullification(string cardKindStr, int cardID, string zoneName, int zoneIndex, int nullificationType, int subtract)
+    {
+        if (!IsOnlineMode) return;
+
+        try
+        {
+            CardController attacker = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
+            if (attacker == null)
+                return;
+
+            var type = (DamageNullificationType)nullificationType;
+            BattleManager.Instance.RegisterMoveDamageNullification(attacker, type, subtract, false);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[OnlineSyncManager] ReceiveRegisterMoveDamageNullificationでエラー: {ex.Message}");
         }
     }
 

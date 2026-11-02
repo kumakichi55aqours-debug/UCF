@@ -572,7 +572,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
   m_AnchoredPosition: {x: 0, y: -796}
-  m_SizeDelta: {x: 520, y: 180}
+  m_SizeDelta: {x: 540, y: 212}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &5530057472673193215
 MonoBehaviour:
@@ -610,7 +610,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3550543911348758146}
   m_Layer: 5
-  m_Name: OnlyTactics
+  m_Name: ForTactics
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -649,7 +649,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8775285779777808136}
   m_Layer: 5
-  m_Name: OnlyBattler
+  m_Name: ForBattler
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -715,7 +715,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 12, y: -12}
-  m_SizeDelta: {x: 159, y: 30}
+  m_SizeDelta: {x: 188, y: 30}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &2589288074731421287
 CanvasRenderer:
@@ -780,7 +780,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 2
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: -2
   m_wordSpacing: 0
@@ -1691,10 +1691,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 849983397684496920}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 208, y: -32}
-  m_SizeDelta: {x: 40, y: 40}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -32, y: -35}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &9192565124711765596
 CanvasRenderer:
@@ -2028,7 +2028,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2116922308065758647}
   m_Layer: 0
-  m_Name: Footer
+  m_Name: Skill
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2299,7 +2299,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 12, y: -12}
-  m_SizeDelta: {x: 159, y: 30}
+  m_SizeDelta: {x: 188, y: 30}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &5993708756579413247
 CanvasRenderer:
@@ -2364,7 +2364,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 2
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: -2
   m_wordSpacing: 0
@@ -2620,7 +2620,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3039013988848037287}
   m_Layer: 5
-  m_Name: OnlyField
+  m_Name: ForField
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2683,11 +2683,11 @@ RectTransform:
   - {fileID: 5025140362140190896}
   m_Father: {fileID: 849983397684496920}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 8, y: -64}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: 8, y: 16}
   m_SizeDelta: {x: 192, y: 24}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!1 &5191847912449398963
 GameObject:
   m_ObjectHideFlags: 0
@@ -2931,8 +2931,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -60}
-  m_SizeDelta: {x: 204, y: 72}
+  m_AnchoredPosition: {x: 0, y: -64}
+  m_SizeDelta: {x: 232, y: 100}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &8512027128936702765
 CanvasRenderer:
@@ -2989,12 +2989,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 15
+  m_fontSize: 16
   m_fontSizeBase: 15
   m_fontWeight: 400
   m_enableAutoSizing: 1
-  m_fontSizeMin: 15
-  m_fontSizeMax: 18
+  m_fontSizeMin: 16
+  m_fontSizeMax: 20
   m_fontStyle: 0
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
@@ -3118,7 +3118,7 @@ GameObject:
   - component: {fileID: 8672263318976784062}
   - component: {fileID: 8432405629113532074}
   m_Layer: 5
-  m_Name: SkillText
+  m_Name: SkillTitle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3274,8 +3274,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -60}
-  m_SizeDelta: {x: 204, y: 72}
+  m_AnchoredPosition: {x: 0, y: -64}
+  m_SizeDelta: {x: 232, y: 100}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &5759243140755698989
 CanvasRenderer:
@@ -3332,12 +3332,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 15
+  m_fontSize: 16
   m_fontSizeBase: 15
   m_fontWeight: 400
   m_enableAutoSizing: 1
-  m_fontSizeMin: 15
-  m_fontSizeMax: 18
+  m_fontSizeMin: 16
+  m_fontSizeMax: 20
   m_fontStyle: 0
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
@@ -3676,12 +3676,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 18
+  m_fontSize: 19
   m_fontSizeBase: 19
   m_fontWeight: 400
   m_enableAutoSizing: 1
   m_fontSizeMin: 16
-  m_fontSizeMax: 18
+  m_fontSizeMax: 19.5
   m_fontStyle: 0
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
@@ -4502,10 +4502,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 7559014047144584966}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 208, y: -32}
-  m_SizeDelta: {x: 40, y: 40}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -32, y: -35}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8990441768877047733
 CanvasRenderer:
@@ -4579,11 +4579,11 @@ RectTransform:
   - {fileID: 5830187903472538493}
   m_Father: {fileID: 7559014047144584966}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 8, y: -64}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: 8, y: 16}
   m_SizeDelta: {x: 192, y: 24}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_Pivot: {x: 0.5, y: 0}
 --- !u!1 &8502959622409938150
 GameObject:
   m_ObjectHideFlags: 0

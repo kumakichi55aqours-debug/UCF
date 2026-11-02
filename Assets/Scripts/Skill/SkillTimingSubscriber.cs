@@ -19,7 +19,7 @@ public class SkillTimingSubscriber : MonoBehaviour
 
     private void OnSummonCompleted(SummonCompletedEvent e)
     {
-        EventBus.Publish(new SkillTriggerEvent(SkillTrigger.登場時, e.Card)
+        EventBus.Publish(new SkillTriggerEvent(SkillTrigger.登場時, e.Card, null, null, e.FromLocation)
         {
             SpecialSummon = e.SpecialSummon
         });
@@ -27,7 +27,10 @@ public class SkillTimingSubscriber : MonoBehaviour
 
     private void OnUseFromHand(UseCardFromHandEvent e)
     {
-        EventBus.Publish(new SkillTriggerEvent(SkillTrigger.カード使用時, e.Card));
+        EventBus.Publish(new SkillTriggerEvent(SkillTrigger.カード使用時, e.Card, null, null, e.FromLocation)
+        {
+            SpecialSummon = e.SpecialSummon
+        });
     }
 
     private void OnCardSentToGraveyard(CardSentToGraveyardEvent e)
@@ -40,17 +43,26 @@ public class SummonCompletedEvent
 {
     public CardController Card { get; }
     public bool SpecialSummon { get; }
-    public SummonCompletedEvent(CardController card, bool specialSummon = false)
+    public CardZoneType FromLocation { get; }
+    public SummonCompletedEvent(CardController card, bool specialSummon = false, CardZoneType fromLocation = CardZoneType.None)
     {
         Card = card;
         SpecialSummon = specialSummon;
+        FromLocation = fromLocation;
     }
 }
 
 public class UseCardFromHandEvent
 {
     public CardController Card { get; }
-    public UseCardFromHandEvent(CardController card) => Card = card;
+    public CardZoneType FromLocation { get; }
+    public bool SpecialSummon { get; }
+    public UseCardFromHandEvent(CardController card, CardZoneType fromLocation = CardZoneType.None, bool specialSummon = false)
+    {
+        Card = card;
+        FromLocation = fromLocation;
+        SpecialSummon = specialSummon;
+    }
 }
 
 public class CardSentToGraveyardEvent
@@ -75,6 +87,8 @@ public class SkillTriggerEvent
     public CardZoneType FromLocation { get; set; } // 墓地に送られた時などで使用。ローカルプレイヤー基準の絶対ゾーン
     public TurnPhase Phase { get; set; } // 自分のフェイズ開始時・終了時で、入った／出たフェイズ
     public bool SpecialSummon { get; set; } // 登場時で、スキルによる登場か
+    // 手札に戻ったカードが、ローカルプレイヤーのカードか。戻ったあとの実体は持たない
+    public bool SubjectIsMyCard { get; set; }
 
     public SkillTriggerEvent(SkillTrigger trigger, CardController source, CardController moveTarget = null, SkillContext context = null, CardZoneType fromLocation = CardZoneType.None)
     {

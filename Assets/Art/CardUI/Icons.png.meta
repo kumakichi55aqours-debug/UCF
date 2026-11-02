@@ -110,7 +110,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Icons_POW
+      name: "Icons_\u529B"
       rect:
         serializedVersion: 2
         x: 0
@@ -131,7 +131,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Icons_SPD
+      name: "Icons_\u901F"
       rect:
         serializedVersion: 2
         x: 64
@@ -152,10 +152,10 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Icons_TEC
+      name: "Icons_\u6280"
       rect:
         serializedVersion: 2
-        x: 129
+        x: 128
         y: 240
         width: 64
         height: 64
@@ -446,7 +446,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Icons_DES
+      name: "Icons_\u6EC5"
       rect:
         serializedVersion: 2
         x: 192
@@ -467,7 +467,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Icons_OVR
+      name: "Icons_\u8D85"
       rect:
         serializedVersion: 2
         x: 256
@@ -509,7 +509,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Icons_TAC
+      name: "Icons_\u30D5\u30A3\u30FC\u30EB\u30C9"
       rect:
         serializedVersion: 2
         x: 0
@@ -530,7 +530,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Icons_FLD
+      name: "Icons_\u4F5C\u6226"
       rect:
         serializedVersion: 2
         x: 64
@@ -550,6 +550,48 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: "Icons_\u5F37\u5316"
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 176
+        width: 64
+        height: 64
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5fb7fe302cafbe748b2f5015a7399ca1
+      internalID: -872547559
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Icons_\u5373\u5FDC"
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 176
+        width: 64
+        height: 64
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1517a0e6a51236344a95c66d74db3f50
+      internalID: 1094131444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     physicsShape: []
     bones: []
@@ -563,25 +605,27 @@ TextureImporter:
     nameFileIdTable:
       Icons_ACT: -147611205
       Icons_CAT: -701743597
-      Icons_DES: 1988024735
       Icons_Dark: -531345365
-      Icons_FLD: 1788517881
       Icons_Flame: 791652629
       Icons_Ground: -1548356928
       Icons_Ice: 1291390773
       Icons_Light: -1867374767
       Icons_Normal: 524991934
-      Icons_OVR: 385774160
       Icons_PAS: -49972624
-      Icons_POW: 654379783
-      Icons_SPD: 855816897
-      Icons_TAC: -1163192665
-      Icons_TEC: 1564046335
       Icons_TRG: 917930599
       Icons_Thunder: -1769617047
       Icons_Water: -1457578125
       Icons_Wind: -993726231
       Icons_ZON: 1478118482
+      "Icons_\u30D5\u30A3\u30FC\u30EB\u30C9": -1163192665
+      "Icons_\u4F5C\u6226": 1788517881
+      "Icons_\u529B": 654379783
+      "Icons_\u5373\u5FDC": 1094131444
+      "Icons_\u5F37\u5316": -872547559
+      "Icons_\u6280": 1564046335
+      "Icons_\u6EC5": 1988024735
+      "Icons_\u8D85": 385774160
+      "Icons_\u901F": 855816897
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

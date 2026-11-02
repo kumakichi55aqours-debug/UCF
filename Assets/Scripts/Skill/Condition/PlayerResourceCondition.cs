@@ -2,7 +2,8 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// プレイヤーのリソース（コスト、エネルギー、HP）をチェックする条件
+/// プレイヤーのリソース（コスト、エネルギー、HP）をチェックする条件。
+/// プレイヤーはスキルを持つカードの持ち主。相手はその反対。
 /// </summary>
 [Serializable]
 public class PlayerResourceCondition : ISkillCondition
@@ -45,43 +46,29 @@ public class PlayerResourceCondition : ISkillCondition
 
     public bool IsConditionMet(CardController card)
     {
-        return IsConditionMetInternal();
+        return IsConditionMetInternal(card);
     }
 
     public bool IsConditionMet(SkillContext context)
     {
-        return IsConditionMetInternal();
+        return IsConditionMetInternal(context?.発動カード);
     }
 
-    private bool IsConditionMetInternal()
+    private bool IsConditionMetInternal(CardController owner)
     {
-        if (BattleManager.Instance == null)
+        var battle = BattleManager.Instance;
+        if (battle == null)
         {
             Debug.LogWarning("[PlayerResourceCondition] BattleManager.Instance is null");
             return false;
         }
 
-        bool checkPlayer = 対象プレイヤー == PlayerType.プレイヤー || 対象プレイヤー == PlayerType.両方;
-        bool checkEnemy = 対象プレイヤー == PlayerType.相手 || 対象プレイヤー == PlayerType.両方;
-
-        // どちらもチェックする場合、両方が条件を満たす必要がある
         if (対象プレイヤー == PlayerType.両方)
-        {
-            bool playerResult = checkPlayer && CheckResource(BattleManager.Instance.pResources);
-            bool enemyResult = checkEnemy && CheckResource(BattleManager.Instance.eResources);
-            return playerResult && enemyResult;
-        }
-        // どちらか一方をチェックする場合
-        else if (checkPlayer)
-        {
-            return CheckResource(BattleManager.Instance.pResources);
-        }
-        else if (checkEnemy)
-        {
-            return CheckResource(BattleManager.Instance.eResources);
-        }
+            return CheckResource(battle.pResources) && CheckResource(battle.eResources);
 
-        return false;
+        bool ownerIsLocal = owner == null || owner.isMyCard;
+        bool checkLocal = 対象プレイヤー == PlayerType.相手 ? !ownerIsLocal : ownerIsLocal;
+        return CheckResource(checkLocal ? battle.pResources : battle.eResources);
     }
 
     private bool CheckResource(ResourceGroup resources)

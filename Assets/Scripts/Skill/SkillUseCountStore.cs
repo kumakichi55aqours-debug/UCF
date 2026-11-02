@@ -96,6 +96,7 @@ public static class SkillUseCountStore
             battle.pFieldZone, battle.eFieldZone,
             battle.pHandZone, battle.eHandZone,
             battle.pGraveZone, battle.eGraveZone,
+            battle.pDimensionZone, battle.eDimensionZone,
             battle.pDeckZone, battle.eDeckZone
         };
 

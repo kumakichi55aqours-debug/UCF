@@ -68,6 +68,27 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
+    /// カードが手札へ戻った事実を相手へ送る。中身は送らず、移動前のゾーンと、送信者から見た持ち主だけ。
+    /// </summary>
+    public void SyncCardReturnedToHand(int fromZone, bool returnedCardIsMine)
+    {
+        SendRPC("ReceiveCardReturnedToHand", fromZone, returnedCardIsMine);
+    }
+
+    /// <summary>
+    /// 受信者の視点に直して、「他のカードが手札に戻った時」を現在のチェーンのあとへ回す。
+    /// </summary>
+    [PunRPC]
+    private void ReceiveCardReturnedToHand(int fromZone, bool senderCardIsMine)
+    {
+        if (!IsOnlineMode)
+            return;
+
+        CardZoneType localZone = CardController.ToOwnerPerspective((CardZoneType)fromZone, false);
+        SkillChainManager.Instance?.ScheduleCardReturnedToHand(localZone, !senderCardIsMine, notifyOpponent: false);
+    }
+
+    /// <summary>
     /// 手札から墓地へのアニメーションを同期する。
     /// 住所が受信者の手札なら、その実カードを墓地へ動かす。
     /// </summary>
@@ -208,6 +229,12 @@ public partial class OnlineSyncManager
         {
             if (card == null)
                 return;
+            if (card.トークン)
+            {
+                TokenExit.VanishLocal(card);
+                SendDetailedHandInfoToOpponent();
+                return;
+            }
             ResetCardStatusForGrave(card);
             RectTransform handSlot = BattleManager.Instance.pHandZone as RectTransform;
             RectTransform graveSlot = BattleManager.Instance.pGraveZone as RectTransform;
@@ -252,6 +279,13 @@ public partial class OnlineSyncManager
             tempCard = BattleManager.Instance.CreateCard(cardKind, cardID, deckZone);
             if (tempCard == null || tempCard.transform == null)
             {
+                BattleManager.Instance.UpdateDeckUI();
+                return;
+            }
+            if (tempCard.トークン)
+            {
+                Destroy(tempCard.gameObject);
+                tempCard = null;
                 BattleManager.Instance.UpdateDeckUI();
                 return;
             }

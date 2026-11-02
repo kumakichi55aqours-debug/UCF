@@ -234,6 +234,7 @@ public class PersistentEffectManager : MonoBehaviour
             if (skillInstance != null)
             {
                 var context = new SkillContext(card, card, card.transform);
+                context.相手も同じ効果を実行する = true;
                 _ = skillInstance.ActivateEffect(context);
             }
         }
@@ -246,6 +247,7 @@ public class PersistentEffectManager : MonoBehaviour
             }
 
             var context = new SkillContext(card, card, card.transform);
+            context.相手も同じ効果を実行する = true;
             _ = passiveEffect.PassiveEffect.ActivateEffect(context);
         }
     }

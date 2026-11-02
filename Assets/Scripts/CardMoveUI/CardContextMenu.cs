@@ -132,7 +132,7 @@ public class CardContextMenu : MonoBehaviour
         if (Instance != null)
             Instance.HideMenu();
         GrantedSkillListUI.HideIfAny();
-        GraveViewUI.HideIfAny();
+        ZoneViewUI.HideIfAny();
     }
 
     // 手札ボタン表示
@@ -176,6 +176,7 @@ public class CardContextMenu : MonoBehaviour
     private static bool CanPlayTacticsFromHand(CardController card)
     {
         return CanPayToEnterPlay(card)
+            && BattleManager.Instance.TacticsZoneHasRoom(true)
             && HasCanUseSkill(card, ActiveTiming.登場時, ActiveLocation.手札);
     }
 
@@ -232,27 +233,37 @@ public class CardContextMenu : MonoBehaviour
         }
     }
 
-    // 墓地ボタン表示。発動できるカードが墓地にあれば「スキルを使用」で一覧を開く
-    public void ShowGraveOptions(CardController card, Vector3 worldPos)
+    /// <summary>
+    /// 墓地・異次元のカードをクリックしたとき。起動できるならメニューを出す。
+    /// 確認だけのときは偽を返し、呼び出し側が ZoneClick で一覧を開く。
+    /// 処理中は真を返し、一覧は開かない。
+    /// </summary>
+    public bool HandlePileClick(CardController card, Vector3 worldPos)
     {
-        // 処理中（召喚演出、技の処理、スキルの処理中など）の場合は表示しない
-        if (IsProcessing()) return;
+        if (IsProcessing())
+            return true;
+        if (card == null || BattleManager.Instance == null)
+            return true;
+
+        Transform parent = card.transform.parent;
+        var battle = BattleManager.Instance;
+        bool ownGrave = parent == battle.pGraveZone;
+        bool ownDimension = parent == battle.pDimensionZone;
+        bool canUseSkill = CanOperateOwnGraveSkills() && (
+            (ownGrave && CollectActivatableGraveCards().Count > 0)
+            || (ownDimension && HasCanUseSkill(card, ActiveTiming.起動効果, ActiveLocation.異次元)));
+        if (!canUseSkill)
+            return false;
 
         currentCard = card;
         DismissTransientWindows();
         HideAllButtons();
         checkGraveButton.gameObject.SetActive(true);
-
-        bool ownGrave = card != null
-            && BattleManager.Instance != null
-            && card.transform.parent == BattleManager.Instance.pGraveZone;
-        if (ownGrave && CanOperateOwnGraveSkills() && CollectActivatableGraveCards().Count > 0)
-        {
-            skillButtonListsGrave = true;
-            useSkillButton.gameObject.SetActive(true);
-        }
-
+        SetPileButtonLabel(ownGrave ? "墓地を確認" : "異次元を確認");
+        skillButtonListsGrave = ownGrave;
+        useSkillButton.gameObject.SetActive(true);
         LayoutAndShow(worldPos);
+        return true;
     }
 
     // 墓地スキル一覧で選んだカード。本体に対して「スキルを使用」を出す
@@ -284,14 +295,16 @@ public class CardContextMenu : MonoBehaviour
                 int move1Cost = currentCard.GetMoveEnergyCost(0);
                 bool move1EnergySufficient = BattleManager.Instance.pResources.Energy.currentEnergy >= move1Cost;
                 bool move1Targetable = MoveTargetEvasion.HasLegalTarget(currentCard, 0);
-                bool move1Available = !move1Restricted && move1EnergySufficient && move1Targetable;
+                bool move1GrantOk = !NoGrantMoveSkill.Blocks(currentCard, 0);
+                bool move1Available = !move1Restricted && move1EnergySufficient && move1Targetable && move1GrantOk;
 
                 // 技2の制限とエネルギー量をチェック
                 bool move2Restricted = currentCard.IsSkillRestricted(1, battler.moveElement2);
                 int move2Cost = currentCard.GetMoveEnergyCost(1);
                 bool move2EnergySufficient = BattleManager.Instance.pResources.Energy.currentEnergy >= move2Cost;
                 bool move2Targetable = MoveTargetEvasion.HasLegalTarget(currentCard, 1);
-                bool move2Available = !move2Restricted && move2EnergySufficient && move2Targetable;
+                bool move2GrantOk = !NoGrantMoveSkill.Blocks(currentCard, 1);
+                bool move2Available = !move2Restricted && move2EnergySufficient && move2Targetable && move2GrantOk;
 
                 // 技1ボタンの状態を設定
                 move1Button.gameObject.SetActive(true);
@@ -341,7 +354,8 @@ public class CardContextMenu : MonoBehaviour
     private static bool HasCanUseSkill(CardController card, ActiveTiming timing, ActiveLocation location)
     {
         if (card == null || card.skills == null) return false;
-        if (location != ActiveLocation.墓地)
+        if (NegateZoneEffectSkill.Blocks(card)) return false;
+        if (location != ActiveLocation.墓地 && location != ActiveLocation.異次元)
         {
             if (card.IsActionBlocked) return false;
             if (timing == ActiveTiming.起動効果 && card.IsSlowed) return false;
@@ -490,8 +504,8 @@ public class CardContextMenu : MonoBehaviour
         {
             List<CardController> cards = CollectActivatableGraveCards();
             Hide();
-            if (cards.Count > 0 && GraveViewUI.Instance != null)
-                GraveViewUI.Instance.ShowActivatableCards(cards);
+            if (cards.Count > 0 && ZoneViewUI.Instance != null)
+                ZoneViewUI.Instance.ShowActivatableCards(cards);
             return;
         }
 
@@ -509,14 +523,22 @@ public class CardContextMenu : MonoBehaviour
         }
     }
 
-    // 押した墓地のカード一覧を開く
-    private void OnCheckGrave()
+    void OnCheckGrave()
     {
         Hide();
-        if (currentCard == null || GraveViewUI.Instance == null)
+        if (currentCard == null)
             return;
 
-        bool isPlayerGrave = currentCard.transform.parent == BattleManager.Instance.pGraveZone;
-        GraveViewUI.Instance.ShowGraveUI(isPlayerGrave);
+        ZoneClick.Open(currentCard.transform.parent);
+    }
+
+    static void SetPileButtonLabel(string label)
+    {
+        if (Instance == null || Instance.checkGraveButton == null)
+            return;
+
+        var text = Instance.checkGraveButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (text != null)
+            text.text = label;
     }
 }

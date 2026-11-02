@@ -13,9 +13,8 @@ public class PowerModifierSkill : SkillDB
     public MoveTarget 適用先 = MoveTarget.両方;
     public int 効果数;
 
-    [Header("1体ずつ判定する。スキルの発動条件とは別")]
     [SerializeReference]
-    public List<ISkillCondition> 対象ごとの条件 = new List<ISkillCondition>();
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
 
     public override TargetList GetEffectTarget() => 効果対象;
     public override SearchCriteria GetTargetCriteria() => 対象条件;
@@ -32,7 +31,7 @@ public class PowerModifierSkill : SkillDB
             if (対象条件 != null && !card.MeetsCriteria(対象条件, context))
                 continue;
 
-            if (!ConditionsMet(対象ごとの条件, card))
+            if (!ConditionsMet(対象状態, card))
                 continue;
 
             var battler = card.model as BattlerModel;
@@ -50,8 +49,8 @@ public class PowerModifierSkill : SkillDB
     {
         if (clone is PowerModifierSkill power)
         {
-            power.対象ごとの条件 = 対象ごとの条件 != null
-                ? new List<ISkillCondition>(対象ごとの条件)
+            power.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
                 : new List<ISkillCondition>();
         }
     }

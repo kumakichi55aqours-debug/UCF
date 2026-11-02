@@ -27,7 +27,7 @@ public class DeckCard
         {
             if (カードタイプ == CardTypeList.None || カテゴリ == null || カテゴリ.Count == 0)
             {
-                var battlerDb = Resources.Load<BattlerDB>($"CardDBList/バトラー/{カードID}");
+                var battlerDb = BattlerAssets.Load(カードID, out _);
                 if (battlerDb != null)
                 {
                     if (カードタイプ == CardTypeList.None)
@@ -43,6 +43,18 @@ public class DeckCard
                     }
                 }
             }
+        }
+        else if (カード種類 == CardKind.作戦)
+        {
+            if (カードタイプ == CardTypeList.None)
+            {
+                var tacticsDb = Resources.Load<TacticsDB>("CardDBList/作戦/" + カードID);
+                if (tacticsDb != null)
+                    カードタイプ = tacticsDb.type;
+            }
+
+            if (カテゴリ == null)
+                カテゴリ = new List<CardCategoryList>();
         }
         else
         {
@@ -66,7 +78,7 @@ public class DeckCard
         switch (カード種類)
         {
             case CardKind.バトラー:
-                name = Resources.Load<BattlerDB>("CardDBList/バトラー/" + カードID)?.cardName;
+                name = BattlerAssets.Load(カードID, out _)?.cardName;
                 break;
             case CardKind.作戦:
                 name = Resources.Load<TacticsDB>("CardDBList/作戦/" + カードID)?.cardName;

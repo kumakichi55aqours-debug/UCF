@@ -3,7 +3,8 @@ using UnityEngine;
 
 /// <summary>
 /// 条件を満たすとき、指定した技のダメージを計算時に足す。
-/// 対象条件が空なら相手を問わない。永続効果としてカードに置く。場の再計算では足さない。
+/// 発動条件は、攻撃者を発動カード、相手を対象カードにしたコンテキストで見る。
+/// 対象条件が空なら相手のカード種類は問わない。永続効果としてカードに置く。場の再計算では足さない。
 /// </summary>
 [System.Serializable]
 [SkillDisplayName("(〇付与)カテゴリアップ")]
@@ -28,10 +29,14 @@ public class CategoryDamageUpSkill : SkillDB
 
         int bonus = 0;
         ActiveLocation location = attacker.GetCurrentActiveLocation();
+        var context = new SkillContext(attacker, target, target.transform);
+        context.Attacker = attacker;
 
         foreach (var category in PrintedSkills<CategoryDamageUpSkill>(attacker))
         {
-            if (category.IsPersistentAt(attacker, location)
+            if (category.タイミング == ActiveTiming.永続効果
+                && category.IncludesLocation(location)
+                && ConditionsMet(category.条件, context)
                 && AppliesToMove(category.適用先, moveIndex)
                 && category.Matches(target))
                 bonus += category.追加ダメージ量;
@@ -39,7 +44,9 @@ public class CategoryDamageUpSkill : SkillDB
 
         foreach (var category in GrantedSkills<CategoryDamageUpSkill>(attacker))
         {
-            if (AppliesToMove(category.適用先, moveIndex) && category.Matches(target))
+            if (ConditionsMet(category.条件, context)
+                && AppliesToMove(category.適用先, moveIndex)
+                && category.Matches(target))
                 bonus += category.追加ダメージ量;
         }
 

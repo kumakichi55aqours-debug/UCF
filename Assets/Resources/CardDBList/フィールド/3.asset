@@ -24,7 +24,7 @@ MonoBehaviour:
   skills:
   - rid: 3123607469372211204
   - rid: 3123607458387591170
-  hp: 6
+  hp: 5
   references:
     version: 2
     RefIds:
@@ -36,6 +36,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 03000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6":
         - rid: 3123607458387591172
@@ -63,6 +65,7 @@ MonoBehaviour:
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u52B9\u679C\u6570": 3
+        "\u52B9\u679C\u6570\u30AD\u30FC": 0
     - rid: 3123607458387591172
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:
@@ -78,6 +81,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 00000000
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 1
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
@@ -89,6 +93,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 03000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":

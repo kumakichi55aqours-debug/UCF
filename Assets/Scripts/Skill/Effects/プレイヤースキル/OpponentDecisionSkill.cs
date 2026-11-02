@@ -36,8 +36,13 @@ public class OpponentDecisionSkill : SkillDB
 
     async Task<bool> Decide(SkillContext context)
     {
+        // 選ぶのは発動したカードの相手。オフラインで発動者がCPUなら、その相手はプレイヤー。
+        bool opponentIsLocalPlayer = context.発動カード != null && !context.発動カード.isMyCard;
         if (!BattleManager.Instance.IsOnlineMode)
         {
+            if (opponentIsLocalPlayer)
+                return await AskLocalPlayer(context);
+
             bool proceed = オフライン自動許可 || UnityEngine.Random.Range(0, 2) == 0;
             Debug.Log($"[OpponentDecisionSkill] オフラインの選択: {(proceed ? "Yes" : "No")}");
             return proceed;
@@ -51,11 +56,43 @@ public class OpponentDecisionSkill : SkillDB
             return false;
         }
 
-        string template = string.IsNullOrWhiteSpace(メッセージテンプレート) ? DefaultMessage : メッセージテンプレート;
-        string message = SkillContext.ApplyTemplate(template, context);
+        string message = DecisionMessage(context);
         return await sync.WhileOpponentDecides(
             () => sync.RequestOpponentYesNoDecision(context.発動カード, message),
             notifyOpponent: true);
+    }
+
+    async Task<bool> AskLocalPlayer(SkillContext context)
+    {
+        var ui = YesOrNoSelectionUI.Instance;
+        if (ui == null)
+        {
+            Debug.LogWarning("[OpponentDecisionSkill] Yes/No UI がないため、選択を行いません。");
+            return false;
+        }
+
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        OnlineSyncManager.Instance?.BeginOperationBlock();
+        ui.ShowSelectionUI(
+            DecisionMessage(context),
+            () =>
+            {
+                tcs.TrySetResult(true);
+                return Task.CompletedTask;
+            },
+            () =>
+            {
+                tcs.TrySetResult(false);
+                return Task.CompletedTask;
+            });
+
+        return await tcs.Task;
+    }
+
+    string DecisionMessage(SkillContext context)
+    {
+        string template = string.IsNullOrWhiteSpace(メッセージテンプレート) ? DefaultMessage : メッセージテンプレート;
+        return SkillContext.ApplyTemplate(template, context);
     }
 
     protected override void CopyPolymorphicFieldsTo(SkillDB clone)

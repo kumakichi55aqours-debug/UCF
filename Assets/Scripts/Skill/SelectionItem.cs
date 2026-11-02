@@ -58,4 +58,27 @@ public class SelectionItem
             return false;
         return kind == otherKind && id == otherId;
     }
+
+    public bool TryGetBattlerType(out CardTypeList type)
+    {
+        type = CardTypeList.None;
+        if (source == SourceType.Existing && existingCard != null)
+        {
+            if (existingCard.cardKind != CardKind.バトラー)
+                return false;
+            type = existingCard.type;
+            if (type == CardTypeList.None && existingCard.model is BattlerModel battler)
+                type = battler.type;
+        }
+        else if (deckData != null)
+        {
+            if (deckData.カード種類 != CardKind.バトラー)
+                return false;
+            if (deckData.カードタイプ == CardTypeList.None)
+                deckData.PopulateDerivedData();
+            type = deckData.カードタイプ;
+        }
+
+        return type != CardTypeList.None;
+    }
 }

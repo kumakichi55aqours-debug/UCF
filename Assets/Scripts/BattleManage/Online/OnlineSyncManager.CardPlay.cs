@@ -81,8 +81,10 @@ public partial class OnlineSyncManager
             RectTransform fromZone = GetSummonSourceZone(summonSource);
             if (fromZone != null)
             {
-                // 手札と墓地は、表示を組み直す前にキャンバスへ退避する。
-                if (summonSource == SummonSource.手札 || summonSource == SummonSource.デッキ)
+                // 手札・墓地・異次元・デッキは、表示を組み直す前にキャンバスへ退避する。
+                // SummonSource.墓地 はデッキ、SummonSource.デッキ は墓地。
+                if (summonSource == SummonSource.手札 || summonSource == SummonSource.デッキ
+                    || summonSource == SummonSource.異次元 || summonSource == SummonSource.墓地)
                 {
                     Vector3 startPos = fromZone.position;
                     var canvas = BattleManager.Instance.mainCanvas != null ? BattleManager.Instance.mainCanvas.transform : null;
@@ -93,6 +95,15 @@ public partial class OnlineSyncManager
                     {
                         RemoveCardFromOpponentHand(card.cardKind, card.cardID, sourceIndex);
                         BattleManager.Instance.UpdateEnemyHandUI();
+                    }
+                    else if (summonSource == SummonSource.異次元)
+                    {
+                        RemoveCardFromOpponentDimension(card.cardKind, card.cardID, sourceIndex);
+                        BattleManager.Instance.UpdateEnemyDimensionUI();
+                    }
+                    else if (summonSource == SummonSource.墓地)
+                    {
+                        RemoveCardFromOpponentDeck(card.cardKind, card.cardID);
                     }
                     else
                     {
@@ -347,6 +358,10 @@ public partial class OnlineSyncManager
                 return BattleManager.Instance.eDeckZone.GetComponent<RectTransform>();
             case SummonSource.デッキ:
                 return BattleManager.Instance.eGraveZone.GetComponent<RectTransform>();
+            case SummonSource.異次元:
+                return BattleManager.Instance.eDimensionZone != null
+                    ? BattleManager.Instance.eDimensionZone.GetComponent<RectTransform>()
+                    : null;
             default:
                 return null;
         }
@@ -362,6 +377,7 @@ public partial class OnlineSyncManager
 
         CardKind cardKind = tacticsCard.cardKind;
         int cardID = tacticsCard.cardID;
+        BattleManager.Instance?.ClearGrantsFrom(tacticsCard);
         ForgetChainTactics(tacticsCard);
 
         try

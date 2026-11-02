@@ -34,10 +34,19 @@ public class BattlerModel : CardDBBase
 
     public List<SkillDB> passiveSkills;
 
+    public bool トークン;
+
     public void Init(int cardID)
     {
-        BattlerDB cardDB = Resources.Load<BattlerDB>("CardDBList/バトラー/" + cardID);
-        cardKind = cardDB.cardKind;
+        BattlerDB cardDB = BattlerAssets.Load(cardID, out bool token);
+        if (cardDB == null)
+        {
+            Debug.LogError($"バトラーまたはトークンが見つかりません: {cardID}");
+            return;
+        }
+
+        トークン = token;
+        cardKind = token ? CardKind.バトラー : cardDB.cardKind;
         cardId = cardDB.cardId;
         cardName = cardDB.cardName;
         rarity = cardDB.rarity;

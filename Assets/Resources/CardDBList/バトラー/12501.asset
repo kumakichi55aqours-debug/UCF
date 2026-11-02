@@ -28,7 +28,7 @@ MonoBehaviour:
   - rid: 3123607183611396104
   - rid: 3123607303214858325
   type: 2
-  hp: 11
+  hp: 8
   "\u5F97\u610F\u5C5E\u6027": 3
   "\u5C5E\u6027\u8EFD\u6E1B\u5024": 1
   "\u5F31\u70B9\u5C5E\u6027": 4
@@ -65,6 +65,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6":
         - rid: 3123607183611396099
@@ -100,6 +102,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 01000000
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 1
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
@@ -111,6 +114,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -143,6 +148,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -171,6 +178,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 00000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -191,8 +200,11 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
+        "\u6761\u4EF6":
+        - rid: 3123608000000000008
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
@@ -219,6 +231,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 00000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -232,3 +246,22 @@ MonoBehaviour:
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u72B6\u614B\u7570\u5E38": 1
+    - rid: 3123608000000000008
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 08000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0

@@ -28,6 +28,7 @@ public class EnemyActionManager : MonoBehaviour
 
         Debug.Log("エネミー メインフェイズ処理（自動）");
         await EnemyUseFieldCardAsync();
+        await EnemyUseTacticsAsync();
         await EnemySummonCardAsync();
 
         await Task.Delay(300);
@@ -110,6 +111,7 @@ public class EnemyActionManager : MonoBehaviour
             battle.eResources.Cost.TakeCost(pay);
             battle.enemyHand.Remove(chosen);
             await PlayFromEnemyHand(card, battle.eFieldZone);
+            await WaitWhileSkillsResolve();
         }
         catch (Exception ex)
         {
@@ -128,6 +130,374 @@ public class EnemyActionManager : MonoBehaviour
 
         CardController card = FindEnemyHandCard(deck);
         return card == null || (!CannotNormalSummonSkill.Blocks(card) && !UniqueCardRestrictionHelper.IsRestrictedByUniqueCardRule(card));
+    }
+
+    /// <summary>
+    /// 払える作戦を、出せなくなるまで使う。
+    /// コスト0は他の手札より高くなくても使う。
+    /// コスト1以上は、手札の支払いコストが最も高いときだけ使う。同コストのバトラーがいればバトラーを優先して使わない。
+    /// </summary>
+    async Task EnemyUseTacticsAsync()
+    {
+        try
+        {
+            var battle = BattleManager.Instance;
+            if (battle == null)
+                return;
+
+            while (true)
+            {
+                PersistentEffectManager.Instance?.RecalculateImmediately();
+
+                DeckCard chosen = ChooseEnemyTactics(battle);
+                if (chosen == null)
+                    return;
+
+                CardController card = EnsureEnemyHandCard(chosen);
+                if (card == null)
+                {
+                    Debug.LogError("EnemyUseTacticsAsync: カードが見つかりませんでした");
+                    return;
+                }
+
+                int pay = card.GetModifiedCost();
+                if (battle.eResources.Cost.currentCost < pay)
+                    return;
+
+                battle.eResources.Cost.TakeCost(pay);
+                battle.enemyHand.Remove(chosen);
+
+                Debug.Log($"エネミー 作戦カード使用: {card.cardName} コスト{pay}");
+                await PlayFromEnemyHand(card, battle.eTacticsZone);
+                await WaitForPlayedTactics(card);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"EnemyUseTacticsAsync でエラー: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 今の手札から、CPUが使う作戦を1枚選ぶ。無ければ null。
+    /// </summary>
+    DeckCard ChooseEnemyTactics(BattleManager battle)
+    {
+        var hand = battle?.enemyHand;
+        if (hand == null || hand.Count == 0)
+            return null;
+
+        var playable = new List<DeckCard>();
+        var free = new List<DeckCard>();
+        foreach (var deck in hand)
+        {
+            if (!CanPlayEnemyTactics(deck))
+                continue;
+
+            playable.Add(deck);
+            if (ModifiedHandCost(deck) <= 0)
+                free.Add(deck);
+        }
+
+        if (free.Count > 0)
+            return free[UnityEngine.Random.Range(0, free.Count)];
+        if (playable.Count == 0)
+            return null;
+
+        int highest = int.MinValue;
+        bool butlerAtHighest = false;
+        foreach (var deck in hand)
+        {
+            if (deck == null)
+                continue;
+
+            int cost = ModifiedHandCost(deck);
+            if (cost > highest)
+            {
+                highest = cost;
+                butlerAtHighest = deck.カード種類 == CardKind.バトラー;
+            }
+            else if (cost == highest && deck.カード種類 == CardKind.バトラー)
+            {
+                butlerAtHighest = true;
+            }
+        }
+
+        if (highest <= 0 || butlerAtHighest)
+            return null;
+
+        var top = new List<DeckCard>();
+        foreach (var deck in playable)
+        {
+            if (ModifiedHandCost(deck) == highest)
+                top.Add(deck);
+        }
+
+        if (top.Count == 0)
+            return null;
+        return top[UnityEngine.Random.Range(0, top.Count)];
+    }
+
+    /// <summary>
+    /// 手札から通常の作戦として出せるか。支払えて、手札の登場時スキルがあるとき。
+    /// </summary>
+    bool CanPlayEnemyTactics(DeckCard deck)
+    {
+        if (deck == null || deck.カード種類 != CardKind.作戦)
+            return false;
+        if (BattleManager.Instance != null && !BattleManager.Instance.TacticsZoneHasRoom(false))
+            return false;
+        if (UniqueCardRestrictionHelper.IsDeckCardRestrictedByUniqueCardRule(deck, false))
+            return false;
+
+        var battle = BattleManager.Instance;
+        if (battle == null || battle.eResources == null || battle.eResources.Cost == null)
+            return false;
+        if (battle.eResources.Cost.currentCost < ModifiedHandCost(deck))
+            return false;
+
+        CardController card = FindEnemyHandCard(deck);
+        if (card == null || card.IsActionBlocked)
+            return false;
+        if (NegateZoneEffectSkill.Blocks(card) || UniqueCardRestrictionHelper.IsRestrictedByUniqueCardRule(card))
+            return false;
+
+        return AppearanceCanResolve(card);
+    }
+
+    /// <summary>
+    /// 登場時スキルは、手札を離れたあとに条件を見る。
+    /// 判定中だけ手札から外し、解決時と同じ条件と対象の有無で出せるか決める。
+    /// </summary>
+    bool AppearanceCanResolve(CardController card)
+    {
+        if (card == null || card.skills == null)
+            return false;
+
+        Transform parent = card.transform.parent;
+        int sibling = card.transform.GetSiblingIndex();
+        Transform hold = BattleManager.Instance != null && BattleManager.Instance.mainCanvas != null
+            ? BattleManager.Instance.mainCanvas.transform
+            : null;
+        card.transform.SetParent(hold, true);
+        try
+        {
+            var ctx = SkillContext.WithAttackTarget(card, null);
+            foreach (var skill in card.skills)
+            {
+                if (skill == null || !skill.CanUseAt(ActiveTiming.登場時, ActiveLocation.手札, ctx))
+                    continue;
+                if (!ConditionsHold(skill, ctx) || !EffectCanResolve(skill, card, ctx))
+                    continue;
+                return true;
+            }
+
+            return false;
+        }
+        finally
+        {
+            card.transform.SetParent(parent, true);
+            if (parent != null)
+                card.transform.SetSiblingIndex(sibling);
+        }
+    }
+
+    static bool ConditionsHold(SkillDB skill, SkillContext ctx)
+    {
+        if (skill?.条件 == null || skill.条件.Count == 0)
+            return true;
+
+        for (int i = 0; i < skill.条件.Count; i++)
+        {
+            var condition = skill.条件[i];
+            if (condition == null || ctx == null || !condition.IsConditionMet(ctx))
+                return false;
+        }
+
+        return true;
+    }
+
+    static bool EffectCanResolve(SkillDB skill, CardController source, SkillContext ctx)
+    {
+        if (skill == null)
+            return false;
+
+        if (skill is CompositeSkill composite)
+        {
+            if (composite.subSkills == null)
+                return true;
+
+            foreach (var sub in composite.subSkills)
+            {
+                if (sub == null)
+                    continue;
+                if (HasOwnConditions(sub) && !(sub is ConditionalSkill))
+                    continue;
+                if (!EffectCanResolve(sub, source, ctx))
+                    return false;
+            }
+
+            return true;
+        }
+
+        if (skill is ConditionalSkill branch)
+        {
+            bool met = ConditionsHold(branch, ctx);
+            var chosen = met ? branch.成立時スキル : branch.不成立時スキル;
+            if (chosen == null || chosen.Count == 0)
+                return true;
+
+            foreach (var sub in chosen)
+            {
+                if (sub != null && !EffectCanResolve(sub, source, ctx))
+                    return false;
+            }
+
+            return true;
+        }
+
+        if (skill is SpecialSummonSkill summon)
+            return HasSummonCandidate(summon, source, ctx);
+
+        return HasSelectedTargets(skill, source);
+    }
+
+    static bool HasOwnConditions(SkillDB skill)
+    {
+        return skill.条件 != null && skill.条件.Count > 0;
+    }
+
+    static bool HasSelectedTargets(SkillDB skill, CardController source)
+    {
+        TargetList target = skill.GetEffectTarget();
+        if (target != TargetList.バトラー1体
+            && target != TargetList.バトラー全員
+            && target != TargetList.フィールド1枚
+            && target != TargetList.手札)
+            return true;
+
+        var battle = BattleManager.Instance;
+        if (battle == null)
+            return false;
+
+        PlayerType side = PlayerType.プレイヤー;
+        if (skill is GrantSkill grant)
+            side = grant.対象側;
+        else if (skill is DamageSkill damage)
+            side = damage.対象側;
+        else if (skill is BasePowerModifierSkill power)
+            side = power.対象側;
+
+        if (target == TargetList.バトラー全員)
+        {
+            bool ownerIsLocal = source != null && source.isMyCard;
+            int count = 0;
+            if (TargetScope.IncludesOwner(side))
+                count += CountBattlers(CardZones.Of(CardZoneType.プレイヤーBゾーン, ownerIsLocal));
+            if (TargetScope.IncludesOpponent(side))
+                count += CountBattlers(CardZones.Of(CardZoneType.相手Bゾーン, ownerIsLocal));
+            return count > 0;
+        }
+
+        var found = battle.ListSelectableSkillTargets(target, side, skill.GetTargetCriteria(), source, skill.GetTargetState());
+        return found != null && found.Count > 0;
+    }
+
+    static int CountBattlers(Transform zone)
+    {
+        if (zone == null)
+            return 0;
+
+        int count = 0;
+        var cards = zone.GetComponentsInChildren<CardController>();
+        for (int i = 0; i < cards.Length; i++)
+        {
+            if (cards[i] != null && cards[i].cardKind == CardKind.バトラー)
+                count++;
+        }
+
+        return count;
+    }
+
+    static bool HasSummonCandidate(SpecialSummonSkill summon, CardController source, SkillContext ctx)
+    {
+        if (summon == null || !ConditionsHold(summon, ctx) || summon.参照ゾーンリスト == null)
+            return false;
+
+        bool ownerIsLocal = source != null && source.isMyCard;
+        foreach (var zone in summon.参照ゾーンリスト)
+        {
+            if (CardZones.IsDeck(zone))
+            {
+                var deck = CardZones.Deck(zone, ownerIsLocal);
+                if (deck == null)
+                    continue;
+
+                foreach (var deckCard in deck)
+                {
+                    if (deckCard != null
+                        && SearchCriteria.AllowsDeck(summon.対象条件, deckCard, ctx)
+                        && !UniqueCardRestrictionHelper.IsDeckCardRestrictedByUniqueCardRule(deckCard, ownerIsLocal))
+                        return true;
+                }
+
+                continue;
+            }
+
+            Transform zoneTransform = CardZones.Of(zone, ownerIsLocal);
+            if (zoneTransform == null)
+                continue;
+
+            var cards = zoneTransform.GetComponentsInChildren<CardController>();
+            for (int i = 0; i < cards.Length; i++)
+            {
+                var candidate = cards[i];
+                if (candidate != null
+                    && candidate.MeetsCriteria(summon.対象条件, ctx)
+                    && !UniqueCardRestrictionHelper.IsRestrictedByUniqueCardRule(candidate))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 作戦を出したあと、効果と墓地送りが終わるまで待つ。
+    /// </summary>
+    async Task WaitForPlayedTactics(CardController card)
+    {
+        await WaitWhileSkillsResolve();
+
+        var battle = BattleManager.Instance;
+        Transform tactics = battle != null ? battle.eTacticsZone : null;
+        Transform grave = battle != null ? battle.eGraveZone : null;
+        for (int i = 0; i < 80; i++)
+        {
+            if (card == null || card.transform == null)
+                break;
+
+            Transform parent = card.transform.parent;
+            if (parent == grave || (tactics != null && parent != tactics))
+                break;
+            if (card.type == CardTypeList.強化 && battle != null && battle.HasLivingGrant(card))
+                break;
+            await Task.Delay(50);
+        }
+
+        await Task.Delay(250);
+        await WaitWhileSkillsResolve();
+    }
+
+    async Task WaitWhileSkillsResolve()
+    {
+        var chain = SkillChainManager.Instance;
+        if (chain == null)
+            return;
+
+        await Task.Yield();
+        while (chain.IsResolvingSkills)
+            await Task.Delay(50);
     }
 
     CardController FindEnemyHandCard(DeckCard deck)
@@ -247,6 +617,7 @@ public class EnemyActionManager : MonoBehaviour
 
     /// <summary>
     /// 払える技のうち、技2を優先する。バトラー対象で対象が一人もいない技は選ばない。
+    /// 付与スキルがないときだけの技は、付与があるあいだ選ばない。
     /// </summary>
     int ChooseEnemyMoveIndex(CardController card)
     {
@@ -255,11 +626,18 @@ public class EnemyActionManager : MonoBehaviour
             return -1;
 
         int energy = battle.eResources.Energy.currentEnergy;
-        if (energy >= card.GetMoveEnergyCost(1) && MoveTargetEvasion.HasLegalTarget(card, 1))
+        if (EnemyMoveIsUsable(card, 1, energy))
             return 1;
-        if (energy >= card.GetMoveEnergyCost(0) && MoveTargetEvasion.HasLegalTarget(card, 0))
+        if (EnemyMoveIsUsable(card, 0, energy))
             return 0;
         return -1;
+    }
+
+    static bool EnemyMoveIsUsable(CardController card, int moveIndex, int energy)
+    {
+        return energy >= card.GetMoveEnergyCost(moveIndex)
+            && !NoGrantMoveSkill.Blocks(card, moveIndex)
+            && MoveTargetEvasion.HasLegalTarget(card, moveIndex);
     }
 
     /// <summary>
@@ -275,10 +653,6 @@ public class EnemyActionManager : MonoBehaviour
         if (moveIndex < 0)
             return;
 
-        int energyCost = enemyCard.GetMoveEnergyCost(moveIndex);
-        if (energyCost > 0)
-            battle.eResources.Energy.TakeEnergy(energyCost);
-
         bool moveHit = enemyCard.RollMoveHit();
         int extraHits = moveHit ? MultiHitSkill.RollExtraHits(enemyCard, moveIndex) : 0;
         battle.SetPendingMoveHit(moveHit, extraHits);
@@ -288,7 +662,7 @@ public class EnemyActionManager : MonoBehaviour
         PlayerType moveSide = enemyBattler.GetMoveSide(moveIndex);
         if (targetType == TargetList.自分)
         {
-            await battle.ResolveSelfTargetMove(enemyCard, moveIndex, payEnergy: false);
+            await battle.ResolveSelfTargetMove(enemyCard, moveIndex, payEnergy: true);
             return;
         }
 
@@ -297,7 +671,7 @@ public class EnemyActionManager : MonoBehaviour
             if (MoveTargetEvasion.ListZoneBattlers(enemyCard, PlayerType.両方).Count > 0)
             {
                 await ShowCpuTargetCandidates(MoveTargetEvasion.ListConfusionCandidates(enemyCard));
-                await battle.ResolveConfusedMove(enemyCard, moveIndex, payEnergy: false);
+                await battle.ResolveConfusedMove(enemyCard, moveIndex, payEnergy: true);
                 return;
             }
         }
@@ -316,10 +690,11 @@ public class EnemyActionManager : MonoBehaviour
                 var legal = MoveTargetEvasion.LegalBattlers(present, targetType, moveSide);
                 if (legal.Count == 0)
                 {
-                    MarkMoveUsed(enemyCard);
+                    battle.ClearPendingMoveHit();
                     return;
                 }
 
+                PayEnemyMoveEnergy(enemyCard, moveIndex);
                 if (!await OpenMoveUseWindow(enemyCard, moveIndex))
                     return;
 
@@ -330,22 +705,19 @@ public class EnemyActionManager : MonoBehaviour
 
         if (MoveTargetEvasion.IsSelectableBattlerTarget(targetType))
         {
-            var legalTargets = MoveTargetEvasion.ListLegalTargets(enemyCard, moveIndex);
-            if (legalTargets.Count > 0)
+            var present = MoveTargetEvasion.ListZoneBattlers(enemyCard, moveSide);
+            if (present.Count > 0)
             {
+                var legalTargets = MoveTargetEvasion.ListLegalTargets(enemyCard, moveIndex);
+                if (legalTargets.Count == 0)
+                {
+                    battle.ClearPendingMoveHit();
+                    return;
+                }
+
                 await ShowCpuTargetCandidates(legalTargets);
                 var picked = legalTargets[UnityEngine.Random.Range(0, legalTargets.Count)];
-                await battle.SelectTargetRoutine(picked, enemyCard, moveIndex);
-                return;
-            }
-        }
-        else if (targetType != TargetList.バトラー全員)
-        {
-            var playerCards = battle.pBattlerZone.GetComponentsInChildren<CardController>();
-            CardController target = await PickSingleBattlerTarget(playerCards, targetType, moveSide);
-            if (target != null)
-            {
-                await battle.SelectTargetRoutine(target, enemyCard, moveIndex);
+                await battle.SelectTargetRoutine(picked, enemyCard, moveIndex, payEnergy: true);
                 return;
             }
         }
@@ -353,7 +725,7 @@ public class EnemyActionManager : MonoBehaviour
         var fieldCards = battle.pFieldZone.GetComponentsInChildren<CardController>();
         if (fieldCards.Length > 0 && fieldCards[0].cardKind == CardKind.フィールド)
         {
-            await battle.SelectTargetRoutine(fieldCards[0], enemyCard, moveIndex);
+            await battle.SelectTargetRoutine(fieldCards[0], enemyCard, moveIndex, payEnergy: true);
             return;
         }
 
@@ -370,32 +742,25 @@ public class EnemyActionManager : MonoBehaviour
         var picked = PickRandomTargets(legal, pickCount);
         if (picked.Count < select.MinimumCount)
         {
-            MarkMoveUsed(enemyCard);
+            BattleManager.Instance.ClearPendingMoveHit();
             return;
         }
 
         await ShowCpuTargetCandidates(legal);
-        await BattleManager.Instance.ResolveSelectedMoveTargets(enemyCard, moveIndex, picked, payEnergy: false);
+        await BattleManager.Instance.ResolveSelectedMoveTargets(enemyCard, moveIndex, picked, payEnergy: true);
     }
 
-    async Task<CardController> PickSingleBattlerTarget(CardController[] playerCards, TargetList targetType, PlayerType side)
+    void PayEnemyMoveEnergy(CardController card, int moveIndex)
     {
-        if (playerCards.Length == 0)
-            return null;
-
-        var candidates = MoveTargetEvasion.IsBattlerTarget(targetType)
-            ? MoveTargetEvasion.LegalBattlers(playerCards, targetType, side)
-            : playerCards.ToList();
-        if (candidates.Count == 0)
-            return null;
-
-        await ShowCpuTargetCandidates(candidates);
-        return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        int energyCost = card.GetMoveEnergyCost(moveIndex);
+        if (energyCost > 0)
+            BattleManager.Instance.eResources.Energy.TakeEnergy(energyCost);
     }
 
     async Task AttackPlayerHp(CardController enemyCard, int moveIndex)
     {
         var battle = BattleManager.Instance;
+        PayEnemyMoveEnergy(enemyCard, moveIndex);
         if (!await OpenMoveUseWindow(enemyCard, moveIndex))
             return;
 
@@ -444,6 +809,8 @@ public class EnemyActionManager : MonoBehaviour
         var specific = moveIndex == 0 ? SkillTrigger.技1使用時 : SkillTrigger.技2使用時;
         await battle.ProcessSkillTriggerAndWait(specific, attacker, null, moveIndex: moveIndex);
         await battle.ProcessSkillTriggerAndWait(SkillTrigger.技使用時, attacker, null, moveIndex: moveIndex);
+        if (CardAnimationManager.Instance != null)
+            await CardAnimationManager.Instance.PlayMoveCutIn(attacker, moveIndex);
         return true;
     }
 

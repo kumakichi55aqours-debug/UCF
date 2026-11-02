@@ -62,7 +62,10 @@ public class GrantedSkillListUI : MonoBehaviour
     private void ShowInternal(CardController card)
     {
         if (panel != null)
+        {
             panel.SetActive(true);
+            PopupDrag.Use(panel);
+        }
 
         ClearRows();
 

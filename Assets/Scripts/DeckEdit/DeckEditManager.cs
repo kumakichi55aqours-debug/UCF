@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -15,6 +16,7 @@ public class DeckEditManager : MonoBehaviour
     const string NewDeckName = "新規デッキ";
     const string SelectedDeckKey = "SelectedDeckName";
     const string DisableShufflePrefKey = "SolitaireDisableDeckShuffle";
+    const int MaxCopiesPerCard = 3;
 
     static List<CardDBBase> returnDeck;
     static string returnDeckName;
@@ -33,10 +35,8 @@ public class DeckEditManager : MonoBehaviour
     public TMP_Dropdown cardCostDropdown;
     public TMP_Dropdown cardElementDropdown;
     public TMP_Dropdown cardElementTargetDropdown;
-    public Button searchButton;
     public Button clearFilterButton;
     public Button saveButton;
-    public Button sortButton;
     public Button clearButton;
     public Button deleteDeckButton;
     public Button solitaireButton;
@@ -47,8 +47,11 @@ public class DeckEditManager : MonoBehaviour
     public List<CardDBBase> availableCards = new();
     public List<CardDBBase> currentDeck = new();
 
+    // ドロップダウンの並び。超・滅・無はカードが無いので入れない。
+    readonly List<CardTypeList> typeFilterOptions = new();
+
     string deckDirectory;
-    string currentDeckName = "デフォルト";
+    string currentDeckName = NewDeckName;
     bool isDeckModified;
     bool solitaireStarting;
 
@@ -93,8 +96,8 @@ public class DeckEditManager : MonoBehaviour
             deckNameInput.onValueChanged.AddListener(OnDeckNameChanged);
         }
 
-        EnsureClearFilterButton();
         Bind(clearFilterButton, ClearFilters);
+        FillTypeDropdown();
         Bind(solitaireButton, StartSolitaire);
         if (shuffleOffToggle != null)
         {
@@ -150,12 +153,24 @@ public class DeckEditManager : MonoBehaviour
 
     public void AddCardToDeck(CardDBBase cardData)
     {
-        if (cardData == null)
+        if (cardData == null || CountCopies(cardData) >= MaxCopiesPerCard)
             return;
 
         currentDeck.Add(cardData);
         isDeckModified = true;
         ShowDeck();
+    }
+
+    int CountCopies(CardDBBase cardData)
+    {
+        int count = 0;
+        foreach (CardDBBase card in currentDeck)
+        {
+            if (card != null && card.cardKind == cardData.cardKind && card.cardId == cardData.cardId)
+                count++;
+        }
+
+        return count;
     }
 
     public void RemoveCardFromDeck(CardController card)
@@ -179,29 +194,11 @@ public class DeckEditManager : MonoBehaviour
             return;
         }
 
-        var deckData = new List<DeckCard>(currentDeck.Count);
-        foreach (CardDBBase card in currentDeck)
-        {
-            CardTypeList cardType = card is BattlerDB battler ? battler.type : CardTypeList.None;
-            deckData.Add(new DeckCard(card.cardKind, card.cardId, card.cost, card.category, cardType));
-        }
-
-        File.WriteAllText(DeckPath(currentDeckName), JsonConvert.SerializeObject(deckData, Formatting.Indented));
+        File.WriteAllText(DeckPath(currentDeckName), JsonConvert.SerializeObject(ToDeckCards(currentDeck), Formatting.Indented));
         isDeckModified = false;
         RememberSelectedDeck();
         RefreshDeckList();
-
-#if UNITY_EDITOR
-        UnityEditor.AssetDatabase.Refresh();
-#endif
-    }
-
-    public void LoadDeck()
-    {
-        if (deckSelectDropdown == null || deckSelectDropdown.options.Count == 0)
-            return;
-
-        LoadDeckByName(deckSelectDropdown.options[deckSelectDropdown.value].text);
+        RefreshAssetsInEditor();
     }
 
     public void LoadDeckByName(string deckName)
@@ -234,7 +231,7 @@ public class DeckEditManager : MonoBehaviour
                 }
             }
         }
-        else
+        else if (deckName != NewDeckName)
         {
             Debug.LogWarning("デッキファイルが存在しません: " + path);
         }
@@ -249,7 +246,7 @@ public class DeckEditManager : MonoBehaviour
     {
         string searchTerm = searchInput != null ? searchInput.text.ToLower() : "";
         CardKind selectedKind = cardKindDropdown != null ? (CardKind)cardKindDropdown.value : CardKind.None;
-        CardTypeList selectedType = cardTypeDropdown != null ? (CardTypeList)cardTypeDropdown.value : CardTypeList.None;
+        CardTypeList selectedType = SelectedType();
         ElementList selectedElement = cardElementDropdown != null ? (ElementList)cardElementDropdown.value : ElementList.None;
         int elementTarget = cardElementTargetDropdown != null ? cardElementTargetDropdown.value : 0;
 
@@ -296,36 +293,6 @@ public class DeckEditManager : MonoBehaviour
         dropdown.RefreshShownValue();
     }
 
-    void EnsureClearFilterButton()
-    {
-        if (clearFilterButton != null || searchButton == null)
-            return;
-
-        GameObject clone = Instantiate(searchButton.gameObject, searchButton.transform.parent);
-        clone.name = "ClearFilterButton";
-        clearFilterButton = clone.GetComponent<Button>();
-        clearFilterButton.onClick = new Button.ButtonClickedEvent();
-
-        RectTransform rect = clone.GetComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(250f, 40f);
-        if (cardElementDropdown != null)
-        {
-            RectTransform elementRow = cardElementDropdown.transform.parent as RectTransform;
-            rect.anchorMin = elementRow.anchorMin;
-            rect.anchorMax = elementRow.anchorMax;
-            rect.pivot = new Vector2(1f, elementRow.pivot.y);
-            float elementLeft = elementRow.anchoredPosition.x - elementRow.sizeDelta.x * elementRow.pivot.x;
-            rect.anchoredPosition = new Vector2(elementLeft - 16f, elementRow.anchoredPosition.y);
-        }
-
-        foreach (TextMeshProUGUI text in clone.GetComponentsInChildren<TextMeshProUGUI>(true))
-        {
-            text.text = "フィルタークリア";
-            text.fontSize = 22f;
-            text.rectTransform.sizeDelta = new Vector2(240f, 36f);
-        }
-    }
-
     public void SortCards()
     {
         currentDeck.Sort(CompareCards);
@@ -348,46 +315,16 @@ public class DeckEditManager : MonoBehaviour
     public void DeleteCurrentDeck()
     {
         if (string.IsNullOrEmpty(currentDeckName) || currentDeckName == NewDeckName)
-        {
-            Debug.LogWarning("削除するデッキが選択されていません。");
             return;
-        }
 
         string path = DeckPath(currentDeckName);
         if (!File.Exists(path))
-        {
-            Debug.LogWarning("削除するデッキファイルが存在しません: " + path);
             return;
-        }
 
-        try
-        {
-            File.Delete(path);
-            currentDeck.Clear();
-            ApplyDeckName(NewDeckName);
-            isDeckModified = false;
-            ShowDeck();
-            RefreshDeckList();
-            RememberSelectedDeck();
-
-#if UNITY_EDITOR
-            UnityEditor.AssetDatabase.Refresh();
-#endif
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"デッキ削除エラー: {ex.Message}");
-        }
-    }
-
-    public int GetDeckCount()
-    {
-        return currentDeck.Count;
-    }
-
-    public bool IsValidDeck()
-    {
-        return currentDeck.Count >= 20 && currentDeck.Count <= 30;
+        File.Delete(path);
+        BeginNewDeck();
+        RefreshDeckList();
+        RefreshAssetsInEditor();
     }
 
     static int CompareCards(CardDBBase a, CardDBBase b)
@@ -399,17 +336,14 @@ public class DeckEditManager : MonoBehaviour
         return a.cardId.CompareTo(b.cardId);
     }
 
-    // ドロップダウンの0番は「全て」。1番以降の表示は 0, 1, 2... なので、値そのものはコストではない。
+    // 0番は「全て」。以降の表示文字がコスト。
     bool MatchesCost(CardDBBase card)
     {
         if (cardCostDropdown == null || cardCostDropdown.value <= 0)
             return true;
 
-        string label = cardCostDropdown.options[cardCostDropdown.value].text;
-        if (int.TryParse(label, out int cost))
-            return card.cost == cost;
-
-        return card.cost == cardCostDropdown.value - 1;
+        return int.TryParse(cardCostDropdown.options[cardCostDropdown.value].text, out int cost)
+            && card.cost == cost;
     }
 
     static bool MatchesSearchText(CardDBBase card, string searchTerm)
@@ -431,12 +365,49 @@ public class DeckEditManager : MonoBehaviour
         return text != null && text.ToLower().Contains(searchTerm);
     }
 
+    void FillTypeDropdown()
+    {
+        if (cardTypeDropdown == null)
+            return;
+
+        cardTypeDropdown.onValueChanged.RemoveAllListeners();
+        cardTypeDropdown.ClearOptions();
+        typeFilterOptions.Clear();
+        var labels = new List<string>();
+        foreach (CardTypeList type in Enum.GetValues(typeof(CardTypeList)))
+        {
+            if (type == CardTypeList.超 || type == CardTypeList.滅 || type == CardTypeList.無)
+                continue;
+
+            typeFilterOptions.Add(type);
+            labels.Add(type == CardTypeList.None ? "全て" : type.ToString());
+        }
+        cardTypeDropdown.AddOptions(labels);
+        cardTypeDropdown.SetValueWithoutNotify(0);
+        cardTypeDropdown.onValueChanged.AddListener(_ => SearchCards());
+    }
+
+    CardTypeList SelectedType()
+    {
+        if (cardTypeDropdown == null)
+            return CardTypeList.None;
+
+        int index = cardTypeDropdown.value;
+        if (index < 0 || index >= typeFilterOptions.Count)
+            return CardTypeList.None;
+
+        return typeFilterOptions[index];
+    }
+
     static bool MatchesType(CardDBBase card, CardTypeList selectedType)
     {
         if (selectedType == CardTypeList.None)
             return true;
-
-        return card is BattlerDB battler && battler.type == selectedType;
+        if (card is BattlerDB battler)
+            return battler.type == selectedType;
+        if (card is TacticsDB tactics)
+            return tactics.type == selectedType;
+        return false;
     }
 
     static bool MatchesElement(CardDBBase card, ElementList selectedElement, int elementTarget)
@@ -488,11 +459,7 @@ public class DeckEditManager : MonoBehaviour
             return deckList;
 
         foreach (string file in Directory.GetFiles(deckDirectory, "deck_*.json"))
-        {
-            string fileName = Path.GetFileNameWithoutExtension(file);
-            if (fileName.StartsWith("deck_"))
-                deckList.Add(fileName.Substring("deck_".Length));
-        }
+            deckList.Add(Path.GetFileNameWithoutExtension(file).Substring("deck_".Length));
 
         return deckList;
     }
@@ -523,11 +490,7 @@ public class DeckEditManager : MonoBehaviour
         string selected = deckSelectDropdown.options[index].text;
         if (selected == NewDeckName)
         {
-            currentDeck.Clear();
-            ApplyDeckName(NewDeckName);
-            isDeckModified = false;
-            ShowDeck();
-            RememberSelectedDeck();
+            BeginNewDeck();
             return;
         }
 
@@ -548,6 +511,15 @@ public class DeckEditManager : MonoBehaviour
         currentDeckName = deckName;
         if (deckNameInput != null)
             deckNameInput.SetTextWithoutNotify(deckName);
+    }
+
+    void BeginNewDeck()
+    {
+        currentDeck.Clear();
+        ApplyDeckName(NewDeckName);
+        isDeckModified = false;
+        ShowDeck();
+        RememberSelectedDeck();
     }
 
     void RememberSelectedDeck()
@@ -593,7 +565,7 @@ public class DeckEditManager : MonoBehaviour
         StashCurrentDeck();
         RememberSelectedDeck();
         bool shuffleOff = shuffleOffToggle != null && shuffleOffToggle.isOn;
-        BattleLaunchContext.BeginSolitaire(SnapshotDeck(currentDeck), shuffleOff);
+        BattleLaunchContext.BeginSolitaire(ToDeckCards(currentDeck), shuffleOff);
         PhotonNetwork.OfflineMode = true;
         SceneChanger.Load("BattleScene");
     }
@@ -620,7 +592,7 @@ public class DeckEditManager : MonoBehaviour
         return true;
     }
 
-    static List<DeckCard> SnapshotDeck(List<CardDBBase> cards)
+    static List<DeckCard> ToDeckCards(List<CardDBBase> cards)
     {
         var list = new List<DeckCard>();
         if (cards == null)
@@ -631,7 +603,11 @@ public class DeckEditManager : MonoBehaviour
             if (card == null)
                 continue;
 
-            CardTypeList cardType = card is BattlerDB battler ? battler.type : CardTypeList.None;
+            CardTypeList cardType = CardTypeList.None;
+            if (card is BattlerDB battler)
+                cardType = battler.type;
+            else if (card is TacticsDB tactics)
+                cardType = tactics.type;
             List<CardCategoryList> category = card.category != null
                 ? new List<CardCategoryList>(card.category)
                 : new List<CardCategoryList>();
@@ -639,5 +615,12 @@ public class DeckEditManager : MonoBehaviour
         }
 
         return list;
+    }
+
+    static void RefreshAssetsInEditor()
+    {
+#if UNITY_EDITOR
+        UnityEditor.AssetDatabase.Refresh();
+#endif
     }
 }

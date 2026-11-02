@@ -57,6 +57,7 @@ public class NumberSelectionUI : MonoBehaviour
         }
 
         if (panel != null) panel.SetActive(true);
+        PopupDrag.Use(panel);
         if (titleText != null) titleText.text = title;
 
         if (slider != null)

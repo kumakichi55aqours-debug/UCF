@@ -31,7 +31,7 @@ public abstract class SkillDB
     [SerializeReference] public List<ISkillCondition> 条件 = new List<ISkillCondition>();
 
     public SearchCriteria トリガー対象条件;
-    // 「墓地に送られた時」「他のカードが墓地に送られた時」で、送られた元のゾーン。空ならどこからでも
+    // 「墓地に送られた時」「他のカードが墓地に送られた時」「他のカードが手札に戻った時」「他のカードが登場した時」で、移動前のゾーン。空ならどこからでも
     // 「プレイヤー」はそのスキルを持つカード側、「相手」は反対側。複数指定したときはどれかと一致すればよい
     public List<CardZoneType> どこから = new List<CardZoneType>();
     // 「他のバトラーが撃破した時」で、撃破したバトラーがいるゾーン。空ならどこにいても
@@ -55,7 +55,20 @@ public abstract class SkillDB
         if (owner == null || subject == null)
             return false;
 
-        bool sameSide = subject.isMyCard == owner.isMyCard;
+        return MatchesActivationOwner(owner, subject.isMyCard);
+    }
+
+    /// <summary>
+    /// 対象カードがもう場に無いとき用。subjectIsMyCard はローカルプレイヤーのカードか。
+    /// </summary>
+    public bool MatchesActivationOwner(CardController owner, bool subjectIsMyCard)
+    {
+        if (発動側 == PlayerType.両方)
+            return true;
+        if (owner == null)
+            return false;
+
+        bool sameSide = subjectIsMyCard == owner.isMyCard;
         return 発動側 == PlayerType.プレイヤー ? sameSide : !sameSide;
     }
 
@@ -80,13 +93,13 @@ public abstract class SkillDB
     }
 
     /// <summary>
-    /// 登場時スキルが、今回の登場で発動するか。
+    /// 登場時、または他のカードが登場した時のスキルが、今回の登場で発動するか。
     /// 通常登場は登場ボタンから場に出したとき。特殊登場はスキルで場に出したとき。
-    /// 登場時以外は常に通す。
+    /// それ以外のタイミングは常に通す。
     /// </summary>
     public bool MatchesAppearKind(bool specialSummon)
     {
-        if (タイミング != ActiveTiming.登場時)
+        if (タイミング != ActiveTiming.登場時 && タイミング != ActiveTiming.他のカードが登場した時)
             return true;
         return specialSummon ? !特殊登場を除く : !通常登場を除く;
     }
@@ -136,31 +149,31 @@ public abstract class SkillDB
 
     protected Task<List<CardController>> CollectTargetsAsync(TargetList targetList, PlayerType side, SearchCriteria criteria, SkillContext context)
     {
-        return TargetSelectionManager.CollectTargetsAsync(targetList, side, criteria, context, GetSelectTarget());
+        return CollectTargetsAsync(targetList, side, criteria, context, null);
+    }
+
+    protected Task<List<CardController>> CollectTargetsAsync(
+        TargetList targetList,
+        PlayerType side,
+        SearchCriteria criteria,
+        SkillContext context,
+        IReadOnlyList<ISkillCondition> cardState)
+    {
+        return TargetSelectionManager.CollectTargetsAsync(targetList, side, criteria, context, GetSelectTarget(), cardState);
     }
 
     public virtual TargetList GetEffectTarget() => TargetList.None;
     public virtual SearchCriteria GetTargetCriteria() => null;
 
+    /// <summary>
+    /// 対象を集めるときに、印刷情報とは別に1体ずつ見る状態。空なら状態では絞らない。
+    /// </summary>
+    public virtual IReadOnlyList<ISkillCondition> GetTargetState() => null;
+
     public virtual bool CanActivate(SkillContext context)
     {
         if (!HasRemainingUses) return false;
-
-        if (条件 == null || 条件.Count == 0)
-        {
-            return true;
-        }
-
-        foreach (var condition in 条件)
-        {
-            if (condition == null) continue;
-            if (!condition.IsConditionMet(context))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return ConditionsMet(条件, context);
     }
 
     /// <summary>
@@ -183,6 +196,32 @@ public abstract class SkillDB
         }
 
         return true;
+    }
+
+    public static bool ConditionsMet(IReadOnlyList<ISkillCondition> conditions, SkillContext context)
+    {
+        if (conditions == null || conditions.Count == 0)
+            return true;
+
+        for (int i = 0; i < conditions.Count; i++)
+        {
+            if (conditions[i] != null && !conditions[i].IsConditionMet(context))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// なしなら固定値。引数があるときはコンテキストのその値だけを使い、無ければ 0。
+    /// </summary>
+    protected static int ResolveKeyedAmount(SkillContext context, int fixedAmount, SkillArg arg)
+    {
+        if (arg == SkillArg.なし)
+            return fixedAmount;
+        if (context != null && context.TryGetArg(arg, out int fromContext))
+            return Mathf.Max(0, fromContext);
+        return 0;
     }
 
     /// <summary>
@@ -565,6 +604,8 @@ public class SearchCriteria
             CardTypeList cardType = card.type;
             if (cardType == CardTypeList.None && card.model is BattlerModel battlerModel)
                 cardType = battlerModel.type;
+            if (cardType == CardTypeList.None && card.model is TacticsModel tacticsModel)
+                cardType = tacticsModel.type;
             if (!filter.カードのタイプ.Contains(cardType))
                 return false;
         }
@@ -597,8 +638,6 @@ public class SearchCriteria
 
         if (filter.カードのタイプ != null && filter.カードのタイプ.Count > 0)
         {
-            if (deck.カード種類 != CardKind.バトラー)
-                return false;
             if (deck.カードタイプ == CardTypeList.None)
                 deck.PopulateDerivedData();
             if (!filter.カードのタイプ.Contains(deck.カードタイプ))

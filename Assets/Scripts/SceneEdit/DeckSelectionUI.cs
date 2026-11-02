@@ -129,6 +129,7 @@ public class DeckSelectionUI : MonoBehaviour
 
         ApplyLayout(showCpuDeck);
         panel.SetActive(true);
+        PopupDrag.Use(panel);
 
         string lastSelectedDeckName = PlayerPrefs.GetString("SelectedDeckName", "");
         selectedDeckName = RefreshDeckList(deckDropdown, lastSelectedDeckName);

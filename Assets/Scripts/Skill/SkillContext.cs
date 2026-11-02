@@ -13,8 +13,37 @@ public class SkillContext
     // 起動効果の宣言時は、まだプレイヤーが対象を選んでいない。
     public bool ReuseTargetCard { get; set; } = true;
 
+    // 付与の再実行や永続の再計算では、相手も同じ効果を自分で走らせる。結果のRPCは出さない。
+    public bool 相手も同じ効果を実行する { get; set; }
+
     // サブスキル間で共有するランタイム変数格納用
-    public Dictionary<string, int> IntVariables { get; } = new Dictionary<string, int>();
+    public Dictionary<string, int> IntVariables { get; private set; } = new Dictionary<string, int>();
+
+    public void SetArg(SkillArg arg, int value)
+    {
+        if (!SkillArgKey.TryGetKey(arg, out string key))
+            return;
+        IntVariables[key] = value;
+    }
+
+    public bool TryGetArg(SkillArg arg, out int value)
+    {
+        value = 0;
+        if (!SkillArgKey.TryGetKey(arg, out string key))
+            return false;
+        return IntVariables.TryGetValue(key, out value);
+    }
+
+    /// <summary>
+    /// 技で倒したバトラーの、カードに書かれたHPを渡す。バトラーでなければ 0。
+    /// </summary>
+    public void SetDefeatedOriginalHp(CardController defeated)
+    {
+        int hp = 0;
+        if (defeated != null && defeated.model is BattlerModel battler)
+            hp = Mathf.Max(0, battler.maxHp);
+        SetArg(SkillArg.倒したバトラーの元々のHP, hp);
+    }
 
     // 直前のサブスキルが処理したカード。手札へ加えたカードを、続く登場や墓地送りの対象にする。
     public List<CardController> 処理したカード { get; } = new List<CardController>();
@@ -113,6 +142,30 @@ public class SkillContext
     {
         if (発動カード == null)
             発動カード = sourceCard;
+    }
+
+    /// <summary>
+    /// 発動条件を、スキルを持つカードから見る。
+    /// 攻撃者、攻撃対象、ダメージ、技の変数は元のコンテキストのまま残す。
+    /// 相手の技使用時は発動カードが空で渡る。空のままだと自分のゾーンが相手側になる。
+    /// </summary>
+    public SkillContext AsOwnedBy(CardController owner)
+    {
+        if (owner == null || 発動カード == owner)
+            return this;
+
+        var copy = new SkillContext(owner, 対象カード, TargetZone);
+        copy.RestrictTargetsToContextCard = RestrictTargetsToContextCard;
+        copy.ReuseTargetCard = ReuseTargetCard;
+        copy.相手も同じ効果を実行する = 相手も同じ効果を実行する;
+        copy.IntVariables = IntVariables;
+        copy.CalculatedDamage = CalculatedDamage;
+        copy.FinalDamage = FinalDamage;
+        copy.AttackerElement = AttackerElement;
+        copy.MoveIndex = MoveIndex;
+        copy.Attacker = Attacker;
+        copy.移した攻撃対象 = 移した攻撃対象;
+        return copy;
     }
 
     static readonly Stack<CardController> resolvingSources = new Stack<CardController>();

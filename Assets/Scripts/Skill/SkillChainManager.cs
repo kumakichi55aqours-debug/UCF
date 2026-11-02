@@ -142,6 +142,31 @@ public class SkillChainManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 手札へ戻ったあと、場のカードの「他のカードが手札に戻った時」を両者で解決する。
+    /// 戻ったカード自体は渡さない。fromLocation と returnedCardIsMyCard はローカルプレイヤー基準。
+    /// notifyOpponent が真のときだけ、相手へ同じ事実を送る。
+    /// </summary>
+    public void ScheduleCardReturnedToHand(CardZoneType fromLocation, bool returnedCardIsMyCard, bool notifyOpponent)
+    {
+        if (fromLocation == CardZoneType.None
+            || fromLocation == CardZoneType.プレイヤー手札
+            || fromLocation == CardZoneType.相手手札)
+            return;
+
+        if (notifyOpponent && BattleManager.Instance != null && BattleManager.Instance.IsOnlineMode)
+            OnlineSyncManager.Instance?.SyncCardReturnedToHand((int)fromLocation, returnedCardIsMyCard);
+
+        var trigger = new SkillTriggerEvent(SkillTrigger.他カードが手札に戻った時, null, null, null, fromLocation)
+        {
+            SubjectIsMyCard = returnedCardIsMyCard
+        };
+        if (TryEnqueueTrigger(trigger))
+            return;
+
+        EventBus.Publish(trigger);
+    }
+
+    /// <summary>
     /// チェーン処理中に来たトリガーを、今のチェーンが終わったあとへ回す。
     /// 受け付けたときだけ true。
     /// </summary>
@@ -253,7 +278,8 @@ public class SkillChainManager : MonoBehaviour
                         triggerEvent.Context,
                         triggerEvent.FromLocation,
                         triggerEvent.Phase,
-                        triggerEvent.SpecialSummon);
+                        triggerEvent.SpecialSummon,
+                        triggerEvent.SubjectIsMyCard);
                 }
 
                 if (collected != null)
@@ -1543,7 +1569,7 @@ public class SkillChainManager : MonoBehaviour
                 continue;
 
             EventBus.Publish(new SkillActivationCompletedEvent(card));
-            if (battle.IsOnlineMode && OnlineSyncManager.Instance != null)
+            if (battle.IsOnlineMode && OnlineSyncManager.Instance != null && !battle.KeepsTacticsOnField(card))
                 OnlineSyncManager.Instance.SyncTacticsSkillCompleted(card);
         }
     }
@@ -1551,11 +1577,17 @@ public class SkillChainManager : MonoBehaviour
     static void PublishTacticsIfNeeded(CollectedSkills collected)
     {
         var source = collected?.SourceCard;
-        if (source == null || !source.isMyCard || source.cardKind != CardKind.作戦) return;
+        if (source == null || source.cardKind != CardKind.作戦) return;
         if (collected.Trigger != SkillTrigger.カード使用時) return;
 
+        var battle = BattleManager.Instance;
+        // オンラインの相手作戦は、持ち主の側で墓地へ送って同期する。オフラインのCPUはここで送る。
+        if (!source.isMyCard && (battle == null || battle.IsOnlineMode))
+            return;
+
         EventBus.Publish(new SkillActivationCompletedEvent(source));
-        if (BattleManager.Instance.IsOnlineMode && OnlineSyncManager.Instance != null)
+        if (source.isMyCard && battle != null && battle.IsOnlineMode && OnlineSyncManager.Instance != null
+            && !battle.KeepsTacticsOnField(source))
         {
             OnlineSyncManager.Instance.SyncTacticsSkillCompleted(source);
         }
@@ -1582,7 +1614,9 @@ public class SkillChainManager : MonoBehaviour
         return trigger == SkillTrigger.相手の技使用時
             || trigger == SkillTrigger.他カードが墓地に送られた時
             || trigger == SkillTrigger.他バトラー撃破時
-            || trigger == SkillTrigger.他効果誘発;
+            || trigger == SkillTrigger.他効果誘発
+            || trigger == SkillTrigger.他カードが手札に戻った時
+            || trigger == SkillTrigger.他カードが登場した時;
     }
 
     static bool IsSameNameSkill(SequencedSkill a, SequencedSkill b)

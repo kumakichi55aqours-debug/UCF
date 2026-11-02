@@ -53,6 +53,17 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
+    /// プレイヤーHPの回復を同期する。数値は送信者から見た自分と相手。
+    /// </summary>
+    public void SyncDirectHpHeal(int healToSender, int healToReceiver)
+    {
+        if (!IsOnlineMode || (healToSender <= 0 && healToReceiver <= 0))
+            return;
+
+        SendAnimatedRpc("ReceiveDirectHpHeal", healToSender, healToReceiver);
+    }
+
+    /// <summary>
     /// 複数対象の回復を、ゾーン番号と回復後HPで同期する
     /// </summary>
     public void SyncAreaHeal(string[] cardKinds, int[] cardIds, string[] zoneNames, int[] indices, int[] newHps, int[] shownAmounts)
@@ -127,6 +138,12 @@ public partial class OnlineSyncManager
     private void ReceiveDirectHpDamage(int damageToSender, int damageToReceiver)
     {
         _ = ApplyDirectHpDamage(damageToSender, damageToReceiver);
+    }
+
+    [PunRPC]
+    private void ReceiveDirectHpHeal(int healToSender, int healToReceiver)
+    {
+        _ = ApplyDirectHpHeal(healToSender, healToReceiver);
     }
 
     [PunRPC]
@@ -238,6 +255,40 @@ public partial class OnlineSyncManager
         }
     }
 
+    private async Task ApplyDirectHpHeal(int healToSender, int healToReceiver)
+    {
+        try
+        {
+            var battle = BattleManager.Instance;
+            if (battle == null)
+                return;
+
+            if (healToSender > 0)
+            {
+                battle.eResources?.Hp?.Heal(healToSender);
+                if (battle.eFieldZone != null)
+                    await battle.ShowEffect(battle.eFieldZone.position, healToSender, Color.green);
+                await Task.Delay(800);
+            }
+
+            if (healToReceiver > 0)
+            {
+                battle.pResources?.Hp?.Heal(healToReceiver);
+                if (battle.pFieldZone != null)
+                    await battle.ShowEffect(battle.pFieldZone.position, healToReceiver, Color.green);
+                await Task.Delay(800);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[OnlineSyncManager] ApplyDirectHpHealでエラー: {ex.Message}");
+        }
+        finally
+        {
+            SendOpponentAnimationComplete();
+        }
+    }
+
     private async Task ApplyAreaDamage(List<CardController> cards, List<int> amounts)
     {
         try
@@ -315,7 +366,7 @@ public partial class OnlineSyncManager
             else
                 damageEffect.transform.position = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, 10f));
 
-            damageEffect.PlayEffect(damageEffect.transform.position, targetCard.transform.position, damageAmount, effectColor ?? Color.yellow);
+            damageEffect.PlayDamageValue(damageEffect.transform.position, targetCard.transform.position, damageAmount, effectColor ?? Color.yellow);
             await Task.Delay(300);
         }
         catch (System.Exception ex)

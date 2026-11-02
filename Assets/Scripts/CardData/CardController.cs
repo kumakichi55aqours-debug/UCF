@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 
-public class CardController : MonoBehaviour, IPointerClickHandler
+public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
     // 表示更新用
     public BattleCardView battleCardview;  
@@ -22,6 +22,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler
     // 基本情報
     public int cardID { get; private set; }
     public CardKind cardKind;
+    // CardDBList/トークン から読んだバトラー。墓地・手札・デッキ・異次元へは行かず消える。
+    public bool トークン { get; private set; }
     public CardTypeList type;
     public string cardName;
     public CardRarity rarity;
@@ -103,7 +105,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler
                 || parent == BattleManager.Instance.pFieldZone
                 || parent == BattleManager.Instance.pHandZone
                 || parent == BattleManager.Instance.pGraveZone
-                || parent == BattleManager.Instance.pDeckZone;
+                || parent == BattleManager.Instance.pDeckZone
+                || parent == BattleManager.Instance.pDimensionZone;
         }
     }
     
@@ -123,7 +126,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler
                     || parent == BattleManager.Instance.pFieldZone
                     || parent == BattleManager.Instance.pHandZone
                     || parent == BattleManager.Instance.pGraveZone
-                    || parent == BattleManager.Instance.pDeckZone;
+                    || parent == BattleManager.Instance.pDeckZone
+                    || parent == BattleManager.Instance.pDimensionZone;
 
                 // 自分のゾーンにあるカードは自分のカード
                 return isInMyZone;
@@ -131,20 +135,63 @@ public class CardController : MonoBehaviour, IPointerClickHandler
         }
     }
 
+    Transform leftDimensionZone;
+    Transform parentBeforeChange;
+
+    void OnBeforeTransformParentChanged()
+    {
+        parentBeforeChange = transform.parent;
+        leftDimensionZone = null;
+        var battle = BattleManager.Instance;
+        if (battle == null)
+            return;
+
+        var parent = transform.parent;
+        if (parent == battle.pDimensionZone || parent == battle.eDimensionZone)
+            leftDimensionZone = parent;
+    }
+
+    void OnDestroy()
+    {
+        var battle = BattleManager.Instance;
+        if (battle == null)
+            return;
+
+        battle.OnBattlerLeftZone(this, transform.parent);
+
+        var parent = transform.parent;
+        if (parent == battle.pDimensionZone || parent == battle.eDimensionZone)
+            battle.RequestDimensionPresenceRefresh();
+    }
+
     // 生成直後は親がキャンバスのことがあり、その時点では持ち主が決まらない。
     // 手札や場などのゾーンに入ってから、同名スキルの使用回数を付け直す。
     void OnTransformParentChanged()
     {
+        Transform leftZone = parentBeforeChange;
+        parentBeforeChange = null;
+
+        var battle = BattleManager.Instance;
+        battle?.OnBattlerLeftZone(this, leftZone);
+        if (leftDimensionZone != null)
+        {
+            battle?.RefreshDimensionZonePresence(leftDimensionZone);
+            leftDimensionZone = null;
+        }
+
+        var parent = transform.parent;
+        bool enteredDimension = battle != null && (parent == battle.pDimensionZone || parent == battle.eDimensionZone);
+        if (enteredDimension)
+            battle.RefreshDimensionZonePresence(parent);
+
         if (cardKind == CardKind.None || !IsPlayZone()) return;
         SkillUseCountStore.ApplyTo(this);
 
         if (SceneManager.GetActiveScene().name != "BattleScene")
             return;
 
-        var parent = transform.parent;
-        var battle = BattleManager.Instance;
         bool enteredHand = battle != null && (parent == battle.pHandZone || parent == battle.eHandZone);
-        if (enteredHand)
+        if (enteredHand || enteredDimension)
             PersistentEffectManager.Instance?.RecalculateImmediately();
     }
 
@@ -161,7 +208,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler
             || parent == battle.pFieldZone || parent == battle.eFieldZone
             || parent == battle.pHandZone || parent == battle.eHandZone
             || parent == battle.pGraveZone || parent == battle.eGraveZone
-            || parent == battle.pDeckZone || parent == battle.eDeckZone;
+            || parent == battle.pDeckZone || parent == battle.eDeckZone
+            || parent == battle.pDimensionZone || parent == battle.eDimensionZone;
     }
 
     private void Awake()
@@ -181,6 +229,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler
                 var battler = ScriptableObject.CreateInstance<BattlerModel>();
                 battler.Init(cardID);
                 model = battler;
+                トークン = battler.トークン;
                 type = battler.type;
                 cardName = battler.cardName;
                 rarity = battler.rarity;
@@ -216,6 +265,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler
                 var tactics = ScriptableObject.CreateInstance<TacticsModel>();
                 tactics.Init(cardID);
                 model = tactics;
+                type = tactics.type;
                 cardName = tactics.cardName;
                 rarity = tactics.rarity;
                 cost = tactics.cost;
@@ -242,6 +292,23 @@ public class CardController : MonoBehaviour, IPointerClickHandler
             battleCardview.Show(model);
         else if (deckCardView != null)
             deckCardView.Show(model);
+    }
+
+    /// <summary>
+    /// デッキ外のトークンにする。
+    /// overrideHp が真のとき、現在HPと最大HPを hp にする。偽のときは生成時のHPのまま。
+    /// 技・タイプ・カテゴリは、生成時に読んだカードデータのまま。
+    /// </summary>
+    public void BecomeToken(bool overrideHp, int hp)
+    {
+        トークン = true;
+        if (!overrideHp)
+            return;
+
+        curHp = Mathf.Max(0, hp);
+        if (model is BattlerModel battler)
+            battler.maxHp = curHp;
+        UpdateDisplay();
     }
 
     public void UpdateDisplay()
@@ -273,6 +340,21 @@ public class CardController : MonoBehaviour, IPointerClickHandler
         graveSkillSource = source;
     }
 
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (battleCardview != null && battleCardview.IsBack && !isPlayerCard)
+            return;
+
+        if (CardDetailManager.Instance != null && model != null)
+            CardDetailManager.Instance.ShowDetail(this);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (CardDetailManager.Instance != null)
+            CardDetailManager.Instance.HideDetail();
+    }
+
     // クリック処理
     public async void OnPointerClick(PointerEventData eventData)
     {
@@ -298,10 +380,14 @@ public class CardController : MonoBehaviour, IPointerClickHandler
             Vector3 worldPos = transform.position;
             Transform parent = transform.parent;
             
-            // 墓地確認は常に可能
-            if (parent == BattleManager.Instance.pGraveZone || parent == BattleManager.Instance.eGraveZone)
+            // 墓地と異次元。起動できるときはメニュー、確認だけなら一覧を開く。
+            if (parent == BattleManager.Instance.pGraveZone || parent == BattleManager.Instance.eGraveZone
+                || parent == BattleManager.Instance.pDimensionZone || parent == BattleManager.Instance.eDimensionZone)
             {
-                CardContextMenu.Instance.ShowGraveOptions(this, worldPos);
+                bool handled = CardContextMenu.Instance != null
+                    && CardContextMenu.Instance.HandlePileClick(this, worldPos);
+                if (!handled)
+                    ZoneClick.Open(parent);
                 return;
             }
             
@@ -404,7 +490,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler
         if (cardKind != CardKind.バトラー || !(model is BattlerModel battler))
             return;
 
-        BattlerDB cardDB = Resources.Load<BattlerDB>("CardDBList/バトラー/" + cardID);
+        BattlerDB cardDB = BattlerAssets.Load(cardID, out _);
         if (cardDB == null)
             return;
 
@@ -429,6 +515,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler
                 return transform.parent == BattleManager.Instance.pHandZone;
             case ActiveLocation.墓地:
                 return transform.parent == BattleManager.Instance.pGraveZone;
+            case ActiveLocation.異次元:
+                return transform.parent == BattleManager.Instance.pDimensionZone;
             default:
                 return false;
         }
@@ -437,7 +525,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler
     public async Task UseZoneActivatedSkill()
     {
         var location = GetCurrentActiveLocation();
-        if (location != ActiveLocation.墓地 && (IsActionBlocked || IsSlowed)) return;
+        if (location != ActiveLocation.墓地 && location != ActiveLocation.異次元 && (IsActionBlocked || IsSlowed)) return;
+        if (NegateZoneEffectSkill.Blocks(this)) return;
         if (skills == null) return;
         var context = new SkillContext(this, this, transform)
         {
@@ -476,6 +565,21 @@ public class CardController : MonoBehaviour, IPointerClickHandler
         }
     }
 
+    public void RemovePassivesFromSource(CardController source)
+    {
+        if (source == null || passiveEffects == null)
+            return;
+
+        int before = passiveEffects.Count;
+        passiveEffects.RemoveAll(effect => effect != null && effect.SourceCard == source);
+        if (passiveEffects.Count == before)
+            return;
+
+        ResetBonuses();
+        RecalculateModifiedPowers();
+        UpdatePassiveEffectUI();
+    }
+
     public void RemoveAllPassiveEffects()
     {
         passiveEffects.Clear();
@@ -484,15 +588,21 @@ public class CardController : MonoBehaviour, IPointerClickHandler
         UpdatePassiveEffectUI();
     }
 
-    public void TickPassiveEffects()
+    public List<GrantExpireSkill> TickPassiveEffects()
     {
         var expiredStatuses = new List<StatusAilmentType>();
+        var expiredGrants = new List<GrantExpireSkill>();
         foreach (var effect in passiveEffects)
         {
             if (effect == null) continue;
             effect.Tick();
-            if (effect.RemainingTurns == 0 && effect.PassiveEffect is ApplyStatusAilmentSkill statusSkill)
+            if (effect.RemainingTurns != 0)
+                continue;
+
+            if (effect.PassiveEffect is ApplyStatusAilmentSkill statusSkill)
                 expiredStatuses.Add(statusSkill.状態異常);
+            if (effect.RunsOnExpire && effect.PassiveEffect is GrantExpireSkill expire && expire.CanResolveOnExpire)
+                expiredGrants.Add(expire);
         }
 
         int beforeCount = passiveEffects.Count;
@@ -511,6 +621,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler
             RecalculateModifiedPowers();
         }
         UpdatePassiveEffectUI();
+        return expiredGrants;
     }
 
 
@@ -593,6 +704,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler
             return ActiveLocation.手札;
         if (zone == battle.pGraveZone || zone == battle.eGraveZone)
             return ActiveLocation.墓地;
+        if (zone == battle.pDimensionZone || zone == battle.eDimensionZone)
+            return ActiveLocation.異次元;
         if (zone == battle.pDeckZone || zone == battle.eDeckZone)
             return ActiveLocation.デッキ;
 
@@ -615,15 +728,37 @@ public class CardController : MonoBehaviour, IPointerClickHandler
         if (zone == battle.pTacticsZone) return CardZoneType.プレイヤーTゾーン;
         if (zone == battle.pFieldZone) return CardZoneType.プレイヤーFゾーン;
         if (zone == battle.pGraveZone) return CardZoneType.プレイヤー墓地;
+        if (zone == battle.pDimensionZone) return CardZoneType.プレイヤー異次元;
         if (zone == battle.pDeckZone) return CardZoneType.プレイヤーデッキ;
         if (zone == battle.eHandZone) return CardZoneType.相手手札;
         if (zone == battle.eBattlerZone) return CardZoneType.相手Bゾーン;
         if (zone == battle.eTacticsZone) return CardZoneType.相手Tゾーン;
         if (zone == battle.eFieldZone) return CardZoneType.相手Fゾーン;
         if (zone == battle.eGraveZone) return CardZoneType.相手墓地;
+        if (zone == battle.eDimensionZone) return CardZoneType.相手異次元;
         if (zone == battle.eDeckZone) return CardZoneType.相手デッキ;
 
         return CardZoneType.None;
+    }
+
+    /// <summary>
+    /// 召喚元を、ローカルプレイヤー基準のゾーンにする。
+    /// SummonSource の墓地とデッキは名前と逆で、墓地指定はデッキ、デッキ指定は墓地を指す。
+    /// 場はゾーンが複数あるので、呼び出し側が移動前の親から取る。
+    /// </summary>
+    public static CardZoneType ZoneFromSummonSource(SummonSource source, bool isPlayerSide)
+    {
+        switch (source)
+        {
+            case SummonSource.手札:
+                return isPlayerSide ? CardZoneType.プレイヤー手札 : CardZoneType.相手手札;
+            case SummonSource.墓地:
+                return isPlayerSide ? CardZoneType.プレイヤーデッキ : CardZoneType.相手デッキ;
+            case SummonSource.デッキ:
+                return isPlayerSide ? CardZoneType.プレイヤー墓地 : CardZoneType.相手墓地;
+            default:
+                return CardZoneType.None;
+        }
     }
 
     /// <summary>
@@ -643,12 +778,14 @@ public class CardController : MonoBehaviour, IPointerClickHandler
             CardZoneType.プレイヤーFゾーン => CardZoneType.相手Fゾーン,
             CardZoneType.プレイヤー墓地 => CardZoneType.相手墓地,
             CardZoneType.プレイヤーデッキ => CardZoneType.相手デッキ,
+            CardZoneType.プレイヤー異次元 => CardZoneType.相手異次元,
             CardZoneType.相手手札 => CardZoneType.プレイヤー手札,
             CardZoneType.相手Bゾーン => CardZoneType.プレイヤーBゾーン,
             CardZoneType.相手Tゾーン => CardZoneType.プレイヤーTゾーン,
             CardZoneType.相手Fゾーン => CardZoneType.プレイヤーFゾーン,
             CardZoneType.相手墓地 => CardZoneType.プレイヤー墓地,
             CardZoneType.相手デッキ => CardZoneType.プレイヤーデッキ,
+            CardZoneType.相手異次元 => CardZoneType.プレイヤー異次元,
             _ => absoluteZone
         };
     }
@@ -911,24 +1048,28 @@ public class CardController : MonoBehaviour, IPointerClickHandler
         return Mathf.Max(0, cost + bonusCost + adjustment);
     }
 
+    // 「凍結」のエネルギー増加
     public int GetMoveEnergyCost(int moveIndex)
     {
-        int cost = moveIndex == 0 ? modifiedEnergy1 : modifiedEnergy2;
+        int requiredEnergy = moveIndex == 0 ? modifiedEnergy1 : modifiedEnergy2;
         if (HasStatus(StatusAilmentType.凍結))
-            cost += 1;
-        return Mathf.Max(0, cost);
+            requiredEnergy += 1;
+        return Mathf.Max(0, requiredEnergy);
     }
 
+    // 「火傷」のダメージ低下。相手の技使用時に登録したダメージ無効化も、ここでその技のダメージへかける。
     public int ModifyOutgoingMoveDamage(int damage)
     {
+        if (BattleManager.Instance != null)
+            damage = BattleManager.Instance.ApplyMoveDamageNullification(this, damage);
         damage = Mathf.Max(0, damage);
         if (damage == 0 || !HasStatus(StatusAilmentType.火傷))
             return damage;
-        return damage - 1;
+        return damage - 3;
     }
 
     /// <summary>
-    /// 毒ダメージを適用する。エンドフェイズに 1。このダメージだけでは HP は 1 で止まる。
+    /// 「毒」のダメージ適用。エンドフェイズに 1。このダメージだけでは HP は 1 で止まる。
     /// </summary>
     public int ApplyPoisonDamage()
     {

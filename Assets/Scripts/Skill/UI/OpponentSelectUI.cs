@@ -106,6 +106,7 @@ public class OpponentSelectUI : MonoBehaviour
         FitPanel(count);
         transform.SetAsLastSibling();
         gameObject.SetActive(true);
+        PopupDrag.Use(gameObject);
         IsShowing = true;
         FitPanel(count);
     }

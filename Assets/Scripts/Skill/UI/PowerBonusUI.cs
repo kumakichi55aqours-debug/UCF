@@ -46,6 +46,8 @@ public class PowerBonusUI : MonoBehaviour
             playerPanel.SetActive(false);
         if (enemyPanel != null)
             enemyPanel.SetActive(false);
+        PopupDrag.Attach(playerPanel);
+        PopupDrag.Attach(enemyPanel);
 
         playerPrevButton = CreateArrow(playerPanel, "PrevButton", "＜", true);
         playerNextButton = CreateArrow(playerPanel, "NextButton", "＞", false);

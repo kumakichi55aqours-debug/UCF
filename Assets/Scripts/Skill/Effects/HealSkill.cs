@@ -10,14 +10,23 @@ public class HealSkill : SkillDB
     public TargetList 効果対象;
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
+
+    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     public int 効果数 = 1;
+    [Tooltip("なしなら効果数を使う。引数があるときは、コンテキストのその値だけを使う。無ければ 0。")]
+    public SkillArg 効果数キー = SkillArg.なし;
 
     public override TargetList GetEffectTarget() => 効果対象;
     public override SearchCriteria GetTargetCriteria() => 対象条件;
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
 
     public override async Task ActivateEffect(SkillContext context)
     {
-        var toHeal = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context);
+        var toHeal = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context, 対象状態);
+        int healAmount = ResolveKeyedAmount(context, 効果数, 効果数キー);
 
         var kinds = new List<string>();
         var ids = new List<int>();
@@ -32,11 +41,13 @@ public class HealSkill : SkillDB
                 continue;
             if (card.cardKind != CardKind.バトラー && card.cardKind != CardKind.フィールド)
                 continue;
+            if (!ConditionsMet(対象状態, card))
+                continue;
 
             bool addressed = CardAddress.TryAdd(card, kinds, ids, zoneNames, indices);
             int maxHp = GetMaxHp(card);
-            int actualHealAmount = Mathf.Max(0, Mathf.Min(効果数, maxHp - card.curHp));
-            card.curHp = Mathf.Min(card.curHp + 効果数, maxHp);
+            int actualHealAmount = Mathf.Max(0, Mathf.Min(healAmount, maxHp - card.curHp));
+            card.curHp = Mathf.Min(card.curHp + healAmount, maxHp);
             card.UpdateDisplay();
 
             if (actualHealAmount > 0)
@@ -73,5 +84,15 @@ public class HealSkill : SkillDB
         if (card.model is FieldModel field)
             return field.maxHp;
         return card.curHp;
+    }
+
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is HealSkill heal)
+        {
+            heal.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
+        }
     }
 }

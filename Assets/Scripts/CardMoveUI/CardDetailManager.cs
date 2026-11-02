@@ -55,6 +55,15 @@ public class CardDetailManager : MonoBehaviour
     [Header("召喚ボイス")]
     [SerializeField] private Button summonVoiceButton;
 
+    [Header("トークン")]
+    [SerializeField] private Sprite tokenCardFrame;
+
+    public Sprite TokenCardFrame => tokenCardFrame;
+
+    Image battlerFrameImage;
+    Sprite battlerFrameSprite;
+    bool battlerFrameCached;
+
     private CardController currentDisplayedCard;
 
     private void Awake()
@@ -143,6 +152,7 @@ public class CardDetailManager : MonoBehaviour
                 displayPower2 += BattleManager.Instance.GetGlobalPowerBonus(cc);
             power2Text.text = displayPower2.ToString();
             power2Text.color = GetColorFromPowerDiff(battler.power2, displayPower2);
+            ApplyTokenFrame(card != null && card.トークン);
         }
         else if (card.model is TacticsModel tactics)
         {
@@ -156,7 +166,7 @@ public class CardDetailManager : MonoBehaviour
             onlyBattler.SetActive(false);
             onlyField.SetActive(false);
             hpText.transform.parent.gameObject.SetActive(false);
-            typeImage.sprite = CardIconManager.Instance.GetCardKindSprite(CardKind.作戦);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.type);
         }
         else if (card.model is FieldModel field)
         {
@@ -177,6 +187,29 @@ public class CardDetailManager : MonoBehaviour
         ApplyRarityVisuals(rarity);
 
         detailPanel.SetActive(true);
+    }
+
+    void ApplyTokenFrame(bool token)
+    {
+        if (battlerFrameImage == null && onlyBattler != null)
+        {
+            Transform panel = onlyBattler.transform.Find("BattlerPanel");
+            if (panel != null)
+                battlerFrameImage = panel.GetComponent<Image>();
+        }
+
+        if (battlerFrameImage == null)
+            return;
+
+        if (!battlerFrameCached)
+        {
+            battlerFrameSprite = battlerFrameImage.sprite;
+            battlerFrameCached = true;
+        }
+
+        battlerFrameImage.sprite = token && tokenCardFrame != null
+            ? tokenCardFrame
+            : battlerFrameSprite;
     }
 
     private void ApplyRarityVisuals(CardRarity rarity)

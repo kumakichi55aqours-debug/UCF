@@ -29,14 +29,14 @@ MonoBehaviour:
   - rid: 3123607303214858347
   - rid: 3123607303214858445
   type: 1
-  hp: 21
+  hp: 16
   "\u5F97\u610F\u5C5E\u6027": 8
   "\u5C5E\u6027\u8EFD\u6E1B\u5024": 2
   "\u5F31\u70B9\u5C5E\u6027": 7
   "\u5C5E\u6027\u5897\u52A0\u5024": 4
   moveName1: "\u89D2\u3067\u304B\u3061\u3042\u3052"
-  energy1: 1
-  power1: 4
+  energy1: 0
+  power1: 5
   moveElement1: 1
   target1: 1
   "\u5BFE\u8C61\u50741": 1
@@ -45,8 +45,8 @@ MonoBehaviour:
     "\u9078\u629E\u65B9\u5F0F": 0
   description1: 
   moveName2: "\u5C3B\u5C3E\u653B\u6483\u9023\u6253"
-  energy2: 3
-  power2: 15
+  energy2: 2
+  power2: 12
   moveElement2: 1
   target2: 1
   "\u5BFE\u8C61\u50742": 1
@@ -66,6 +66,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 255
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -94,6 +96,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 00000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -120,6 +124,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -147,6 +153,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6":
         - rid: 3123607303214858446
@@ -177,6 +185,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 255
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6":
         - rid: 3123607303214858342

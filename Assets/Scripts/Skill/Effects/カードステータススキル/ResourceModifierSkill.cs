@@ -34,6 +34,21 @@ public class ResourceModifierSkill : SkillDB
             targetCards = targetCards.Where(c => c == context.対象カード).ToList();
         }
 
+        bool broadcastHp = リソースタイプ == ResourceType.HP
+            && タイミング != ActiveTiming.永続効果
+            && (context == null || !context.相手も同じ効果を実行する);
+        var damageKinds = new List<string>();
+        var damageIds = new List<int>();
+        var damageZones = new List<string>();
+        var damageIndices = new List<int>();
+        var damageAmounts = new List<int>();
+        var healKinds = new List<string>();
+        var healIds = new List<int>();
+        var healZones = new List<string>();
+        var healIndices = new List<int>();
+        var healNewHps = new List<int>();
+        var healShown = new List<int>();
+
         // 各ターゲットカードにリソース修正を適用
         foreach (var card in targetCards)
         {
@@ -78,23 +93,59 @@ public class ResourceModifierSkill : SkillDB
                     break;
 
                 case ResourceType.HP:
-                    // HP修正（直接変更）
-                    if (効果数 > 0)
-                    {
-                        // HP回復
-                        card.curHp += 効果数;
-                        Debug.Log($"{card.cardName} のHPが {効果数} 回復しました。現在のHP: {card.curHp}");
-                    }
-                    else if (効果数 < 0)
-                    {
-                        // HPダメージ
-                        card.curHp += 効果数; // 負の値なので減算される
-                        if (card.curHp < 0) card.curHp = 0;
-                        Debug.Log($"{card.cardName} のHPが {-効果数} 減少しました。現在のHP: {card.curHp}");
-                    }
+                {
+                    int before = card.curHp;
+                    card.curHp += 効果数;
+                    if (card.curHp < 0)
+                        card.curHp = 0;
                     card.UpdateDisplay();
+                    int delta = card.curHp - before;
+                    Debug.Log($"{card.cardName} のHPが {delta} 変動しました。現在のHP: {card.curHp}");
+                    if (!broadcastHp || delta == 0)
+                        break;
+
+                    if (card.transform != null && BattleManager.Instance != null)
+                    {
+                        Color color = delta > 0 ? Color.green : Color.yellow;
+                        await BattleManager.Instance.ShowEffect(card.transform.position, Mathf.Abs(delta), color);
+                    }
+
+                    if (delta < 0 && CardAddress.TryAdd(card, damageKinds, damageIds, damageZones, damageIndices))
+                        damageAmounts.Add(-delta);
+                    else if (delta > 0 && CardAddress.TryAdd(card, healKinds, healIds, healZones, healIndices))
+                    {
+                        healNewHps.Add(card.curHp);
+                        healShown.Add(delta);
+                    }
                     break;
+                }
             }
+        }
+
+        if (!broadcastHp || BattleManager.Instance == null || !BattleManager.Instance.IsOnlineMode || OnlineSyncManager.Instance == null)
+            return;
+
+        if (damageZones.Count > 0)
+        {
+            OnlineSyncManager.Instance.SyncAreaDamage(
+                damageKinds.ToArray(),
+                damageIds.ToArray(),
+                damageZones.ToArray(),
+                damageIndices.ToArray(),
+                damageAmounts.ToArray());
+            await OnlineSyncManager.Instance.WaitForOpponentAnimation();
+        }
+
+        if (healZones.Count > 0)
+        {
+            OnlineSyncManager.Instance.SyncAreaHeal(
+                healKinds.ToArray(),
+                healIds.ToArray(),
+                healZones.ToArray(),
+                healIndices.ToArray(),
+                healNewHps.ToArray(),
+                healShown.ToArray());
+            await OnlineSyncManager.Instance.WaitForOpponentAnimation();
         }
     }
 }

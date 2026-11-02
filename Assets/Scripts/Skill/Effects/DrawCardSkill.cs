@@ -21,11 +21,8 @@ public class DrawCardSkill : SkillDB
         isExecuting = true;
 
         int requestedCount = ドロー数;
-        if (context != null && context.IntVariables != null && context.IntVariables.TryGetValue("DrawCount", out var ctxCount))
-        {
-            if (ctxCount > 0)
-                requestedCount = ctxCount;
-        }
+        if (context != null && context.TryGetArg(SkillArg.ドロー数, out var ctxCount) && ctxCount > 0)
+            requestedCount = ctxCount;
 
         try
         {

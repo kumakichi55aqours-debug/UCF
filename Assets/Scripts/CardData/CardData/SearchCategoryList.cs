@@ -10,7 +10,7 @@ public static class SearchCategoryList
 public enum CardRarity { N, SR, UR }
 public enum CardTypeList
 {
-    None,力,速,技,超,滅,無
+    None, 力, 速, 技, 超, 滅, 無, 通常, 強化, 即応
 }
 
 /// <summary>
@@ -114,6 +114,8 @@ public enum ActiveTiming
     他のカードが墓地に送られた時,
     他のバトラーが撃破した時,
     他効果誘発,
+    他のカードが手札に戻った時,
+    他のカードが登場した時,
 }
 
 /// <summary>
@@ -161,6 +163,7 @@ public enum ActiveLocation
     手札,
     墓地,
     デッキ,
+    異次元,
 }
 public enum CardZoneType
 {
@@ -176,7 +179,9 @@ public enum CardZoneType
     相手Tゾーン,
     相手Fゾーン,
     相手墓地,
-    相手デッキ
+    相手デッキ,
+    プレイヤー異次元,
+    相手異次元
 }
 public enum PlayerType
 {
@@ -204,7 +209,11 @@ public enum SummonSource
     手札,
     墓地,
     デッキ,
-    場
+    場,
+    // デッキ外から作るトークン。既存の数値は変えないため末尾に足す。
+    生成,
+    // 異次元ゾーン。既存の数値は変えないため末尾に足す。
+    異次元
 }
 public enum SkillTrigger
 {
@@ -230,6 +239,8 @@ public enum SkillTrigger
     他カードが墓地に送られた時,
     他バトラー撃破時,
     他効果誘発,
+    他カードが手札に戻った時,
+    他カードが登場した時,
 }
 public enum MoveTarget
 {

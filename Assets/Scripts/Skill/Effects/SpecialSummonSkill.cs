@@ -21,6 +21,7 @@ public class SpecialSummonSkill : SkillDB
         }
 
         var cond = 対象条件;
+        bool ownerIsLocal = context?.発動カード == null || context.発動カード.isMyCard;
 
         // --- 1) すべての選択候補をリストアップして整理 ---
         var existingCandidates = new List<CardController>();
@@ -30,19 +31,24 @@ public class SpecialSummonSkill : SkillDB
         {
             if (CardZones.IsDeck(zone))
             {
-                deckCandidates.AddRange(CardZones.Deck(zone, true).Where(d => SearchCriteria.AllowsDeck(cond, d, context)));
+                var deck = CardZones.Deck(zone, ownerIsLocal);
+                if (deck != null)
+                    deckCandidates.AddRange(deck.Where(d => SearchCriteria.AllowsDeck(cond, d, context)));
                 continue;
             }
 
-            if (!IsHandOrGrave(zone))
+            if (!IsSummonableZone(zone))
             {
                 Debug.LogWarning($"SpecialSummonSkill: 未対応のゾーン {zone}");
                 continue;
             }
 
+            Transform zoneTransform = CardZones.Of(zone, ownerIsLocal);
+            if (zoneTransform == null)
+                continue;
+
             existingCandidates.AddRange(
-                CardZones.Absolute(zone)
-                    .GetComponentsInChildren<CardController>()
+                zoneTransform.GetComponentsInChildren<CardController>()
                     .Where(c => c.MeetsCriteria(cond, context)));
         }
 
@@ -110,6 +116,11 @@ public class SpecialSummonSkill : SkillDB
             {
                 summonSource = SummonSource.デッキ;
             }
+            else if (toSummon.transform.parent == BattleManager.Instance.pDimensionZone ||
+                     toSummon.transform.parent == BattleManager.Instance.eDimensionZone)
+            {
+                summonSource = SummonSource.異次元;
+            }
             else if (toSummon.transform.parent == BattleManager.Instance.pHandZone ||
                      toSummon.transform.parent == BattleManager.Instance.eHandZone)
             {
@@ -176,11 +187,13 @@ public class SpecialSummonSkill : SkillDB
         return true;
     }
 
-    static bool IsHandOrGrave(CardZoneType zone)
+    static bool IsSummonableZone(CardZoneType zone)
     {
         return zone == CardZoneType.プレイヤー手札
             || zone == CardZoneType.プレイヤー墓地
+            || zone == CardZoneType.プレイヤー異次元
             || zone == CardZoneType.相手手札
-            || zone == CardZoneType.相手墓地;
+            || zone == CardZoneType.相手墓地
+            || zone == CardZoneType.相手異次元;
     }
 }

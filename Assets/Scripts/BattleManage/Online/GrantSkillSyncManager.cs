@@ -37,7 +37,8 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
     /// スキル名やタイミングは JSON に含まれる。型名だけは JSON に無いので別で送る。
     /// </summary>
     public void SyncGrantSkillBatch(string[] cardKinds, int[] cardIds, string[] zoneNames, int[] indices,
-        int[] durations, string[] skillTypes, string[] parametersJsons, string sourceCardName)
+        int[] durations, string[] skillTypes, string[] parametersJsons, string sourceCardName,
+        string sourceKind, int sourceId, string sourceZone, int sourceIndex)
     {
         if (OnlineSyncManager.Instance?.IsOnlineMode != true) return;
         if (cardKinds == null || cardIds == null || zoneNames == null || indices == null) return;
@@ -49,12 +50,14 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
 
         SendRPC("ReceiveGrantSkillBatch",
             cardKinds, cardIds, zoneNames, indices, durations, skillTypes, parametersJsons,
-            sourceCardName ?? string.Empty);
+            sourceCardName ?? string.Empty,
+            sourceKind ?? string.Empty, sourceId, sourceZone ?? string.Empty, sourceIndex);
     }
 
     [PunRPC]
     private void ReceiveGrantSkillBatch(string[] cardKinds, int[] cardIds, string[] zoneNames, int[] indices,
-        int[] durations, string[] skillTypes, string[] parametersJsons, string sourceCardName)
+        int[] durations, string[] skillTypes, string[] parametersJsons, string sourceCardName,
+        string sourceKind, int sourceId, string sourceZone, int sourceIndex)
     {
         try
         {
@@ -68,7 +71,8 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
                 targets.Add(card);
             }
 
-            _ = ExecuteGrantSkillBatch(targets, durations, skillTypes, parametersJsons, sourceCardName);
+            CardController sourceCard = CardAddress.Resolve(sourceKind, sourceId, sourceZone, sourceIndex);
+            _ = ExecuteGrantSkillBatch(targets, durations, skillTypes, parametersJsons, sourceCardName, sourceCard);
         }
         catch (Exception ex)
         {
@@ -77,8 +81,9 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
     }
 
     async Task ExecuteGrantSkillBatch(List<CardController> targets, int[] durations,
-        string[] skillTypes, string[] parametersJsons, string sourceCardName)
+        string[] skillTypes, string[] parametersJsons, string sourceCardName, CardController sourceCard)
     {
+        bool playedGrantSe = false;
         for (int i = 0; i < targets.Count; i++)
         {
             var target = targets[i];
@@ -88,7 +93,13 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
             var grantedSkill = CreateSkillFromJson(At(skillTypes, i), At(parametersJsons, i));
             if (grantedSkill == null) continue;
 
-            await ExecuteGrantSkillOnOpponent(target, grantedSkill, duration, sourceCardName);
+            if (!playedGrantSe)
+            {
+                CardAnimationManager.Instance?.PlayGrantSe();
+                playedGrantSe = true;
+            }
+
+            await ExecuteGrantSkillOnOpponent(target, grantedSkill, duration, sourceCardName, sourceCard);
         }
     }
 
@@ -101,7 +112,7 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
     /// <summary>
     /// 相手側で付与スキルを実行
     /// </summary>
-    private async Task ExecuteGrantSkillOnOpponent(CardController targetCard, SkillDB skillInstance, int duration, string sourceCardName)
+    private async Task ExecuteGrantSkillOnOpponent(CardController targetCard, SkillDB skillInstance, int duration, string sourceCardName, CardController sourceCard)
     {
         try
         {
@@ -114,9 +125,10 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
             OnlineSyncManager.Instance?.BeginOperationBlock();
 
             SkillContext context = new SkillContext(targetCard, targetCard, targetCard.transform);
+            context.相手も同じ効果を実行する = true;
             await skillInstance.ActivateEffect(context);
             
-            targetCard.AddPassiveEffect(new ActivePassiveEffect(skillInstance, duration, sourceCardName));
+            targetCard.AddPassiveEffect(new ActivePassiveEffect(skillInstance, duration, sourceCardName, false, sourceCard));
         }
         catch (Exception ex)
         {

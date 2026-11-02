@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -16,75 +15,58 @@ public class ReturnToHandSkill : SkillDB
     public override async Task ActivateEffect(SkillContext context)
     {
         var toReturn = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context);
+        if (toReturn == null || toReturn.Count == 0)
+            return;
 
-        // ③ それぞれのカードを手札に（アニメーション付き）
         bool addedToPlayer = false;
         bool addedToEnemy = false;
+        bool addedRemoteEnemy = false;
+        var battle = BattleManager.Instance;
+
         foreach (var card in toReturn)
         {
-            // 元の場所を記録
-            RectTransform originalZone = card.transform.parent as RectTransform;
-            
-            if (card.cardKind == CardKind.バトラー || card.cardKind == CardKind.フィールド)
+            if (card == null)
+                continue;
+
+            if (card.トークン)
             {
-                card.curHp = card.cardKind == CardKind.バトラー
-                    ? ((BattlerModel)card.model).maxHp
-                    : ((FieldModel)card.model).maxHp;
-                card.passiveEffects.Clear();
-                card.ClearStatusAilments();
-                card.ResetBonuses();
-                if (card.cardKind == CardKind.バトラー)
-                    card.ResetMoveElements();
-                card.RecalculateModifiedPowers();
-                card.hasUsedMove = false;
-                card.GetComponent<BattleCardView>().UpdateCanUseMovePanel();
+                TokenExit.VanishSynced(card);
+                continue;
             }
 
-            // プレイヤー or 敵の手札に戻す（アニメーション付き）
             if (card.isPlayerCard)
             {
-                // アニメーションで手札に移動
-                await CardAnimationManager.Instance.AnimateReturnToHand(
-                    card, 
-                    originalZone, 
-                    BattleManager.Instance.pHandZone as RectTransform
-                );
-                // 表示を更新
-                card.UpdateDisplay();
-                // BattleCardViewの表示も更新
-                var battleCardView = card.GetComponent<BattleCardView>();
-                if (battleCardView != null)
-                {
-                    battleCardView.Show(card.model);
-                }
-                addedToPlayer = true;
+                if (await ToHandSkill.MoveOwnExistingCardToHand(card) != null)
+                    addedToPlayer = true;
+            }
+            else if (battle != null && battle.IsOnlineMode && OnlineSyncManager.Instance != null
+                && CardAddress.TryFrom(card, out CardAddress address))
+            {
+                await OnlineSyncManager.Instance.RequestOpponentCardToOwnHand(
+                    address.Kind.ToString(),
+                    address.Id,
+                    address.ZoneName,
+                    address.Index,
+                    -1);
+                addedToEnemy = true;
+                addedRemoteEnemy = true;
+            }
+            else if (battle == null || !battle.IsOnlineMode)
+            {
+                await ToHandSkill.MoveMirrorCardToEnemyHand(card);
+                addedToEnemy = true;
             }
             else
             {
-                // 敵の場合は Destroy→リスト再構築する
-                // CardControllerからDeckCardに必要な全ての情報を取得
-                CardKind cardKindToReturn = card.cardKind;
-                int cardIdToReturn = card.cardID;
-                int cardCostToReturn = card.cost; // CardControllerから実際のコストを取得
-                List<CardCategoryList> cardCategoryToReturn = card.category; // CardControllerから実際のカテゴリを取得
-                CardTypeList cardTypeToReturn = card.type;
-
-                Object.Destroy(card.gameObject); // フィールドのCardControllerオブジェクトを削除
-
-                // DeckCardのコンストラクタを使用して新しいインスタンスを作成し、敵の手札リストに追加
-                BattleManager.Instance.enemyHand.Add(new DeckCard(
-                    cardKindToReturn,
-                    cardIdToReturn,
-                    cardCostToReturn,
-                    cardCategoryToReturn,
-                    cardTypeToReturn
-                ));
-
-                addedToEnemy = true;
+                Debug.LogWarning($"[バウンス] 相手カードの住所が取れないため、手札へ移せません: {card.cardName}");
             }
         }
 
-        if (addedToPlayer || addedToEnemy)
-            BattleManager.Instance.ShuffleHandAfterAddition(addedToPlayer, addedToEnemy);
+        if (addedRemoteEnemy && OnlineSyncManager.Instance != null)
+            await OnlineSyncManager.Instance.RequestOpponentShuffleAddedHand();
+
+        bool shuffleEnemyLocally = addedToEnemy && !addedRemoteEnemy;
+        if ((addedToPlayer || shuffleEnemyLocally) && BattleManager.Instance != null)
+            BattleManager.Instance.ShuffleHandAfterAddition(addedToPlayer, shuffleEnemyLocally);
     }
 }

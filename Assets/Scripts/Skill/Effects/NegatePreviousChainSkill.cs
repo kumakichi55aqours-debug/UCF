@@ -12,6 +12,7 @@ public class NegatePreviousChainSkill : SkillDB
 {
     public override Task ActivateEffect(SkillContext context)
     {
+        SkillChainManager.Instance?.NegatePreviousChainLink();
         return Task.CompletedTask;
     }
 }

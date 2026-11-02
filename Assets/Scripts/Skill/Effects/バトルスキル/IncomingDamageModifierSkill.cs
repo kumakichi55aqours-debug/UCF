@@ -13,8 +13,8 @@ public class IncomingDamageModifierSkill : SkillDB
 {
     public int 増減値 = 1;
 
-    [Tooltip("オンのとき、このカードの持ち主から見た相手バトラーだけ")]
-    public bool 相手のみ = true;
+    [Tooltip("このカードの持ち主から見た対象。プレイヤーは自分側、相手は相手側、両方はどちらも。")]
+    public PlayerType 対象側 = PlayerType.相手;
 
     [SerializeReference]
     public List<ISkillCondition> 被ダメージ条件 = new List<ISkillCondition>();
@@ -66,7 +66,10 @@ public class IncomingDamageModifierSkill : SkillDB
     {
         if (!IsPersistentAt(field, ActiveLocation.Fゾーン))
             return false;
-        if (相手のみ && field.isPlayerCard == defender.isPlayerCard)
+        bool ownerSide = field.isPlayerCard == defender.isPlayerCard;
+        if (ownerSide && !TargetScope.IncludesOwner(対象側))
+            return false;
+        if (!ownerSide && !TargetScope.IncludesOpponent(対象側))
             return false;
         return ConditionsMet(被ダメージ条件, defender);
     }

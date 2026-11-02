@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -9,8 +10,13 @@ public class DamageModifierSkill : SkillDB
     public int 増減値;
     public ElementList 対象属性 = ElementList.None;
     public MoveTarget 適用先 = MoveTarget.両方;
-    public SearchCriteria 攻撃者条件;
     public DamageModifierType 増減タイプ = DamageModifierType.固定値;
+
+    [Header("このカードがダメージを受けるとき、この状態も満たすときだけ増減する。空なら状態では絞らない")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
 
     public override Task ActivateEffect(SkillContext context)
     {
@@ -21,9 +27,9 @@ public class DamageModifierSkill : SkillDB
     /// ダメージ増減を計算する。増減値が正なら増え、負なら減る。
     /// 技1は1、技2は2。
     /// </summary>
-    public int CalculateModifiedDamage(int originalDamage, CardController attackerCard, int moveIndex, ElementList moveElement, CardController defenderCard = null)
+    public int CalculateModifiedDamage(int originalDamage, int moveIndex, ElementList moveElement)
     {
-        if (!IsApplicable(moveElement, moveIndex, attackerCard, defenderCard))
+        if (!IsApplicable(moveElement, moveIndex))
             return originalDamage;
 
         if (増減タイプ == DamageModifierType.固定値)
@@ -41,18 +47,20 @@ public class DamageModifierSkill : SkillDB
     /// <summary>
     /// 技1は1、技2は2。
     /// </summary>
-    public bool IsApplicable(ElementList moveElement, int moveIndex, CardController attackerCard, CardController defenderCard = null)
+    public bool IsApplicable(ElementList moveElement, int moveIndex)
     {
         if (対象属性 != ElementList.None && moveElement != 対象属性)
             return false;
-        if (!AppliesToMove(適用先, moveIndex - 1))
-            return false;
-        if (攻撃者条件 == null)
-            return true;
+        return AppliesToMove(適用先, moveIndex - 1);
+    }
 
-        var criteriaContext = defenderCard != null
-            ? new SkillContext(defenderCard, attackerCard, attackerCard.transform)
-            : null;
-        return attackerCard.MeetsCriteria(攻撃者条件, criteriaContext);
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is DamageModifierSkill damage)
+        {
+            damage.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
+        }
     }
 }

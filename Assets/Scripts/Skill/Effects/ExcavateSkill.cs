@@ -76,6 +76,9 @@ public class ExcavateSkill : SkillDB
 
         foreach (var card in chosen)
         {
+            if (BattlerAssets.IsToken(card))
+                continue;
+
             if (forPlayer)
             {
                 var added = await AddToPlayerHand(card);
@@ -85,6 +88,8 @@ public class ExcavateSkill : SkillDB
             else
                 await AddToCpuHand(card);
         }
+
+        remainder.RemoveAll(BattlerAssets.IsToken);
 
         if (残りの処理 == ExcavateRemainder.墓地へ送る)
         {

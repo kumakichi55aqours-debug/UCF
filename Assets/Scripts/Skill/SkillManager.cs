@@ -45,7 +45,15 @@ public class SkillManager : MonoBehaviour
     {
         if (SkillChainManager.Instance != null)
         {
-            var collectedSkills = CollectSkillsForTrigger(e.Trigger, e.SourceCard, e.MoveTarget, e.Context, e.FromLocation, e.Phase, e.SpecialSummon);
+            var collectedSkills = CollectSkillsForTrigger(
+                e.Trigger,
+                e.SourceCard,
+                e.MoveTarget,
+                e.Context,
+                e.FromLocation,
+                e.Phase,
+                e.SpecialSummon,
+                e.SubjectIsMyCard);
             await SkillChainManager.Instance.ProcessChainForCollectedSkills(collectedSkills);
         }
         else
@@ -61,6 +69,8 @@ public class SkillManager : MonoBehaviour
     public static async Task ResolveDeclaredIgnition(CardController card, SkillDB skill, SkillContext context)
     {
         if (card == null || skill == null)
+            return;
+        if (NegateZoneEffectSkill.Blocks(card))
             return;
 
         context = context ?? new SkillContext(card, card, card.transform);
@@ -134,6 +144,16 @@ public class SkillManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 技でカードを倒したときのトリガー。対象は倒されたカード。
+    /// </summary>
+    public static bool IsMoveDefeatTrigger(SkillTrigger trigger)
+    {
+        return trigger == SkillTrigger.技撃破時
+            || trigger == SkillTrigger.技1撃破時
+            || trigger == SkillTrigger.技2撃破時;
+    }
+
+    /// <summary>
     /// チェーンに乗った効果へ反応できるか。スキル名に PAS を含むものは発動のきっかけにしない。
     /// </summary>
     public static bool IsRespondableActivation(string skillName)
@@ -151,7 +171,8 @@ public class SkillManager : MonoBehaviour
         SkillContext context, 
         CardZoneType fromLocation = CardZoneType.None,
         TurnPhase phase = TurnPhase.ドローフェイズ,
-        bool specialSummon = false)
+        bool specialSummon = false,
+        bool subjectIsMyCard = false)
     {
         var collectedSkills = new CollectedSkills
         {
@@ -176,12 +197,26 @@ public class SkillManager : MonoBehaviour
         bool ownPhase = IsOwnPhaseTrigger(trigger);
         var skillsSet = new HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)>();
 
+        if (trigger == SkillTrigger.他カードが手札に戻った時)
+        {
+            CollectCardReturnedToHandSkills(subjectIsMyCard, isMyTurn, collectedSkills, skillsSet, fromLocation);
+            return collectedSkills;
+        }
+
+        if (trigger == SkillTrigger.他カードが登場した時)
+        {
+            CollectOtherCardAppearedSkills(sourceCard, isMyTurn, collectedSkills, skillsSet, fromLocation, specialSummon);
+            return collectedSkills;
+        }
+
         // オンライン時は、自分のカードのトリガーのみを収集
-        //「技を受ける時」「相手の技使用時」「墓地に送られた」以外は収集処理中止
+        // 相手カードの登場や墓地送りは、自分の反応を集めるため通す
         if (BattleManager.Instance.IsOnlineMode && sourceCard != null && !sourceCard.isMyCard 
             && trigger != SkillTrigger.技を受ける時
             && trigger != SkillTrigger.相手の技使用時
             && trigger != SkillTrigger.墓地に送られた時
+            && trigger != SkillTrigger.登場時
+            && trigger != SkillTrigger.カード使用時
             )
         {
             return collectedSkills;
@@ -200,6 +235,8 @@ public class SkillManager : MonoBehaviour
             if (card != null && card.IsActionBlocked)
                 continue;
             if (card != null && card.IsSlowed && IsMoveActivatorOnlyTrigger(trigger))
+                continue;
+            if (NegateZoneEffectSkill.Blocks(card))
                 continue;
 
             bool isMyCard = card.isMyCard;
@@ -243,6 +280,8 @@ public class SkillManager : MonoBehaviour
             // 作戦の登場時は、場所がTゾーンのスキルを、今Tゾーンにいなくても対象にする。
             bool playedFromHand = trigger == SkillTrigger.カード使用時 && card == sourceCard;
             bool tacticsOnAppear = playedFromHand && card.cardKind == CardKind.作戦;
+            // CPUが手札から使うと決めた作戦は、任意の登場時も自動で解決する。
+            bool cpuCommittedTactics = tacticsOnAppear && !isMyCard && !BattleManager.Instance.IsOnlineMode;
             var skills = card.skills?.Where(s =>
                 s.タイミング == timing &&
                 s.HasRemainingUses &&
@@ -259,15 +298,27 @@ public class SkillManager : MonoBehaviour
                 if (trigger == SkillTrigger.登場時 && !skill.MatchesAppearKind(specialSummon))
                     continue;
 
-                // 手札に残っている作戦は、通常の登場と同じ支払いコストを払えるときだけ候補にする。
+                // 手札に残っている作戦は、出せて、作戦ゾーンに空きがあるときだけ候補にする。
                 if (card.cardKind == CardKind.作戦
                     && activeLocation == ActiveLocation.手札
-                    && !BattleManager.Instance.CanPayHandTactics(card))
+                    && !BattleManager.Instance.CanCommitHandTactics(card))
                     continue;
 
-                // オフラインのCPU側は強制発動だけを集める。任意発動はプレイヤーに聞かない。
-                if (!BattleManager.Instance.IsOnlineMode && !card.isMyCard && !skill.強制発動)
+                // オフラインのCPUは、登場時の任意効果を集めない。TRGの任意効果は集める。
+                // 起動効果は宣言した1件だけをチェーンに載せる。使うと決めた作戦の登場時は自動で解決する。
+                if (!BattleManager.Instance.IsOnlineMode && !card.isMyCard && !skill.強制発動 && !cpuCommittedTactics
+                    && !IsTriggerTiming(skill.タイミング))
                     continue;
+
+                // 技撃破時は、倒されたカードを見る。条件が空なら、そのカードの種類では絞らない。
+                if (IsMoveDefeatTrigger(trigger))
+                {
+                    if (!skill.MatchesActivationOwner(card, moveTarget))
+                        continue;
+                    if (skill.トリガー対象条件 != null && skill.トリガー対象条件.HasCondition()
+                        && (moveTarget == null || !moveTarget.MeetsCriteria(skill.トリガー対象条件)))
+                        continue;
+                }
 
                 // 「どこから」の条件チェック（未指定ならどこからでも収集。複数指定はいずれかと一致）
                 if (timing == ActiveTiming.墓地に送られた時)
@@ -278,9 +329,11 @@ public class SkillManager : MonoBehaviour
                 
                 // フェイズタイミングはカードごとのコンテキストで条件を見る。
                 // 呼び出し元のContextは完了待ち用なので、発動元には使わない。
+                // 相手の技使用時は発動カードが空。空のまま条件を見ると、自分のゾーンが相手側になる。
                 var tempCtx = ownPhase
                     ? new SkillContext(card, card, card.transform)
                     : context ?? SkillContext.WithAttackTarget(card, moveTarget);
+                tempCtx = tempCtx.AsOwnedBy(card);
                 if (skill.CanActivate(tempCtx))
                 {
                     // 重複チェック
@@ -299,7 +352,7 @@ public class SkillManager : MonoBehaviour
                         Context = tempCtx
                     };
 
-                    if (skill.強制発動)
+                    if (skill.強制発動 || cpuCommittedTactics)
                     {
                         if (isTurnPlayerCard)
                             collectedSkills.TPForcedSkills.Add(skillInfo);
@@ -321,6 +374,11 @@ public class SkillManager : MonoBehaviour
         if (trigger == SkillTrigger.墓地に送られた時 && sourceCard != null)
         {
             CollectOtherCardToGraveSkills(sourceCard, isMyTurn, collectedSkills, skillsSet, fromLocation);
+        }
+
+        if ((trigger == SkillTrigger.登場時 || trigger == SkillTrigger.カード使用時) && sourceCard != null)
+        {
+            CollectOtherCardAppearedSkills(sourceCard, isMyTurn, collectedSkills, skillsSet, fromLocation, specialSummon);
         }
 
         // 「撃破時」トリガーの場合、「他のバトラーが撃破した時」スキルもチェック
@@ -355,6 +413,8 @@ public class SkillManager : MonoBehaviour
         {
             if (card == null || card.IsActionBlocked)
                 continue;
+            if (NegateZoneEffectSkill.Blocks(card))
+                continue;
             if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
                 continue;
 
@@ -369,9 +429,6 @@ public class SkillManager : MonoBehaviour
 
             foreach (var skill in skills)
             {
-                if (!BattleManager.Instance.IsOnlineMode && !card.isMyCard && !skill.強制発動)
-                    continue;
-
                 string skillName = skill.スキル名 ?? string.Empty;
                 if (excluded != null && excluded.Contains((card.GetInstanceID(), skillName)))
                     continue;
@@ -385,7 +442,7 @@ public class SkillManager : MonoBehaviour
 
                 if (card.cardKind == CardKind.作戦
                     && activeLocation == ActiveLocation.手札
-                    && !BattleManager.Instance.CanPayHandTactics(card))
+                    && !BattleManager.Instance.CanCommitHandTactics(card))
                     continue;
 
                 var tempCtx = new SkillContext(card, activatingCard, card.transform);
@@ -460,9 +517,6 @@ public class SkillManager : MonoBehaviour
 
             foreach (var skill in otherCardGraveyardSkills)
             {
-                if (!BattleManager.Instance.IsOnlineMode && !card.isMyCard && !skill.強制発動)
-                    continue;
-
                 // 「どこから」の条件チェック（スキル所持カードから見たゾーン）
                 if (!CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard))
                     continue;
@@ -515,6 +569,166 @@ public class SkillManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 「他のカードが登場した時」スキルを収集。
+    /// 登場したカード自身は除く。通常か特殊か、トリガー対象条件、どこからを見る。
+    /// </summary>
+    private static void CollectOtherCardAppearedSkills(
+        CardController appearedCard,
+        bool isMyTurn,
+        CollectedSkills collectedSkills,
+        HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet,
+        CardZoneType fromLocation,
+        bool specialSummon)
+    {
+        var allCardsOnField = GetAllCardsOnField();
+
+        foreach (var card in allCardsOnField)
+        {
+            if (card == null || card == appearedCard || card.IsActionBlocked)
+                continue;
+
+            if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
+                continue;
+
+            bool isTurnPlayerCard = card.isMyCard == isMyTurn;
+            var activeLocation = card.GetCurrentActiveLocation();
+
+            var appearedSkills = card.skills?.Where(s =>
+                s.タイミング == ActiveTiming.他のカードが登場した時 &&
+                s.HasRemainingUses &&
+                (s.IncludesLocation(activeLocation) || s.IncludesLocation(ActiveLocation.None))
+            ).ToList() ?? new List<SkillDB>();
+
+            foreach (var skill in appearedSkills)
+            {
+                if (!skill.MatchesAppearKind(specialSummon))
+                    continue;
+
+                if (!CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard))
+                    continue;
+
+                if (!skill.MatchesActivationOwner(card, appearedCard))
+                    continue;
+
+                if (skill.トリガー対象条件 != null && skill.トリガー対象条件.HasCondition())
+                {
+                    if (appearedCard == null || !appearedCard.MeetsCriteria(skill.トリガー対象条件))
+                        continue;
+                }
+
+                var tempCtx = new SkillContext(card, appearedCard, card.transform);
+                if (!skill.CanActivate(tempCtx))
+                    continue;
+
+                var skillKey = (card.GetInstanceID(), skill, SkillTrigger.他カードが登場した時);
+                if (skillsSet.Contains(skillKey))
+                    continue;
+
+                skillsSet.Add(skillKey);
+
+                var skillInfo = new SkillInfo
+                {
+                    Card = card,
+                    Skill = skill,
+                    Trigger = SkillTrigger.他カードが登場した時,
+                    MoveTarget = appearedCard,
+                    Context = tempCtx
+                };
+
+                if (skill.強制発動)
+                {
+                    if (isTurnPlayerCard)
+                        collectedSkills.TPForcedSkills.Add(skillInfo);
+                    else
+                        collectedSkills.NonTPForcedSkills.Add(skillInfo);
+                }
+                else
+                {
+                    if (isTurnPlayerCard)
+                        collectedSkills.TPOptionalSkills.Add(skillInfo);
+                    else
+                        collectedSkills.NonTPOptionalSkills.Add(skillInfo);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 「他のカードが手札に戻った時」スキルを収集。
+    /// 戻ったカードの実体は見ない。誰のカードが、どのゾーンから戻ったかだけを見る。
+    /// </summary>
+    private static void CollectCardReturnedToHandSkills(
+        bool returnedCardIsMyCard,
+        bool isMyTurn,
+        CollectedSkills collectedSkills,
+        HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet,
+        CardZoneType fromLocation)
+    {
+        var allCardsOnField = GetAllCardsOnField();
+
+        foreach (var card in allCardsOnField)
+        {
+            if (card != null && card.IsActionBlocked)
+                continue;
+
+            if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
+                continue;
+
+            bool isMyCard = card.isMyCard;
+            bool isTurnPlayerCard = isMyCard == isMyTurn;
+            var activeLocation = card.GetCurrentActiveLocation();
+
+            var returnedSkills = card.skills?.Where(s =>
+                s.タイミング == ActiveTiming.他のカードが手札に戻った時 &&
+                s.HasRemainingUses &&
+                (s.IncludesLocation(activeLocation) || s.IncludesLocation(ActiveLocation.None))
+            ).ToList() ?? new List<SkillDB>();
+
+            foreach (var skill in returnedSkills)
+            {
+                if (!CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard))
+                    continue;
+
+                if (!skill.MatchesActivationOwner(card, returnedCardIsMyCard))
+                    continue;
+
+                var tempCtx = new SkillContext(card, null, card.transform);
+                if (!skill.CanActivate(tempCtx))
+                    continue;
+
+                var skillKey = (card.GetInstanceID(), skill, SkillTrigger.他カードが手札に戻った時);
+                if (skillsSet.Contains(skillKey))
+                    continue;
+
+                skillsSet.Add(skillKey);
+
+                var skillInfo = new SkillInfo
+                {
+                    Card = card,
+                    Skill = skill,
+                    Trigger = SkillTrigger.他カードが手札に戻った時,
+                    Context = tempCtx
+                };
+
+                if (skill.強制発動)
+                {
+                    if (isTurnPlayerCard)
+                        collectedSkills.TPForcedSkills.Add(skillInfo);
+                    else
+                        collectedSkills.NonTPForcedSkills.Add(skillInfo);
+                }
+                else
+                {
+                    if (isTurnPlayerCard)
+                        collectedSkills.TPOptionalSkills.Add(skillInfo);
+                    else
+                        collectedSkills.NonTPOptionalSkills.Add(skillInfo);
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// 「他のバトラーが撃破した時」スキルを収集
     /// </summary>
     private static void CollectOtherBattlerDefeatSkills(
@@ -549,9 +763,6 @@ public class SkillManager : MonoBehaviour
 
             foreach (var skill in otherBattlerDefeatSkills)
             {
-                if (!BattleManager.Instance.IsOnlineMode && !card.isMyCard && !skill.強制発動)
-                    continue;
-
                 // 撃破したバトラーがいるゾーン。未指定ならどこでも。スキル所持カードから見たゾーン
                 var defeaterZone = CardController.ZoneTypeFromTransform(
                     battlerWhoDefeated != null ? battlerWhoDefeated.transform.parent : null);
@@ -627,11 +838,13 @@ public class SkillManager : MonoBehaviour
             BattleManager.Instance.pBattlerZone,
             BattleManager.Instance.pHandZone,
             BattleManager.Instance.pGraveZone,
+            BattleManager.Instance.pDimensionZone,
             BattleManager.Instance.pTacticsZone,
             BattleManager.Instance.pFieldZone,
             BattleManager.Instance.eBattlerZone,
             BattleManager.Instance.eHandZone,
             BattleManager.Instance.eGraveZone,
+            BattleManager.Instance.eDimensionZone,
             BattleManager.Instance.eTacticsZone,
             BattleManager.Instance.eFieldZone
         };
@@ -674,7 +887,7 @@ public class SkillManager : MonoBehaviour
     /// <summary>
     /// チェーンスキル発動確認要求イベントを処理
     /// </summary>
-    private void OnChainSkillActivationRequest(ChainSkillActivationRequestEvent e)
+    private async void OnChainSkillActivationRequest(ChainSkillActivationRequestEvent e)
     {
         var link = e.Link;
         Debug.Log($"[SkillManager] スキル発動確認: ChainId={link.ChainId}, ChainNumber={link.ChainNumber}, Card={link.SourceCard.cardName}, IsMyCard={link.IsMyCard}");
@@ -699,18 +912,24 @@ public class SkillManager : MonoBehaviour
             return;
         }
 
-        // 手札の作戦は、出す時点で支払いコストが足りないなら聞かない。
+        // 手札の作戦は、出せない、または作戦ゾーンが埋まっているなら聞かない。
         if (BattleManager.Instance.IsHandTacticsAwaitingAppearance(link.SourceCard)
-            && !BattleManager.Instance.CanPayHandTactics(link.SourceCard))
+            && !BattleManager.Instance.CanCommitHandTactics(link.SourceCard))
         {
             SkillChainManager.Instance?.NotifyActivationComplete(link.ChainId, false, link.IsMyCard);
             return;
         }
 
-        // 強制発動の場合は自動的にYes
-        if (link.Skill.強制発動)
+        // 強制発動と、オフラインCPUの任意効果は確認を出さずYes。
+        // CPUの手札作戦も、プレイヤーがYesしたときと同じく、ここで場へ出す。
+        bool offlineCpu = BattleManager.Instance != null
+            && !BattleManager.Instance.IsOnlineMode
+            && link.SourceCard != null
+            && !link.SourceCard.isMyCard;
+        if (link.Skill.強制発動 || offlineCpu)
         {
-            SkillChainManager.Instance?.NotifyActivationComplete(link.ChainId, true, link.IsMyCard);
+            bool commit = await BattleManager.Instance.TryCommitHandTacticsAppearance(link.SourceCard);
+            SkillChainManager.Instance?.NotifyActivationComplete(link.ChainId, commit, link.IsMyCard);
             return;
         }
 
@@ -759,6 +978,7 @@ public class SkillManager : MonoBehaviour
             return;
 
         SkillContext.PushResolvingSource(link.SourceCard);
+        bool revealedHand = false;
         try
         {
             // 強制発動の手札作戦は確認を通らないので、効果の直前に出す。
@@ -775,7 +995,7 @@ public class SkillManager : MonoBehaviour
                 return;
             }
 
-            if (link.EffectNegated)
+            if (link.EffectNegated || NegateZoneEffectSkill.Blocks(link.SourceCard))
             {
                 link.Skill.TryConsumeUse(link.SourceCard);
                 Debug.Log($"[SkillManager] 効果を無効化したため実行を飛ばす: ChainId={link.ChainId}, Card={link.SourceCard.cardName}, Skill={link.Skill.スキル名}");
@@ -804,6 +1024,9 @@ public class SkillManager : MonoBehaviour
                 );
             }
 
+            // 相手手札の裏カードは、発動演出と続く選択のあいだ表にする。
+            revealedHand = CardAnimationManager.RevealEnemyHandFace(link.SourceCard);
+
             // 自分側のスキル発動演出
             await CardAnimationManager.Instance.AnimateSkillActivation(link.SourceCard);
 
@@ -830,6 +1053,7 @@ public class SkillManager : MonoBehaviour
         }
         finally
         {
+            CardAnimationManager.RestoreEnemyHandBack(link.SourceCard, revealedHand);
             SkillContext.PopResolvingSource();
         }
     }
@@ -860,6 +1084,41 @@ public class SkillManager : MonoBehaviour
         return Enum.TryParse(trigger.ToString(), out ActiveTiming timing)
             ? timing
             : ActiveTiming.None;
+    }
+
+    /// <summary>
+    /// 起動効果・登場時・永続・ルール以外の、トリガーとして集めるタイミング。
+    /// </summary>
+    public static bool IsTriggerTiming(ActiveTiming timing)
+    {
+        switch (timing)
+        {
+            case ActiveTiming.技使用時:
+            case ActiveTiming.技1使用時:
+            case ActiveTiming.技2使用時:
+            case ActiveTiming.技使用後:
+            case ActiveTiming.技1使用後:
+            case ActiveTiming.技2使用後:
+            case ActiveTiming.技撃破時:
+            case ActiveTiming.技1撃破時:
+            case ActiveTiming.技2撃破時:
+            case ActiveTiming.技を受ける時:
+            case ActiveTiming.手札に加わった時:
+            case ActiveTiming.墓地に送られた時:
+            case ActiveTiming.自分のフェイズ開始時:
+            case ActiveTiming.自分のフェイズ終了時:
+            case ActiveTiming.相手のフェイズ開始時:
+            case ActiveTiming.相手のフェイズ終了時:
+            case ActiveTiming.相手の技使用時:
+            case ActiveTiming.他のカードが墓地に送られた時:
+            case ActiveTiming.他のバトラーが撃破した時:
+            case ActiveTiming.他効果誘発:
+            case ActiveTiming.他のカードが手札に戻った時:
+            case ActiveTiming.他のカードが登場した時:
+                return true;
+            default:
+                return false;
+        }
     }
 }
 
