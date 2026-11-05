@@ -4,6 +4,12 @@ using UnityEngine;
 
 public partial class OnlineSyncManager
 {
+    bool phaseAdvanceInProgress;
+    bool turnAdvanceInProgress;
+    bool clientTurnTransitionRunning;
+    // 相手がエンドフェイズの盤面処理を終えた通知。時間では待たない。
+    SyncState peerEndPhaseApplied = new SyncState();
+
     // カード操作が可能かどうかを判定
     public bool CanPlayerOperateCards()
     {
@@ -14,36 +20,30 @@ public partial class OnlineSyncManager
     }
 
     // NextPhaseButtonの処理を管理
-    public async void HandleNextPhaseButton()
+    public async Task HandleNextPhaseButton()
     {
-        if (IsHostPlayer)
-        {
-            // ホスト側：次のフェイズに進み、クライアントに通知
-            await PhaseManager.Instance.NextPhase();
-            NotifyPhaseToSClient(PhaseManager.Instance.CurrentPhase);
-        }
-        else
-        {
-            // クライアント側：自分のターン中は自分でフェイズを管理
-            if (IsMyTurn)
-            {
-                TurnPhase currentPhase = PhaseManager.Instance.CurrentPhase;
-                await PhaseManager.Instance.NextPhase();
-                NotifyPhaseToHost(PhaseManager.Instance.CurrentPhase);
+        if (phaseAdvanceInProgress || !IsMyTurn)
+            return;
 
-                // エンドフェイズに進んだ場合、ターン切り替えを実行
-                if (currentPhase == TurnPhase.バトルフェイズ && PhaseManager.Instance.CurrentPhase == TurnPhase.エンドフェイズ)
-                {
-                    // エンドフェイズ処理完了を少し待ってからターン切り替え
-                    await Task.Delay(100);
-                    HandleNextTurn();
-                }
-            }
-            else
+        phaseAdvanceInProgress = true;
+        try
+        {
+            TurnPhase currentPhase = PhaseManager.Instance.CurrentPhase;
+            await PhaseManager.Instance.NextPhase();
+            await NotifyPhaseResolved(PhaseManager.Instance.CurrentPhase);
+
+            // クライアントのターン終了は、相手側のエンドフェイズも終わってからホストへ知らせる。
+            // ホストのターン終了は、PhaseManager がボタン待ちを終えてから進める。
+            if (!IsHostPlayer
+                && currentPhase == TurnPhase.バトルフェイズ
+                && PhaseManager.Instance.CurrentPhase == TurnPhase.エンドフェイズ)
             {
-                // 相手のターン中はホストにリクエストを送信
-                SendRPC("RequestNextPhase");
+                HandleNextTurn();
             }
+        }
+        finally
+        {
+            phaseAdvanceInProgress = false;
         }
     }
 
@@ -51,17 +51,28 @@ public partial class OnlineSyncManager
     [PunRPC]
     private void RequestNextPhase()
     {
-        if (!IsHostPlayer) return;
+        if (!IsHostPlayer || !IsMyTurn || phaseAdvanceInProgress)
+            return;
 
-        // ホスト側で次のフェイズに進み、クライアントに通知
         _ = HandleHostNextPhase();
     }
 
     // ホスト側のフェイズ進行処理
     private async Task HandleHostNextPhase()
     {
-        await PhaseManager.Instance.NextPhase();
-        NotifyPhaseToSClient(PhaseManager.Instance.CurrentPhase);
+        if (phaseAdvanceInProgress || !IsMyTurn)
+            return;
+
+        phaseAdvanceInProgress = true;
+        try
+        {
+            await PhaseManager.Instance.NextPhase();
+            await NotifyPhaseResolved(PhaseManager.Instance.CurrentPhase);
+        }
+        finally
+        {
+            phaseAdvanceInProgress = false;
+        }
     }
 
     // クライアント側にフェイズを通知（クライアント側から）
@@ -76,13 +87,7 @@ public partial class OnlineSyncManager
     {
         if (IsHostPlayer) return;
 
-        TurnPhase phase = (TurnPhase)phaseInt;
-
-        // クライアント側でフェイズを実行
-        _ = PhaseManager.Instance.ExecutePhase(phase);
-
-        // フェイズ更新後にUIを更新
-        PhaseManager.Instance.UpdatePhaseUI();
+        _ = ApplyReceivedPhase((TurnPhase)phaseInt);
     }
 
     /// <summary>
@@ -101,59 +106,115 @@ public partial class OnlineSyncManager
     {
         if (!IsHostPlayer) return;
 
-        TurnPhase phase = (TurnPhase)phaseInt;
-
-        // ホスト側でフェイズを実行
-        _ = PhaseManager.Instance.ExecutePhase(phase);
-
-        // フェイズ更新後にUIを更新
-        PhaseManager.Instance.UpdatePhaseUI();
-
-        // PhaseGlowUIも更新
-        FindObjectOfType<PhaseGlowUI>().HighlightPhase(phase);
+        _ = ApplyReceivedPhase((TurnPhase)phaseInt);
     }
 
     /// <summary>
-    /// 次のターンの処理を管理
+    /// フェイズを相手へ知らせる。エンドフェイズは、相手の盤面処理が終わるまで返す。
     /// </summary>
-    public async void HandleNextTurn()
+    async Task NotifyPhaseResolved(TurnPhase phase)
     {
+        bool endPhase = phase == TurnPhase.エンドフェイズ;
+        if (endPhase)
+            peerEndPhaseApplied.Reset();
+
         if (IsHostPlayer)
-        {
-
-            // ホスト側：ターン数を増加
-            BattleManager.Instance.IncrementTurn();
-
-            // クライアント側にターン数を同期（即座に実行）
-            SyncTurnNumber(BattleManager.Instance.curTurn);
-
-            // 次のターンがどちらのターンかを判定
-            bool isNextTurnHost = BattleManager.Instance.IsActiveSideTurn;
-
-            if (isNextTurnHost)
-            {
-                // 次のターンはホストのターン
-                // ホスト側のターン開始を通知
-                SendRPC("StartHostTurn");
-
-                // ホスト側のターンの最初のフェイズ（ドローフェイズ）を実行
-                await PhaseManager.Instance.ExecutePhase(TurnPhase.ドローフェイズ);
-
-                // ドローフェイズ完了後、メインフェイズに移行してクライアントに通知
-                await PhaseManager.Instance.ExecutePhase(TurnPhase.メインフェイズ);
-                NotifyPhaseToSClient(TurnPhase.メインフェイズ);
-            }
-            else
-            {
-                await BeginOpeningClientTurn();
-            }
-
-        }
+            NotifyPhaseToSClient(phase);
         else
+            NotifyPhaseToHost(phase);
+
+        if (endPhase)
+            await peerEndPhaseApplied.WaitForCompletion();
+    }
+
+    /// <summary>
+    /// 相手から知らされたフェイズを、この盤面でも最後まで実行する。
+    /// エンドフェイズが終わったら、送り主のターン進行を解放する。
+    /// </summary>
+    async Task ApplyReceivedPhase(TurnPhase phase)
+    {
+        try
         {
-            // クライアント側：ターン完了をホストに通知
-            SendRPC("NotifyTurnComplete");
+            await PhaseManager.Instance.ExecutePhase(phase);
+            PhaseManager.Instance.UpdatePhaseUI();
+            if (IsHostPlayer)
+            {
+                PhaseGlowUI glow = FindObjectOfType<PhaseGlowUI>();
+                if (glow != null)
+                    glow.HighlightPhase(phase);
+            }
         }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"受信したフェイズの実行でエラー: {ex.Message}");
+        }
+        finally
+        {
+            if (phase == TurnPhase.エンドフェイズ)
+                SendRPC("AcknowledgeEndPhaseApplied");
+        }
+    }
+
+    [PunRPC]
+    private void AcknowledgeEndPhaseApplied()
+    {
+        peerEndPhaseApplied.SetComplete();
+    }
+
+    /// <summary>
+    /// 次のターンの処理を管理。
+    /// ホストはターンを進めて、次の手番側の開始処理を1つだけ行う。
+    /// クライアントはホストへターン完了を送る。
+    /// </summary>
+    public void HandleNextTurn()
+    {
+        if (!IsHostPlayer)
+        {
+            SendRPC("NotifyTurnComplete");
+            return;
+        }
+
+        _ = AdvanceToNextTurn();
+    }
+
+    /// <summary>
+    /// 開幕、またはターンを進めたあとに、今の手番側を開始する。
+    /// ホストの手番は PhaseManager の開始処理へ寄せ、ドローとメインの実行をここへ書かない。
+    /// ホスト手番は開幕も含めて、相手へドロー表示の開始を知らせる。
+    /// </summary>
+    public async Task BeginActiveSideTurn()
+    {
+        if (BattleManager.Instance != null && BattleManager.Instance.IsActiveSideTurn)
+        {
+            if (PhaseManager.Instance == null)
+                return;
+            SendRPC("StartHostTurn");
+            await PhaseManager.Instance.RunOnlineHostTurn();
+            return;
+        }
+
+        await BeginOpeningClientTurn();
+    }
+
+    async Task AdvanceToNextTurn()
+    {
+        if (turnAdvanceInProgress || BattleManager.Instance == null)
+            return;
+
+        // ホスト手番はここでボタン待ちまで含む。フラグを持ったままだと、
+        // その終了から次のターンへ進む呼び出しが重なって捨てられる。
+        turnAdvanceInProgress = true;
+        try
+        {
+            BattleManager.Instance.IncrementTurn();
+            SyncTurnNumber(BattleManager.Instance.curTurn);
+        }
+        finally
+        {
+            turnAdvanceInProgress = false;
+        }
+
+        await BeginActiveSideTurn();
     }
 
     /// <summary>
@@ -162,6 +223,8 @@ public partial class OnlineSyncManager
     /// </summary>
     public async Task BeginOpeningClientTurn()
     {
+        clientTurnTransitionComplete.Reset();
+        clientDrawsCompleted.Reset();
         isTurnTransitionPhase = true;
         SendRPC("StartTurnTransitionPhase");
         await WaitForClientTurnTransitionComplete();
@@ -176,32 +239,10 @@ public partial class OnlineSyncManager
     [PunRPC]
     private void NotifyTurnComplete()
     {
-        if (!IsHostPlayer) return;
+        if (!IsHostPlayer)
+            return;
 
-        // ホスト側でターン数を増加し、次のターンを開始
-        BattleManager.Instance.IncrementTurn();
-
-        // クライアント側にターン数を同期
-        SyncTurnNumber(BattleManager.Instance.curTurn);
-
-        // 次のターン（ホストターン）を開始
-        _ = StartNextHostTurn();
-    }
-
-    /// <summary>
-    /// 次のホストターンを開始
-    /// </summary>
-    private async Task StartNextHostTurn()
-    {
-
-        // 短時間待機してから開始
-        await Task.Delay(1000);
-
-        // ホスト側のターン開始を通知
-        SendRPC("StartHostTurn");
-
-        // ホスト側でターン開始
-        PhaseManager.Instance.StartTurn();
+        _ = AdvanceToNextTurn();
     }
 
     /// <summary>
@@ -226,7 +267,10 @@ public partial class OnlineSyncManager
         {
             // クライアントドローと同様にEnemyDrawCardAsyncを使用（デッキUI更新が含まれる）
             await PhaseManager.Instance.ApplyPhaseAsync(TurnPhase.ドローフェイズ);
-            await BattleManager.Instance.EnemyDrawCardAsync();
+            // 初回ターンは初期手札のあとなので、相手の追加ドローは無い
+            if (BattleManager.Instance.curTurn > 1)
+                await BattleManager.Instance.EnemyDrawCardAsync();
+            BattleManager.Instance.ResetCurrentTurnUsedMoves();
 
         }
         catch (System.Exception ex)
@@ -241,9 +285,9 @@ public partial class OnlineSyncManager
     [PunRPC]
     private void StartTurnTransitionPhase()
     {
-        if (IsHostPlayer) return;
+        if (IsHostPlayer || clientTurnTransitionRunning)
+            return;
 
-        // クライアント側でターン切り替えの間を実行
         _ = ExecuteTurnTransitionPhase();
     }
 
@@ -252,42 +296,44 @@ public partial class OnlineSyncManager
     /// </summary>
     private async Task ExecuteTurnTransitionPhase()
     {
-        // クライアント側もターン切り替えの間に移行
-        isTurnTransitionPhase = true;
+        clientTurnTransitionRunning = true;
+        hostTurnTransitionComplete.Reset();
+        hostDrawPhaseTransitionComplete.Reset();
+        hostDrawCompleteAcknowledged.Reset();
+        try
+        {
+            // ホストがターン切り替えを受け取るまで、操作できない間にしておく。
+            isTurnTransitionPhase = true;
+            SendRPC("NotifyClientTurnTransitionComplete");
+            await WaitForHostTurnTransitionComplete();
+            isTurnTransitionPhase = false;
 
-        // 短時間待機（ターン切り替えの間の演出）
-        await Task.Delay(500);
+            // ホスト側にドローフェイズ移行を通知
+            SendRPC("NotifyClientDrawPhaseTransition");
 
-        // ターン切り替えの間が完了
-        isTurnTransitionPhase = false;
+            // ホスト側のドローフェイズ移行完了を待つ
+            await WaitForHostDrawPhaseTransitionComplete();
 
-        // ホスト側にターン切り替え完了を通知
-        SendRPC("NotifyClientTurnTransitionComplete");
+            // クライアント側でドローフェイズに移行（フェイズ表示更新 + ドロー実行）
+            await PhaseManager.Instance.ExecutePhase(TurnPhase.ドローフェイズ);
 
-        // ホスト側のターン切り替え完了を待つ
-        await WaitForHostTurnTransitionComplete();
+            // ドロー完了と手札情報をホストに送信
+            SendDetailedHandInfoToOpponent();
+            SendRPC("NotifyClientDrawComplete");
 
-        // ホスト側にドローフェイズ移行を通知
-        SendRPC("NotifyClientDrawPhaseTransition");
+            // ホスト側のドロー完了確認を待つ
+            await WaitForHostDrawCompleteAcknowledgment();
 
-        // ホスト側のドローフェイズ移行完了を待つ
-        await WaitForHostDrawPhaseTransitionComplete();
+            // メインフェイズに移行
+            await PhaseManager.Instance.ExecutePhase(TurnPhase.メインフェイズ);
 
-        // クライアント側でドローフェイズに移行（フェイズ表示更新 + ドロー実行）
-        await PhaseManager.Instance.ExecutePhase(TurnPhase.ドローフェイズ);
-
-        // ドロー完了と手札情報をホストに送信
-        SendDetailedHandInfoToOpponent();
-        SendRPC("NotifyClientDrawComplete");
-
-        // ホスト側のドロー完了確認を待つ
-        await WaitForHostDrawCompleteAcknowledgment();
-
-        // メインフェイズに移行
-        await PhaseManager.Instance.ExecutePhase(TurnPhase.メインフェイズ);
-
-        // ホスト側にメインフェイズ移行を通知
-        NotifyPhaseToHost(TurnPhase.メインフェイズ);
+            // ホスト側にメインフェイズ移行を通知
+            NotifyPhaseToHost(TurnPhase.メインフェイズ);
+        }
+        finally
+        {
+            clientTurnTransitionRunning = false;
+        }
     }
     /// <summary>
     /// クライアント側のドローフェイズ移行通知を受信
@@ -316,6 +362,7 @@ public partial class OnlineSyncManager
         // 初回ターンは初期手札のあとなので、追加ドローはしない
         if (BattleManager.Instance.curTurn > 1)
             await BattleManager.Instance.EnemyDrawCardAsync();
+        BattleManager.Instance.ResetCurrentTurnUsedMoves();
     }
 
     /// <summary>
@@ -353,10 +400,7 @@ public partial class OnlineSyncManager
     {
         if (!IsOnlineMode) return;
 
-        // フラグをリセット（前回の完了状態をクリア）
-        clientDrawsCompleted.Reset();
-
-        // 完了を待機
+        // このターンの開始時に戻してある。ここで消すと、先に届いた完了通知を落とす。
         await clientDrawsCompleted.WaitForCompletion();
 
         // クライアント側にドロー完了確認を送信
@@ -423,6 +467,11 @@ public partial class OnlineSyncManager
 
         // ホスト側のドロー完了確認同期を初期化
         hostDrawCompleteAcknowledged.Reset();
+
+        // ターン切り替え完了を初期化
+        clientTurnTransitionComplete.Reset();
+        hostTurnTransitionComplete.Reset();
+        peerEndPhaseApplied.Reset();
 
         // デッキ同期完了を初期化
         deckSyncCompleted.Reset();

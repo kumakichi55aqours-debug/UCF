@@ -659,10 +659,3 @@ public enum DamageNullificationType
     完全無効化,
     固定値減算
 }
-
-public enum TurnRestrictionType
-{
-    特定の技,
-    属性制限,
-    全ての技
-}

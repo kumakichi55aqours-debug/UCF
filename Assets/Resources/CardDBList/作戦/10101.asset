@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardName: "\u30D5\u30EB\u30C1\u30E3\u30FC\u30B8"
   cardKind: 2
-  type: 8
   cardId: 10101
   rarity: 0
   artwork: {fileID: 21300000, guid: d794ce0946d315d41ac343ad60c95362, type: 3}
   cost: 0
   category: 
-  skillDescription: "ACT \u3053\u306E\u30BF\u30FC\u30F3\u3001\u81EA\u5206\u30D0\u30C8\u30E9\u30FC1\u4F53\u306E\u6D88\u8CBB\u30A8\u30CD\u30EB\u30AE\u30FC\u3092--2\u3059\u308B\u3002"
+  skillDescription: "ACT \u3053\u306E\u30BF\u30FC\u30F3\u3001\u81EA\u5206\u30D0\u30C8\u30E9\u30FC1\u4F53\u306E\u5FC5\u8981\u30A8\u30CD\u30EB\u30AE\u30FC\u3092-+2\u3059\u308B\u3002"
   skills:
   - rid: 3123607145903030310
+  type: 8
   references:
     version: 2
     RefIds:
@@ -34,6 +34,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 04000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6":
         - rid: 3123607444661993486
@@ -60,6 +62,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": 1
         "\u4ED8\u4E0E\u30B9\u30AD\u30EB":
           rid: 3123607145903030312
@@ -71,6 +74,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 00000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -96,6 +101,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u30EA\u30BD\u30FC\u30B9\u30BF\u30A4\u30D7": 0
         "\u5BFE\u8C61\u5C5E\u6027": 0
         "\u9069\u7528\u5148": 2
@@ -115,6 +121,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 1
-        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0

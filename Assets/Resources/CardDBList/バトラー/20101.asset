@@ -35,7 +35,7 @@ MonoBehaviour:
   "\u5C5E\u6027\u5897\u52A0\u5024": 3
   moveName1: "\u30A6\u30EB\u30C8\u30E9\u5FF5\u529B"
   energy1: 0
-  power1: 3
+  power1: 2
   moveElement1: 5
   target1: 1
   "\u5BFE\u8C61\u50741": 1
@@ -45,7 +45,7 @@ MonoBehaviour:
   description1: "\u5BFE\u8C61\u30D0\u30C8\u30E9\u30FC\u306EHP\u304C\u6700\u5927HP\u306E\u534A\u5206\u4EE5\u4E0A\u306A\u3089\u3001\u30C0\u30E1\u30FC\u30B8\u3092++1\u3059\u308B\u3002"
   moveName2: "\u30A2\u30A4\u30B9\u30E9\u30C3\u30AC\u30FC"
   energy2: 2
-  power2: 8
+  power2: 7
   moveElement2: 5
   target2: 1
   "\u5BFE\u8C61\u50742": 1
@@ -93,6 +93,8 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 69000000
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u5BFE\u8C61\u72B6\u614B":
+        - rid: 7839874199354081314
         "\u52B9\u679C\u6570": 3
         "\u52B9\u679C\u6570\u30AD\u30FC": 0
     - rid: 3123607303214858380
@@ -110,7 +112,8 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 69000000
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
-        "\u30AB\u30FC\u30C9\u72B6\u614B": []
+        "\u30AB\u30FC\u30C9\u72B6\u614B":
+        - rid: 7839874199354081315
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 1
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
@@ -140,6 +143,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u8FFD\u52A0\u30C0\u30E1\u30FC\u30B8\u91CF": 1
         "\u9069\u7528\u5148": 0
     - rid: 3123607303214858397
@@ -286,3 +290,17 @@ MonoBehaviour:
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 1
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
+    - rid: 7839874199354081314
+      type: {class: HpCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u898B\u308B\u30AB\u30FC\u30C9": 0
+        "\u95BE\u5024\u30BF\u30A4\u30D7": 1
+        "\u57FA\u6E96HP": 0
+        "\u57FA\u6E96HP\u6BD4\u7387": 0.99
+    - rid: 7839874199354081315
+      type: {class: HpCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u898B\u308B\u30AB\u30FC\u30C9": 0
+        "\u95BE\u5024\u30BF\u30A4\u30D7": 1
+        "\u57FA\u6E96HP": 0
+        "\u57FA\u6E96HP\u6BD4\u7387": 0.99

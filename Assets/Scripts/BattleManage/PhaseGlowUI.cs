@@ -18,8 +18,23 @@ public class PhaseGlowUI : MonoBehaviour
     [Header("通常のマテリアル")]
     [SerializeField] private Material defaultMaterial;
 
+    // 最初のドローフェイズが始まるまでは、先攻後攻が決まっていないので光らせない。
+    bool turnStarted;
+
+    void Awake()
+    {
+        ResetAllPhaseImages();
+    }
+
     public void HighlightPhase(TurnPhase phase)
     {
+        if (!turnStarted)
+        {
+            if (phase != TurnPhase.ドローフェイズ)
+                return;
+            turnStarted = true;
+        }
+
         ResetAllPhaseImages();
 
         Image activeImage = GetImageByPhase(phase);

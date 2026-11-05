@@ -135,7 +135,7 @@ public partial class BattleManager
     // 技選択時の基本パワーの取得（技ごと）
     public int GetMoveBaseDamage(CardController attacker, int moveIndex)
     {
-        if (attacker == null) return 0;
+        if (attacker == null || attacker.IsZeroPowerMove(moveIndex)) return 0;
 
         int baseDamage = moveIndex == 0 ? attacker.modifiedPower1 : attacker.modifiedPower2;
         baseDamage += GetGlobalPowerBonus(attacker);
@@ -148,6 +148,7 @@ public partial class BattleManager
     /// </summary>
     public int GetMoveDamageAgainst(CardController attacker, CardController target, int moveIndex)
     {
+        if (attacker != null && attacker.IsZeroPowerMove(moveIndex)) return 0;
         return GetMoveBaseDamage(attacker, moveIndex) + CategoryDamageUpSkill.GetBonus(attacker, target, moveIndex);
     }
     #endregion

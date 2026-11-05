@@ -171,6 +171,8 @@ public partial class BattleManager
         }
     }
 
+    const int OnlineDrawPauseMs = 100;
+
     public async Task ExecuteDrawPhase()
     {
         if (IsOnlineMode)
@@ -182,7 +184,11 @@ public partial class BattleManager
             OnlineSyncManager.Instance.SyncOpponentResourcesReset(turnNumber);
 
             if (curTurn > 1)
+            {
+                await Task.Delay(OnlineDrawPauseMs);
                 await DrawCardAsync(pHandZone);
+                await Task.Delay(OnlineDrawPauseMs);
+            }
         }
         else if (IsActiveSideTurn)
         {
@@ -207,8 +213,12 @@ public partial class BattleManager
 
         await ResetAllUsedCounts();
 
-        await Task.Delay(200);
+        if (!IsOnlineMode)
+            await Task.Delay(200);
     }
+
+    // このターンのエンドフェイズで、盤面の経過処理を済ませたターン。
+    int resolvedEndPhaseTurn = int.MinValue;
 
     async Task ApplyPoisonSlipDamage()
     {
@@ -234,6 +244,14 @@ public partial class BattleManager
 
     public async Task ExecuteEndPhase()
     {
+        // 各端末が自分の盤面を、1ターンに1回だけ更新する。
+        // 毒、経過ターン、パワー期限は相手へ送らず、この場のカードへかける。
+        // 付与の時間切れスキルは、付与した側の効果だけが動く。
+        if (resolvedEndPhaseTurn == curTurn)
+            return;
+        resolvedEndPhaseTurn = curTurn;
+        bool turnPlayerIsLocal = IsMyTurn;
+
         await ApplyPoisonSlipDamage();
 
         CardController[] zonePBattlers = pBattlerZone.GetComponentsInChildren<CardController>();
@@ -270,15 +288,7 @@ public partial class BattleManager
         }
 
         var currentTurnCards = new List<CardController>();
-        if (IsOnlineMode)
-        {
-            if (IsMyTurn)
-                AddSide(currentTurnCards, true);
-        }
-        else
-        {
-            AddSide(currentTurnCards, IsActiveSideTurn);
-        }
+        AddSide(currentTurnCards, turnPlayerIsLocal);
 
         foreach (var card in currentTurnCards)
         {
@@ -311,7 +321,8 @@ public partial class BattleManager
             }
         }
 
-        await RetireSpentEnhancements();
+        await RetireEnhancementsIfSpentPending();
+        await RetireExpiredEnhancements();
 
         if (PhaseManager.Instance != null && PhaseManager.Instance.OwnsCurrentPhase)
             await ProcessOwnPhaseTiming(SkillTrigger.自分のフェイズ終了時, TurnPhase.エンドフェイズ);
@@ -319,6 +330,7 @@ public partial class BattleManager
 
     /// <summary>
     /// 自分のフェイズに入った、または出たときに、そのフェイズのスキルを確認して完了まで待つ。
+    /// チェーン本体のあとへ回ったトリガーも含め、スキル処理が空になってから返す。
     /// </summary>
     public async Task ProcessOwnPhaseTiming(SkillTrigger trigger, TurnPhase phase)
     {
@@ -338,6 +350,8 @@ public partial class BattleManager
         EventBus.Publish(new SkillTriggerEvent(trigger, null, null, context) { Phase = phase });
 
         await context.ProcessingCompleteTcs.Task;
+        if (SkillChainManager.Instance != null)
+            await SkillChainManager.Instance.WaitUntilIdle();
     }
 
     public void IncrementTurn()

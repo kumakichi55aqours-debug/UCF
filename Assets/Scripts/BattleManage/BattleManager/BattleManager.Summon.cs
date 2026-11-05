@@ -292,18 +292,7 @@ public partial class BattleManager
 
     public async Task UseTacticsComplete(CardController card)
     {
-        ClearGrantsFrom(card);
-
-        var tacticsZone = card.isMyCard ? pTacticsZone : eTacticsZone;
-        var graveZone = card.isMyCard ? pGraveZone : eGraveZone;
-
-        RectTransform tacticsSlot = tacticsZone as RectTransform;
-        RectTransform graveSlot = graveZone as RectTransform;
-
-        await CardAnimationManager.Instance.AnimateDiscard(tacticsSlot, graveSlot, card);
-
-        card.UpdateDisplay();
-        PersistentEffectManager.Instance?.RecalculateImmediately();
+        await AnimateTacticsToGrave(card, suppressSkillTrigger: false);
     }
     #endregion
 }

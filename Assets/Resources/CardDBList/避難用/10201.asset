@@ -170,7 +170,7 @@ MonoBehaviour:
         "\u57FA\u6E96\u679A\u6570": 1
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
     - rid: 3123607303214858249
-      type: {class: TurnRestrictionSkill, ns: , asm: Assembly-CSharp}
+      type: {class: MoveRestrictionSkill, ns: , asm: Assembly-CSharp}
       data:
         "\u30B9\u30AD\u30EB\u540D": "\u62802\u52B9\u679C"
         "\u30BF\u30A4\u30DF\u30F3\u30B0": 4
@@ -191,10 +191,10 @@ MonoBehaviour:
         "\u5BFE\u8C61\u9078\u629E":
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
+        "\u5BFE\u8C61\u6280": 1
+        "\u5BFE\u8C61\u5C5E\u6027": []
         "\u5236\u9650\u30BF\u30FC\u30F3\u6570": 1
-        "\u5236\u9650\u30BF\u30A4\u30D7": 0
-        "\u5236\u9650\u5BFE\u8C61\u6280ID": 1
-        "\u5236\u9650\u5BFE\u8C61\u5C5E\u6027": 0
+        "\u6761\u4EF6\u306E\u6271\u3044": 0
     - rid: 3123607303214858250
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:

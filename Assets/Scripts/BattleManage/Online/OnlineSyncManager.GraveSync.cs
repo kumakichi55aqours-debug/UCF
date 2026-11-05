@@ -104,27 +104,15 @@ public partial class OnlineSyncManager
 
     private async Task DiscardEnemyCard(CardController card, bool notifyComplete = true)
     {
-        if (card != null && card.トークン)
-        {
-            try
-            {
-                await PlayDefeat(card);
-                TokenExit.VanishLocal(card);
-            }
-            finally
-            {
-                if (notifyComplete)
-                    SendOpponentAnimationComplete();
-            }
+        if (await TryVanishDiscardedToken(card, notifyComplete))
             return;
-        }
 
         try
         {
             await PlayDefeat(card);
             ResetCardStatusForGrave(card);
             card.UpdateDisplay();
-            await AnimateToGrave(card, BattleManager.Instance.eGraveZone);
+            await MoveToGraveAndRetireGrants(card, BattleManager.Instance.eGraveZone);
 
             card.UpdateDisplay();
             card.battleCardview?.UpdateCanUseMovePanel();
@@ -145,20 +133,8 @@ public partial class OnlineSyncManager
 
     private async Task DiscardOwnCard(CardController card, bool notifyComplete = true)
     {
-        if (card != null && card.トークン)
-        {
-            try
-            {
-                await PlayDefeat(card);
-                TokenExit.VanishLocal(card);
-            }
-            finally
-            {
-                if (notifyComplete)
-                    SendOpponentAnimationComplete();
-            }
+        if (await TryVanishDiscardedToken(card, notifyComplete))
             return;
-        }
 
         try
         {
@@ -169,7 +145,7 @@ public partial class OnlineSyncManager
             card.ClearStatusAilments(BattleManager.Instance != null && BattleManager.Instance.IsStunResolvePending(card));
 
             Transform graveZone = card.isMyCard ? BattleManager.Instance.pGraveZone : BattleManager.Instance.eGraveZone;
-            await AnimateToGrave(card, graveZone);
+            await MoveToGraveAndRetireGrants(card, graveZone);
             PersistentEffectManager.Instance?.RecalculateImmediately();
         }
         catch (System.Exception ex)
@@ -237,6 +213,37 @@ public partial class OnlineSyncManager
             await CardAnimationManager.Instance.PlayDefeatExplosion(card);
     }
 
+    async Task<bool> TryVanishDiscardedToken(CardController card, bool notifyComplete)
+    {
+        if (card == null || !card.トークン)
+            return false;
+
+        try
+        {
+            await PlayDefeat(card);
+            TokenExit.VanishLocal(card);
+        }
+        finally
+        {
+            if (notifyComplete)
+                SendOpponentAnimationComplete();
+        }
+
+        return true;
+    }
+
+    async Task MoveToGraveAndRetireGrants(CardController card, Transform graveZone)
+    {
+        await AnimateToGrave(card, graveZone);
+        await RetireGrantSources(card);
+    }
+
+    static Task RetireGrantSources(CardController host)
+    {
+        BattleManager battle = BattleManager.Instance;
+        return battle != null ? battle.RetireEnhancementsIfSpent(host) : Task.CompletedTask;
+    }
+
     static async Task AnimateToGrave(CardController card, Transform graveZone)
     {
         RectTransform currentSlot = card.transform.parent as RectTransform;
@@ -252,9 +259,67 @@ public partial class OnlineSyncManager
             card.curHp = fieldModel.maxHp;
     }
 
+    /// <summary>
+    /// 相手のデッキにある、指定の種類とIDのカードをすべて、相手自身に墓地へ送らせる。
+    /// 実際のデッキは相手の端末にしかないので、こちらの写しだけを削らない。
+    /// </summary>
+    public async Task RequestOpponentDeckToOwnGrave(CardKind kind, int id)
+    {
+        if (!IsOnlineMode)
+            return;
+
+        var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        opponentOwnHandFinished = finished;
+        BeginOperationBlock();
+        try
+        {
+            SendRPC("ReceiveOpponentDeckToOwnGrave", kind.ToString(), id);
+            await finished.Task;
+        }
+        finally
+        {
+            if (opponentOwnHandFinished == finished)
+                opponentOwnHandFinished = null;
+            EndOperationBlock();
+        }
+    }
+
+    [PunRPC]
+    void ReceiveOpponentDeckToOwnGrave(string kindStr, int id)
+    {
+        _ = ResolveOpponentDeckToOwnGrave(kindStr, id);
+    }
+
+    async Task ResolveOpponentDeckToOwnGrave(string kindStr, int id)
+    {
+        BeginOperationBlock();
+        try
+        {
+            if (System.Enum.TryParse(kindStr, out CardKind kind))
+                await ToGraveSkill.SendOwnDeckCardsToGrave(kind, id);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[OnlineSyncManager] 自分のデッキからの墓地送りでエラー: {ex.Message}");
+        }
+        finally
+        {
+            EndOperationBlock();
+            SendRPC("ReceiveOpponentOwnHandFinished");
+        }
+    }
+
     void RememberEnemyGraveCard(CardController card)
     {
-        var graveCard = new DeckCard(card.cardKind, card.cardID, 1);
+        if (card == null)
+            return;
+
+        RememberEnemyGraveCard(card.cardKind, card.cardID);
+    }
+
+    void RememberEnemyGraveCard(CardKind kind, int id)
+    {
+        var graveCard = new DeckCard(kind, id, 1);
         graveCard.PopulateDerivedData();
         opponentGrave.Add(graveCard);
     }

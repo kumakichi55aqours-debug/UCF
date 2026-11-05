@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -9,12 +10,17 @@ public class ReturnToHandSkill : SkillDB
     [SerializeField] public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
 
+    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     public override TargetList GetEffectTarget() => 効果対象;
     public override SearchCriteria GetTargetCriteria() => 対象条件;
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
 
     public override async Task ActivateEffect(SkillContext context)
     {
-        var toReturn = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context);
+        var toReturn = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context, 対象状態);
         if (toReturn == null || toReturn.Count == 0)
             return;
 
@@ -25,7 +31,7 @@ public class ReturnToHandSkill : SkillDB
 
         foreach (var card in toReturn)
         {
-            if (card == null)
+            if (card == null || !ConditionsMet(対象状態, card))
                 continue;
 
             if (card.トークン)
@@ -68,5 +74,15 @@ public class ReturnToHandSkill : SkillDB
         bool shuffleEnemyLocally = addedToEnemy && !addedRemoteEnemy;
         if ((addedToPlayer || shuffleEnemyLocally) && BattleManager.Instance != null)
             BattleManager.Instance.ShuffleHandAfterAddition(addedToPlayer, shuffleEnemyLocally);
+    }
+
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is ReturnToHandSkill bounce)
+        {
+            bounce.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
+        }
     }
 }

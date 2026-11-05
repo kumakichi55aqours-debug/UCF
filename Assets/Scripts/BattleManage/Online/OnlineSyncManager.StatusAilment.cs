@@ -22,6 +22,8 @@ public partial class OnlineSyncManager
         if (!System.Enum.IsDefined(typeof(StatusAilmentType), type))
             return;
 
+        // 付与RPCとは別に状態だけ届いたときも、残っている状態異常は外してから1つにする。
+        card.RemoveGrantedStatusAilments();
         card.ApplyStatus((StatusAilmentType)type, turns, sourceName, syncOnline: false);
     }
 }

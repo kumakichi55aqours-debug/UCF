@@ -377,21 +377,30 @@ public partial class OnlineSyncManager
 
         CardKind cardKind = tacticsCard.cardKind;
         int cardID = tacticsCard.cardID;
-        BattleManager.Instance?.ClearGrantsFrom(tacticsCard);
         ForgetChainTactics(tacticsCard);
 
         try
         {
             RectTransform tacticsSlot = BattleManager.Instance.eTacticsZone as RectTransform;
             RectTransform graveSlot = BattleManager.Instance.eGraveZone as RectTransform;
-            await CardAnimationManager.Instance.AnimateDiscard(tacticsSlot, graveSlot, tacticsCard);
+            CardZoneType fromLocation = CardController.ZoneTypeFromTransform(tacticsSlot);
+            bool enhancement = tacticsCard.type == CardTypeList.強化;
+            await CardAnimationManager.Instance.AnimateDiscard(
+                tacticsSlot,
+                graveSlot,
+                tacticsCard,
+                suppressSkillTrigger: enhancement);
 
+            // 強化は移動時のトリガーを出していない。送り主と同じ墓地の窓へ、カードが残っているうちに入る。
+            if (enhancement && tacticsCard != null && SkillChainManager.Instance != null)
+            {
+                SkillChainManager.Instance.ScheduleSentToGraveyard(tacticsCard, fromLocation);
+                await SkillChainManager.Instance.WaitUntilIdle();
+            }
+
+            RememberEnemyGraveCard(cardKind, cardID);
             if (tacticsCard != null && tacticsCard.gameObject != null)
                 Destroy(tacticsCard.gameObject);
-
-            var graveyardCard = new DeckCard(cardKind, cardID, 1);
-            graveyardCard.PopulateDerivedData();
-            opponentGrave.Add(graveyardCard);
 
             BattleManager.Instance.UpdateEnemyGraveyardUI();
             PersistentEffectManager.Instance?.RecalculateImmediately();

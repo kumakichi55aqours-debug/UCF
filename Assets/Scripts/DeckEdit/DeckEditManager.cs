@@ -9,6 +9,13 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
+public enum DeckDropZone
+{
+    None,
+    Deck,
+    CardList,
+}
+
 public class DeckEditManager : MonoBehaviour
 {
     public static DeckEditManager Instance { get; private set; }
@@ -17,6 +24,7 @@ public class DeckEditManager : MonoBehaviour
     const string SelectedDeckKey = "SelectedDeckName";
     const string DisableShufflePrefKey = "SolitaireDisableDeckShuffle";
     const int MaxCopiesPerCard = 3;
+    const int MaxDeckSize = 30;
 
     static List<CardDBBase> returnDeck;
     static string returnDeckName;
@@ -132,13 +140,27 @@ public class DeckEditManager : MonoBehaviour
             Destroy(parent.GetChild(i).gameObject);
 
         foreach (CardDBBase cardData in cards)
-        {
-            CardController card = Instantiate(cardPrefab, parent);
-            card.cardData = cardData;
-            card.zoneType = zone;
-            card.Init(cardData.cardKind, cardData.cardId);
-            card.deckCardView.Show(card.model);
-        }
+            CreateCard(cardData, parent, zone, true);
+    }
+
+    CardController CreateCard(CardDBBase cardData, Transform parent, DeckEditCustomZone zone, bool draggable)
+    {
+        CardController card = Instantiate(cardPrefab, parent);
+        card.cardData = cardData;
+        card.zoneType = zone;
+        card.Init(cardData.cardKind, cardData.cardId);
+        card.deckCardView.Show(card.model);
+        if (draggable)
+            card.gameObject.AddComponent<DeckEditCardDrag>();
+        return card;
+    }
+
+    public CardController CreateLooseCard(CardDBBase cardData, Transform parent)
+    {
+        if (cardData == null || cardPrefab == null || parent == null)
+            return null;
+
+        return CreateCard(cardData, parent, DeckEditCustomZone.カードリスト, false);
     }
 
     void ShowDeck()
@@ -151,12 +173,64 @@ public class DeckEditManager : MonoBehaviour
         ShowCards(cards, cardListContent, DeckEditCustomZone.カードリスト);
     }
 
-    public void AddCardToDeck(CardDBBase cardData)
+    public bool CanAdd(CardDBBase cardData)
     {
-        if (cardData == null || CountCopies(cardData) >= MaxCopiesPerCard)
+        return cardData != null
+            && currentDeck.Count < MaxDeckSize
+            && CountCopies(cardData) < MaxCopiesPerCard;
+    }
+
+    public int DeckCount => currentDeck.Count;
+
+    public void AddCardToDeck(CardDBBase cardData, int index = -1)
+    {
+        if (!CanAdd(cardData))
             return;
 
-        currentDeck.Add(cardData);
+        if (index < 0 || index >= currentDeck.Count)
+            currentDeck.Add(cardData);
+        else
+            currentDeck.Insert(index, cardData);
+
+        CommitDeck();
+    }
+
+    /// <summary>
+    /// ドラッグ終了。slot は、持ち上げたカードの穴を含んだ並びでの行き先。
+    /// </summary>
+    public void FinishDeckDrag(int fromIndex, DeckDropZone zone, int slot)
+    {
+        if (fromIndex < 0 || fromIndex >= currentDeck.Count)
+        {
+            ShowDeck();
+            return;
+        }
+
+        if (zone == DeckDropZone.CardList)
+        {
+            currentDeck.RemoveAt(fromIndex);
+            CommitDeck();
+            return;
+        }
+
+        if (zone == DeckDropZone.Deck)
+        {
+            slot = Mathf.Clamp(slot, 0, currentDeck.Count - 1);
+            if (slot != fromIndex)
+            {
+                CardDBBase picked = currentDeck[fromIndex];
+                currentDeck.RemoveAt(fromIndex);
+                currentDeck.Insert(slot, picked);
+                CommitDeck();
+                return;
+            }
+        }
+
+        ShowDeck();
+    }
+
+    void CommitDeck()
+    {
         isDeckModified = true;
         ShowDeck();
     }
@@ -173,14 +247,29 @@ public class DeckEditManager : MonoBehaviour
         return count;
     }
 
+    CardDBBase FindAvailable(CardKind kind, int cardId)
+    {
+        foreach (CardDBBase card in availableCards)
+        {
+            if (card != null && card.cardKind == kind && card.cardId == cardId)
+                return card;
+        }
+
+        return null;
+    }
+
     public void RemoveCardFromDeck(CardController card)
     {
-        if (card == null)
+        if (card == null || deckZone == null || card.transform.parent != deckZone)
             return;
 
-        currentDeck.Remove(card.cardData);
-        isDeckModified = true;
-        ShowDeck();
+        // 同名は同じカードデータを共有している。押した位置の1枚だけ抜く。
+        int index = card.transform.GetSiblingIndex();
+        if (index < 0 || index >= currentDeck.Count)
+            return;
+
+        currentDeck.RemoveAt(index);
+        CommitDeck();
     }
 
     public void SaveDeck()
@@ -201,7 +290,7 @@ public class DeckEditManager : MonoBehaviour
         RefreshAssetsInEditor();
     }
 
-    public void LoadDeckByName(string deckName)
+    void LoadDeckByName(string deckName)
     {
         if (string.IsNullOrEmpty(deckName))
         {
@@ -221,13 +310,9 @@ public class DeckEditManager : MonoBehaviour
             {
                 foreach (DeckCard deckCard in loadedDeck)
                 {
-                    CardDBBase cardData = availableCards.Find(c =>
-                        c.cardId == deckCard.カードID && c.cardKind == deckCard.カード種類);
-                    if (cardData == null)
-                        continue;
-
-                    cardData.category = deckCard.カテゴリ;
-                    currentDeck.Add(cardData);
+                    CardDBBase cardData = FindAvailable(deckCard.カード種類, deckCard.カードID);
+                    if (cardData != null)
+                        currentDeck.Add(cardData);
                 }
             }
         }
@@ -296,10 +381,10 @@ public class DeckEditManager : MonoBehaviour
     public void SortCards()
     {
         currentDeck.Sort(CompareCards);
-        ShowDeck();
+        CommitDeck();
     }
 
-    public void SortCardList()
+    void SortCardList()
     {
         availableCards.Sort(CompareCards);
         ShowCardList(availableCards);
@@ -308,8 +393,7 @@ public class DeckEditManager : MonoBehaviour
     public void ClearDeck()
     {
         currentDeck.Clear();
-        isDeckModified = true;
-        ShowDeck();
+        CommitDeck();
     }
 
     public void DeleteCurrentDeck()
@@ -433,10 +517,11 @@ public class DeckEditManager : MonoBehaviour
         string lastSelected = PlayerPrefs.GetString(SelectedDeckKey, "");
         List<string> deckList = GetDeckList();
 
-        if (!string.IsNullOrEmpty(lastSelected) && deckList.Contains(lastSelected))
+        int savedIndex = string.IsNullOrEmpty(lastSelected) ? -1 : deckList.IndexOf(lastSelected);
+        if (savedIndex >= 0)
         {
             LoadDeckByName(lastSelected);
-            SelectDeckOption(deckList.IndexOf(lastSelected));
+            SelectDeckOption(savedIndex);
             return;
         }
 

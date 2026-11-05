@@ -176,21 +176,31 @@ public partial class BattleManager : MonoBehaviour
     // 全ての使用回数を0にリセット
     public async Task ResetAllUsedCounts()
     {
+        ResetCurrentTurnUsedMoves();
+        SkillUseCountStore.ResetAll();
+
+        await Task.Yield();
+    }
+
+    /// <summary>
+    /// 今のターン側の技使用済みを戻し、バトラーの使用可能表示を更新する。
+    /// スキルの使用回数は戻さない。相手ターンを見ている側はこちらだけ呼ぶ。
+    /// </summary>
+    public void ResetCurrentTurnUsedMoves()
+    {
         var curTurnZones = IsMyTurn ?
             new[] { pBattlerZone, pTacticsZone, pFieldZone } :
             new[] { eBattlerZone, eTacticsZone, eFieldZone };
 
         foreach (var zone in curTurnZones)
         {
+            if (zone == null)
+                continue;
             foreach (CardController card in zone.GetComponentsInChildren<CardController>())
                 card.hasUsedMove = false;
         }
 
         RefreshCanUseMovePanels();
-
-        SkillUseCountStore.ResetAll();
-
-        await Task.Yield();
     }
 
     void RefreshCanUseMovePanels()
@@ -207,17 +217,19 @@ public partial class BattleManager : MonoBehaviour
             card.GetComponent<BattleCardView>()?.UpdateCanUseMovePanel();
     }
 
-    // ゾーン内の並び順番号
+    // ゾーン内の並び順番号。Destroy 直後のカードはフレーム末まで残るので、番号には数えない。
     public int GetCardIndexInZone(CardController card, Transform zone)
     {
         if (card == null || zone == null) return -1;
+        int index = 0;
         var cards = zone.GetComponentsInChildren<CardController>();
         for (int i = 0; i < cards.Length; i++)
         {
+            if (cards[i] == null)
+                continue;
             if (cards[i] == card)
-            {
-                return i;
-            }
+                return index;
+            index++;
         }
         return -1;
     }
@@ -225,9 +237,17 @@ public partial class BattleManager : MonoBehaviour
     public CardController GetCardAtZoneIndex(Transform zone, int index)
     {
         if (zone == null || index < 0) return null;
+        int live = 0;
         var cards = zone.GetComponentsInChildren<CardController>();
-        if (index >= cards.Length) return null;
-        return cards[index];
+        for (int i = 0; i < cards.Length; i++)
+        {
+            if (cards[i] == null)
+                continue;
+            if (live == index)
+                return cards[i];
+            live++;
+        }
+        return null;
     }
 
     public bool TryGetCardAddress(CardController card, out string zoneName, out int index)

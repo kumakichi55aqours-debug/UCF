@@ -19,7 +19,9 @@ MonoBehaviour:
   artwork: {fileID: 21300000, guid: bd42d24c9d41a3b43aa13f3931413a54, type: 3}
   cost: 0
   category: 0000000003000000
-  skillDescription: "\u30C6\u30B9\u30C8\u7528\u306E\u30AB\u30FC\u30C9"
+  skillDescription: '+1 +2 +3 +4 +5 +6 +7 +8 +9
+
+    -1 -2 -3 -4 -5 -6 -7 -8 -9'
   skills: []
   type: 2
   hp: 5

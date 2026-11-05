@@ -125,6 +125,7 @@ public partial class OnlineSyncManager
                     {
                         tempCard.transform.SetParent(to, false);
                         ResetCardStatusForReturnToHand(tempCard);
+                        await RetireGrantSources(tempCard);
                         tempCard.UpdateDisplay();
                         var fieldView = tempCard.GetComponent<BattleCardView>();
                         if (fieldView != null)

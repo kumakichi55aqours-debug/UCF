@@ -124,6 +124,9 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
             
             OnlineSyncManager.Instance?.BeginOperationBlock();
 
+            if (skillInstance is ApplyStatusAilmentSkill)
+                targetCard.RemoveGrantedStatusAilments();
+
             SkillContext context = new SkillContext(targetCard, targetCard, targetCard.transform);
             context.相手も同じ効果を実行する = true;
             await skillInstance.ActivateEffect(context);

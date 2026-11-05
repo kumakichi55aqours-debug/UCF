@@ -32,7 +32,7 @@ MonoBehaviour:
   hp: 7
   "\u5F97\u610F\u5C5E\u6027": 7
   "\u5C5E\u6027\u8EFD\u6E1B\u5024": 2
-  "\u5F31\u70B9\u5C5E\u6027": 5
+  "\u5F31\u70B9\u5C5E\u6027": 9
   "\u5C5E\u6027\u5897\u52A0\u5024": 2
   moveName1: "\u30A6\u30A4\u30F3\u30C0\u30E0\u30D1\u30F3\u30C1"
   energy1: 0
@@ -123,6 +123,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0000000005000000
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u8FFD\u52A0\u30C0\u30E1\u30FC\u30B8\u91CF": 2
         "\u9069\u7528\u5148": 2
     - rid: 3123607444661993501
@@ -171,6 +172,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 1
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u5BFE\u8C61\u5C5E\u6027": 
         "\u9069\u7528\u5148": 1
         "\u52B9\u679C\u6570": 1

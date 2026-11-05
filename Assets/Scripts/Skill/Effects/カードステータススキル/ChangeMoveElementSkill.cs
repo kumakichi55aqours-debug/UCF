@@ -14,16 +14,22 @@ public class ChangeMoveElementSkill : SkillDB
     public TargetList 効果対象;
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
+
+    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     public List<ElementList> 対象属性;
     public MoveTarget 適用先 = MoveTarget.両方;
     public ElementList 変更後属性;
 
     public override TargetList GetEffectTarget() => 効果対象;
     public override SearchCriteria GetTargetCriteria() => 対象条件;
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
 
     public override async Task ActivateEffect(SkillContext context)
     {
-        var targetCards = KeepContextCard(await CollectTargetsAsync(効果対象, 対象側, 対象条件, context), context);
+        var targetCards = KeepContextCard(await CollectTargetsAsync(効果対象, 対象側, 対象条件, context, 対象状態), context);
 
         foreach (var card in targetCards)
         {
@@ -31,6 +37,9 @@ public class ChangeMoveElementSkill : SkillDB
                 continue;
 
             if (対象条件 != null && !card.MeetsCriteria(対象条件, context))
+                continue;
+
+            if (!ConditionsMet(対象状態, card))
                 continue;
 
             var battler = card.model as BattlerModel;
@@ -57,6 +66,16 @@ public class ChangeMoveElementSkill : SkillDB
                 card.UpdateDisplay();
                 Debug.Log($"{card.cardName} の技属性を {変更後属性} に変更 Move1?{apply1} Move2?{apply2}");
             }
+        }
+    }
+
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is ChangeMoveElementSkill change)
+        {
+            change.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
         }
     }
 }

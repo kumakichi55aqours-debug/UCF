@@ -325,7 +325,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 150}
+  m_SizeDelta: {x: 110, y: 165}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8112534167537870050
 CanvasRenderer:
@@ -361,21 +361,53 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   battleCardview: {fileID: 0}
   deckCardView: {fileID: 0}
+  cardData: {fileID: 0}
+  zoneType: 0
   cardKind: 0
   type: 0
-  hasUsedMove: 0
   cardName: 
+  rarity: 0
   cost: 0
   category: 
-  skills: []
   curHp: 0
+  strongElement: 0
+  weakElement: 0
+  basePower1: 0
+  basePower2: 0
   energy1: 0
   energy2: 0
   target1: 0
   "\u5BFE\u8C61\u50741": 0
   target2: 0
   "\u5BFE\u8C61\u50742": 0
-  cardData: {fileID: 0}
-  zoneType: 0
+  moveElement1: 0
+  downElementPower: 0
+  moveElement2: 0
+  upElementPower: 0
+  bonusPower1: 0
+  bonusPower2: 0
+  bonusEnergy1: 0
+  bonusEnergy2: 0
+  bonusCost: 0
+  modifiedPower1: 0
+  modifiedPower2: 0
+  modifiedEnergy1: 0
+  modifiedEnergy2: 0
+  hasUsedMove: 0
   damageBonus: 0
   hitRate: 0
+  skills: []
+  statusAilments: []
+  invalidElements: 
+  turnRestrictions: []
+  ignoreResistance1: 0
+  ignoreResistanceTargetElement1: 0
+  ignoreResistance2: 0
+  ignoreResistanceTargetElement2: 0
+  hpProtection1: 0
+  hpProtectionTargetElement1: 0
+  hpProtection2: 0
+  hpProtectionTargetElement2: 0
+  references:
+    version: 2
+    RefIds: []

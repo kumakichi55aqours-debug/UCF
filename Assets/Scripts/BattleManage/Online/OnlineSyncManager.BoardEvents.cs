@@ -359,15 +359,6 @@ public partial class OnlineSyncManager
         SendRPC("ReceivePassiveEffect", targetCardKindStr, targetCardID, zoneName, zoneIndex, effectType, value, duration);
     }
 
-    /// <summary>
-    /// ターン制限効果の同期
-    /// </summary>
-    public void SyncTurnRestriction(string targetCardKindStr, int targetCardID, string zoneName, int zoneIndex,
-                                   string restrictionType, int duration)
-    {
-        SendRPC("ReceiveTurnRestriction", targetCardKindStr, targetCardID, zoneName, zoneIndex, restrictionType, duration);
-    }
-
     [PunRPC]
     private void ReceivePassiveEffect(string targetCardKindStr, int targetCardID, string zoneName, int zoneIndex,
                                      string effectType, int value, int duration)
@@ -375,16 +366,6 @@ public partial class OnlineSyncManager
         ApplyReceivedCardEffect(targetCardKindStr, targetCardID, zoneName, zoneIndex, "パッシブ効果受信", targetCard =>
         {
             return ExecutePassiveEffectOnOpponent(targetCard, effectType, value, duration);
-        });
-    }
-
-    [PunRPC]
-    private void ReceiveTurnRestriction(string targetCardKindStr, int targetCardID, string zoneName, int zoneIndex,
-                                       string restrictionType, int duration)
-    {
-        ApplyReceivedCardEffect(targetCardKindStr, targetCardID, zoneName, zoneIndex, "ターン制限効果受信", targetCard =>
-        {
-            return ExecuteTurnRestrictionOnOpponent(targetCard, restrictionType, duration);
         });
     }
 
@@ -418,38 +399,6 @@ public partial class OnlineSyncManager
         catch (System.Exception ex)
         {
             Debug.LogError($"[OnlineSyncManager] 相手側パッシブ効果実行でエラー: {ex.Message}");
-        }
-        finally
-        {
-            EndOperationBlock();
-        }
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// 相手側でターン制限効果を実行
-    /// </summary>
-    private Task ExecuteTurnRestrictionOnOpponent(CardController targetCard, string restrictionType, int duration)
-    {
-        try
-        {
-            BeginOperationBlock();
-            // ターン制限効果の実装
-            // 制限タイプをパース（デフォルト値を使用）
-            TurnRestrictionType restrictionTypeEnum = TurnRestrictionType.全ての技; // デフォルト値
-            if (System.Enum.TryParse(restrictionType, out TurnRestrictionType parsedType))
-                restrictionTypeEnum = parsedType;
-            var restriction = new TurnRestrictionEffect(
-                duration,
-                restrictionTypeEnum,
-                0, // skillID（デフォルト値）
-                ElementList.無 // element（デフォルト値）
-            );
-            targetCard.AddTurnRestriction(restriction);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] 相手側ターン制限効果実行でエラー: {ex.Message}");
         }
         finally
         {

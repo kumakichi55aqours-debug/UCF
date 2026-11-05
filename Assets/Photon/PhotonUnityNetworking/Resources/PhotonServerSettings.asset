@@ -229,6 +229,8 @@ MonoBehaviour:
   - ReceiveOpponentDimensionInfo
   - ReceiveDirectHpHeal
   - ReceiveRegisterMoveDamageNullification
+  - AcknowledgeEndPhaseApplied
+  - ReceiveOpponentDeckToOwnGrave
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

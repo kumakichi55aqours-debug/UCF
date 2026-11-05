@@ -86,7 +86,6 @@ public class BattleCardView : MonoBehaviour
         {
             nameText.text = battler.cardName;
             artworkImage.sprite = battler.artwork;
-            artworkImage.rectTransform.anchoredPosition = new Vector2(6, -30);
             ShowCost(battler.cost);
             onlyBattler.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : battler.maxHp.ToString();
@@ -119,7 +118,6 @@ public class BattleCardView : MonoBehaviour
         {
             nameText.text = tactics.cardName;
             artworkImage.sprite = tactics.artwork;
-            artworkImage.rectTransform.anchoredPosition = new Vector2(17, -30);
             ShowCost(tactics.cost);
             onlyTactics.SetActive(true);
             onlyBattler.SetActive(false);
@@ -133,7 +131,6 @@ public class BattleCardView : MonoBehaviour
         {
             nameText.text = field.cardName;
             artworkImage.sprite = field.artwork;
-            artworkImage.rectTransform.anchoredPosition = new Vector2(17, -30);
             ShowCost(field.cost);
             onlyField.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : field.maxHp.ToString();
@@ -167,7 +164,8 @@ public class BattleCardView : MonoBehaviour
         }
 
         label.color = defaultEnergyColor;
-        label.text = $"{FormatStat(shownEnergy, EnergyCostColor(printedEnergy, shownEnergy))}/{FormatStat(shownPower, PowerTextColor(printedPower, shownPower))}";
+        string powerText = printedPower <= 0 ? "-" : FormatStat(shownPower, PowerTextColor(printedPower, shownPower));
+        label.text = $"{FormatStat(shownEnergy, EnergyCostColor(printedEnergy, shownEnergy))}/{powerText}";
     }
 
     string FormatStat(int value, Color color)

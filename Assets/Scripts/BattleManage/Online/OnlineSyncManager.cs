@@ -143,37 +143,47 @@ public partial class OnlineSyncManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
-    /// 同期状態管理の共通クラス
+    /// 1回分の完了通知を待つ。
+    /// Reset するたびに世代を進め、前の完了が次の待ちに残らないようにする。
     /// </summary>
     private class SyncState
     {
-        public bool IsComplete { get; set; } = false;
-        public TaskCompletionSource<bool> Source { get; set; } = null;
+        int cycle;
+        int completedCycle = -1;
+        TaskCompletionSource<bool> source;
 
-        // 完了状態を設定
+        public bool IsComplete => completedCycle == cycle;
+
         public void SetComplete()
         {
-            IsComplete = true;
-            if (Source != null && !Source.Task.IsCompleted)
-            {
-                Source.TrySetResult(true);
-            }
+            if (completedCycle == cycle)
+                return;
+
+            completedCycle = cycle;
+            source?.TrySetResult(true);
         }
 
-        // 完了を待機
         public async Task WaitForCompletion()
         {
-            if (IsComplete) return;
+            if (IsComplete)
+                return;
 
-            Source = new TaskCompletionSource<bool>();
-            await Source.Task;
+            var wait = source ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (IsComplete)
+                wait.TrySetResult(true);
+
+            await wait.Task;
         }
 
-        // 状態をリセット
+        /// <summary>
+        /// 次の待ちを始める。進行中の前の待ちは解放し、完了フラグは新しい世代へ持ち越さない。
+        /// </summary>
         public void Reset()
         {
-            IsComplete = false;
-            Source = null;
+            cycle++;
+            var pending = source;
+            source = null;
+            pending?.TrySetResult(true);
         }
     }
     #endregion

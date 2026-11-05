@@ -55,7 +55,7 @@ public class DamageSkill : SkillDB
             if (!ConditionsMet(対象状態, card)) continue;
 
             bool addressed = CardAddress.TryAdd(card, kinds, ids, zoneNames, indices);
-            int damageToApply = damageAmount;
+            int damageToApply = IncomingDamageModifierSkill.ApplyToEffectDamage(card, damageAmount);
             card.curHp -= damageToApply;
             card.UpdateDisplay();
             if (damageToApply > 0)

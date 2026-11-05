@@ -328,6 +328,9 @@ public class ToDimensionSkill : SkillDB
             if (sentPerCard)
                 await OnlineSyncManager.Instance.WaitForOpponentAnimation();
 
+            if (BattleManager.Instance != null)
+                await BattleManager.Instance.RetireEnhancementsIfSpent(card);
+
             card.UpdateDisplay();
             if (dimensionZone == BattleManager.Instance.eDimensionZone)
                 OnlineSyncManager.Instance?.RememberOpponentDimensionCard(card);

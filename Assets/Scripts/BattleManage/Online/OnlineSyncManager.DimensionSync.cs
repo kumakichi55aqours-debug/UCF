@@ -196,6 +196,8 @@ public partial class OnlineSyncManager
             if (card == null)
                 return;
 
+            await RetireGrantSources(card);
+
             card.UpdateDisplay();
             if (fromOwnHand)
                 SendDetailedHandInfoToOpponent();

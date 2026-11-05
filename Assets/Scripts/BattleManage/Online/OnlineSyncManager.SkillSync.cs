@@ -14,6 +14,14 @@ public partial class OnlineSyncManager
         if (!CardAddress.TryFrom(card, out CardAddress address))
             return;
 
+        SyncTacticsSkillCompleted(address);
+    }
+
+    public void SyncTacticsSkillCompleted(CardAddress address)
+    {
+        if (!address.IsValid)
+            return;
+
         SendRPC("ReceiveTacticsSkillCompleted", address.Kind.ToString(), address.Id, address.ZoneName, address.Index);
     }
 

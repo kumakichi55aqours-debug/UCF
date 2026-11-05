@@ -106,12 +106,12 @@ MonoBehaviour:
             "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
             "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
-            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 01000000
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
         "\u30AB\u30FC\u30C9\u72B6\u614B": []
         "\u6570\u3048\u65B9": 0
-        "\u57FA\u6E96\u679A\u6570": 4
-        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 1
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
     - rid: 3123607650032943146
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:
@@ -161,7 +161,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5C5E\u6027": 
         "\u9069\u7528\u5148": 2
         "\u52B9\u679C\u6570": 1
-        "\u5BFE\u8C61\u3054\u3068\u306E\u6761\u4EF6": []
+        "\u5BFE\u8C61\u72B6\u614B": []
     - rid: 3123607650032943154
       type: {class: CleanseSkill, ns: , asm: Assembly-CSharp}
       data:
@@ -189,6 +189,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u89E3\u9664\u5185\u5BB9": 1
         "\u89E3\u9664\u3059\u308B\u72B6\u614B\u7570\u5E38": 
     - rid: 3123607650032943157

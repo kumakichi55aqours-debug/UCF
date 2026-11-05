@@ -10,6 +10,11 @@ public class GrantSkill : SkillDB
     public TargetList 効果対象;
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
+
+    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     public int 付与ターン数;
 
     [SerializeReference]
@@ -17,12 +22,13 @@ public class GrantSkill : SkillDB
 
     public override TargetList GetEffectTarget() => 効果対象;
     public override SearchCriteria GetTargetCriteria() => 対象条件;
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
 
     public override async Task ActivateEffect(SkillContext context)
     {
         if (付与スキル == null) return;
 
-        var targets = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context);
+        var targets = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context, 対象状態);
         if (targets.Count == 0) return;
 
         string sourceName = context?.発動カード != null ? context.発動カード.cardName : null;
@@ -37,7 +43,7 @@ public class GrantSkill : SkillDB
 
         foreach (var target in targets)
         {
-            if (target == null) continue;
+            if (target == null || !ConditionsMet(対象状態, target)) continue;
 
             // 再計算や相手側の再実行では鳴らさない。付与を受け取った側は同期側で鳴らす。
             if (!playedGrantSe && (context == null || !context.相手も同じ効果を実行する))
@@ -47,6 +53,10 @@ public class GrantSkill : SkillDB
             }
 
             var grantedInst = 付与スキル.Clone();
+            // 再計算では外さない。新しい付与のときだけ、今ある状態異常を消してから1つにする。
+            if (grantedInst is ApplyStatusAilmentSkill && (context == null || !context.相手も同じ効果を実行する))
+                target.RemoveGrantedStatusAilments();
+
             var grantContext = new SkillContext(target, target, target.transform);
             grantContext.相手も同じ効果を実行する = true;
             await grantedInst.ActivateEffect(grantContext);
@@ -85,6 +95,9 @@ public class GrantSkill : SkillDB
     {
         if (clone is GrantSkill granted)
         {
+            granted.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
             granted.付与スキル = 付与スキル != null ? 付与スキル.Clone() : null;
         }
     }

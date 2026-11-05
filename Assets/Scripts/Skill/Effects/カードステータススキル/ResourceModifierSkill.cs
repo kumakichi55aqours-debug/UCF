@@ -11,6 +11,11 @@ public class ResourceModifierSkill : SkillDB
     public TargetList 効果対象;
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
+
+    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     public ResourceType リソースタイプ = ResourceType.エネルギー;
     public ElementList 対象属性;
     public MoveTarget 適用先;
@@ -18,15 +23,18 @@ public class ResourceModifierSkill : SkillDB
 
     public override TargetList GetEffectTarget() => 効果対象;
     public override SearchCriteria GetTargetCriteria() => 対象条件;
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
 
     public override async Task ActivateEffect(SkillContext context)
     {
         Debug.Log($"[ResourceModifierSkill] 発動開始 - リソースタイプ: {リソースタイプ}, 効果対象: {効果対象}, 対象属性: {対象属性}, 適用先: {適用先}, 効果数: {効果数}");
-        var targetCards = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context);
+        var targetCards = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context, 対象状態);
 
         if (context != null && context.RestrictTargetsToContextCard && context.対象カード != null)
         {
-            if ((対象条件 == null || context.対象カード.MeetsCriteria(対象条件, context)) && !targetCards.Contains(context.対象カード))
+            if ((対象条件 == null || context.対象カード.MeetsCriteria(対象条件, context))
+                && ConditionsMet(対象状態, context.対象カード)
+                && !targetCards.Contains(context.対象カード))
             {
                 targetCards.Add(context.対象カード);
             }
@@ -52,7 +60,7 @@ public class ResourceModifierSkill : SkillDB
         // 各ターゲットカードにリソース修正を適用
         foreach (var card in targetCards)
         {
-            if (card == null)
+            if (card == null || !ConditionsMet(対象状態, card))
                 continue;
 
             switch (リソースタイプ)
@@ -146,6 +154,16 @@ public class ResourceModifierSkill : SkillDB
                 healNewHps.ToArray(),
                 healShown.ToArray());
             await OnlineSyncManager.Instance.WaitForOpponentAnimation();
+        }
+    }
+
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is ResourceModifierSkill resource)
+        {
+            resource.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
         }
     }
 }

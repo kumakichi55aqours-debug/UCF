@@ -1,16 +1,23 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
 /// 条件を満たすとき、指定した技のダメージを計算時に足す。
 /// 発動条件は、攻撃者を発動カード、相手を対象カードにしたコンテキストで見る。
-/// 対象条件が空なら相手のカード種類は問わない。永続効果としてカードに置く。場の再計算では足さない。
+/// 対象条件が空なら相手のカード種類は問わない。対象状態が空なら状態では絞らない。
+/// 永続効果としてカードに置く。場の再計算では足さない。
 /// </summary>
 [System.Serializable]
 [SkillDisplayName("(〇付与)カテゴリアップ")]
 public class CategoryDamageUpSkill : SkillDB
 {
     [SerializeField] public SearchCriteria 対象条件;
+
+    [Tooltip("対象条件に合う相手のうち、この状態も満たすときだけダメージを足す。空なら状態では絞らない。")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     [SerializeField] public int 追加ダメージ量;
     [SerializeField] public MoveTarget 適用先 = MoveTarget.両方;
 
@@ -53,8 +60,20 @@ public class CategoryDamageUpSkill : SkillDB
         return bonus;
     }
 
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
+
     bool Matches(CardController target)
     {
-        return target != null && target.MeetsCriteria(対象条件);
+        return target != null && target.MeetsCriteria(対象条件) && ConditionsMet(対象状態, target);
+    }
+
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is CategoryDamageUpSkill category)
+        {
+            category.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
+        }
     }
 }

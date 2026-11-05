@@ -397,7 +397,7 @@ public class TargetSelectionManager : MonoBehaviour
 
     public void ConfirmSkillTargetSelection(CardController card)
     {
-        if (card == null)
+        if (!IsSkillTargetSelectionMode || card == null)
             return;
         if (limitedCandidates != null)
         {

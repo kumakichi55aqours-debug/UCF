@@ -154,6 +154,33 @@ public class SkillManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 技を使い終わったあとのトリガー。技1／技2の個別タイミングも含む。
+    /// </summary>
+    public static bool IsMoveUsedAfterTrigger(SkillTrigger trigger)
+    {
+        return trigger == SkillTrigger.技使用後
+            || trigger == SkillTrigger.技1使用後
+            || trigger == SkillTrigger.技2使用後;
+    }
+
+    /// <summary>
+    /// 技使用後の付与で、効果対象が技対象のとき。
+    /// 技対象がバトラーでない、またはそのHPが0以下なら集めない。
+    /// フィールドへの技と、プレイヤーへの直接ダメージは技対象がバトラーではない。
+    /// </summary>
+    static bool ShouldSkipGrantToMoveTarget(SkillTrigger trigger, SkillDB skill, CardController moveTarget)
+    {
+        if (!IsMoveUsedAfterTrigger(trigger))
+            return false;
+        if (!(skill is GrantSkill grant) || grant.効果対象 != TargetList.技対象)
+            return false;
+
+        return moveTarget == null
+            || moveTarget.cardKind != CardKind.バトラー
+            || moveTarget.curHp <= 0;
+    }
+
+    /// <summary>
     /// チェーンに乗った効果へ反応できるか。スキル名に PAS を含むものは発動のきっかけにしない。
     /// </summary>
     public static bool IsRespondableActivation(string skillName)
@@ -320,6 +347,10 @@ public class SkillManager : MonoBehaviour
                         continue;
                 }
 
+                // 技使用後の付与は、技対象が生きているバトラーのときだけ集める。
+                if (ShouldSkipGrantToMoveTarget(trigger, skill, moveTarget))
+                    continue;
+
                 // 「どこから」の条件チェック（未指定ならどこからでも収集。複数指定はいずれかと一致）
                 if (timing == ActiveTiming.墓地に送られた時)
                 {
@@ -352,20 +383,7 @@ public class SkillManager : MonoBehaviour
                         Context = tempCtx
                     };
 
-                    if (skill.強制発動 || cpuCommittedTactics)
-                    {
-                        if (isTurnPlayerCard)
-                            collectedSkills.TPForcedSkills.Add(skillInfo);
-                        else
-                            collectedSkills.NonTPForcedSkills.Add(skillInfo);
-                    }
-                    else
-                    {
-                        if (isTurnPlayerCard)
-                            collectedSkills.TPOptionalSkills.Add(skillInfo);
-                        else
-                            collectedSkills.NonTPOptionalSkills.Add(skillInfo);
-                    }
+                    AddCollected(collectedSkills, skillInfo, skill.強制発動 || cpuCommittedTactics, isTurnPlayerCard);
                 }
             }
         }
@@ -406,83 +424,23 @@ public class SkillManager : MonoBehaviour
         if (activatingCard == null || BattleManager.Instance == null)
             return collectedSkills;
 
-        bool isMyTurn = BattleManager.Instance.IsMyTurn;
-        var seen = new HashSet<(int instanceId, SkillDB skill)>();
-
-        foreach (var card in GetAllCardsForTrigger(null))
-        {
-            if (card == null || card.IsActionBlocked)
-                continue;
-            if (NegateZoneEffectSkill.Blocks(card))
-                continue;
-            if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
-                continue;
-
-            bool isTurnPlayerCard = card.isMyCard == isMyTurn;
-            var activeLocation = card.GetCurrentActiveLocation();
-            var skills = card.skills?.Where(s =>
-                s != null &&
-                s.タイミング == ActiveTiming.他効果誘発 &&
-                s.HasRemainingUses &&
-                (s.IncludesLocation(activeLocation) || s.IncludesLocation(ActiveLocation.None))
-            ).ToList() ?? new List<SkillDB>();
-
-            foreach (var skill in skills)
-            {
-                string skillName = skill.スキル名 ?? string.Empty;
-                if (excluded != null && excluded.Contains((card.GetInstanceID(), skillName)))
-                    continue;
-
-                if (!skill.MatchesActivationOwner(card, activatingCard))
-                    continue;
-
-                if (skill.トリガー対象条件 != null && skill.トリガー対象条件.HasCondition()
-                    && !activatingCard.MeetsCriteria(skill.トリガー対象条件))
-                    continue;
-
-                if (card.cardKind == CardKind.作戦
-                    && activeLocation == ActiveLocation.手札
-                    && !BattleManager.Instance.CanCommitHandTactics(card))
-                    continue;
-
-                var tempCtx = new SkillContext(card, activatingCard, card.transform);
-                if (!skill.CanActivate(tempCtx))
-                    continue;
-
-                if (!seen.Add((card.GetInstanceID(), skill)))
-                    continue;
-
-                var skillInfo = new SkillInfo
-                {
-                    Card = card,
-                    Skill = skill,
-                    Trigger = SkillTrigger.他効果誘発,
-                    MoveTarget = activatingCard,
-                    Context = tempCtx
-                };
-
-                if (skill.強制発動)
-                {
-                    if (isTurnPlayerCard)
-                        collectedSkills.TPForcedSkills.Add(skillInfo);
-                    else
-                        collectedSkills.NonTPForcedSkills.Add(skillInfo);
-                }
-                else
-                {
-                    if (isTurnPlayerCard)
-                        collectedSkills.TPOptionalSkills.Add(skillInfo);
-                    else
-                        collectedSkills.NonTPOptionalSkills.Add(skillInfo);
-                }
-            }
-        }
+        CollectOtherTriggerSkills(
+            SkillTrigger.他効果誘発,
+            activatingCard,
+            excludedCard: null,
+            BattleManager.Instance.IsMyTurn,
+            collectedSkills,
+            new HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)>(),
+            (card, skill) =>
+                (excluded == null || !excluded.Contains((card.GetInstanceID(), skill.スキル名 ?? string.Empty)))
+                && skill.MatchesActivationOwner(card, activatingCard)
+                && MatchesTriggerTarget(skill, activatingCard));
 
         return collectedSkills;
     }
 
     /// <summary>
-    /// 「他のカードが墓地に送られた時」スキルを収集
+    /// 「他のカードが墓地に送られた時」スキルを収集。どこから、発動側、トリガー対象条件を見る。
     /// </summary>
     private static void CollectOtherCardToGraveSkills(
         CardController cardSentToGrave,
@@ -491,81 +449,17 @@ public class SkillManager : MonoBehaviour
         HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet,
         CardZoneType fromLocation = CardZoneType.None)
     {
-        var allCardsOnField = GetAllCardsOnField();
-
-        foreach (var card in allCardsOnField)
-        {
-            if (card == cardSentToGrave)
-                continue;
-            if (card != null && card.IsActionBlocked)
-                continue;
-
-            // オンライン時は、自分のカードのスキルのみを収集
-            if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
-                continue;
-
-            bool isMyCard = card.isMyCard;
-            bool isTurnPlayerCard = isMyCard == isMyTurn;
-
-            var activeLocation = card.GetCurrentActiveLocation();
-
-            var otherCardGraveyardSkills = card.skills?.Where(s =>
-                s.タイミング == ActiveTiming.他のカードが墓地に送られた時 &&
-                s.HasRemainingUses &&
-                (s.IncludesLocation(activeLocation) || s.IncludesLocation(ActiveLocation.None))
-            ).ToList() ?? new List<SkillDB>();
-
-            foreach (var skill in otherCardGraveyardSkills)
-            {
-                // 「どこから」の条件チェック（スキル所持カードから見たゾーン）
-                if (!CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard))
-                    continue;
-
-                if (!skill.MatchesActivationOwner(card, cardSentToGrave))
-                    continue;
-
-                // トリガー対象条件をチェック
-                if (skill.トリガー対象条件 != null && skill.トリガー対象条件.HasCondition())
-                {
-                    if (!cardSentToGrave.MeetsCriteria(skill.トリガー対象条件))
-                        continue;
-                }
-
-                var tempCtx = new SkillContext(card, cardSentToGrave, card.transform);
-                if (skill.CanActivate(tempCtx))
-                {
-                    var skillKey = (card.GetInstanceID(), skill, SkillTrigger.他カードが墓地に送られた時);
-                    if (skillsSet.Contains(skillKey))
-                        continue;
-
-                    skillsSet.Add(skillKey);
-
-                    var skillInfo = new SkillInfo
-                    {
-                        Card = card,
-                        Skill = skill,
-                        Trigger = SkillTrigger.他カードが墓地に送られた時,
-                        MoveTarget = cardSentToGrave,
-                        Context = tempCtx
-                    };
-
-                    if (skill.強制発動)
-                    {
-                        if (isTurnPlayerCard)
-                            collectedSkills.TPForcedSkills.Add(skillInfo);
-                        else
-                            collectedSkills.NonTPForcedSkills.Add(skillInfo);
-                    }
-                    else
-                    {
-                        if (isTurnPlayerCard)
-                            collectedSkills.TPOptionalSkills.Add(skillInfo);
-                        else
-                            collectedSkills.NonTPOptionalSkills.Add(skillInfo);
-                    }
-                }
-            }
-        }
+        CollectOtherTriggerSkills(
+            SkillTrigger.他カードが墓地に送られた時,
+            cardSentToGrave,
+            cardSentToGrave,
+            isMyTurn,
+            collectedSkills,
+            skillsSet,
+            (card, skill) =>
+                CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard)
+                && skill.MatchesActivationOwner(card, cardSentToGrave)
+                && MatchesTriggerTarget(skill, cardSentToGrave));
     }
 
     /// <summary>
@@ -580,77 +474,18 @@ public class SkillManager : MonoBehaviour
         CardZoneType fromLocation,
         bool specialSummon)
     {
-        var allCardsOnField = GetAllCardsOnField();
-
-        foreach (var card in allCardsOnField)
-        {
-            if (card == null || card == appearedCard || card.IsActionBlocked)
-                continue;
-
-            if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
-                continue;
-
-            bool isTurnPlayerCard = card.isMyCard == isMyTurn;
-            var activeLocation = card.GetCurrentActiveLocation();
-
-            var appearedSkills = card.skills?.Where(s =>
-                s.タイミング == ActiveTiming.他のカードが登場した時 &&
-                s.HasRemainingUses &&
-                (s.IncludesLocation(activeLocation) || s.IncludesLocation(ActiveLocation.None))
-            ).ToList() ?? new List<SkillDB>();
-
-            foreach (var skill in appearedSkills)
-            {
-                if (!skill.MatchesAppearKind(specialSummon))
-                    continue;
-
-                if (!CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard))
-                    continue;
-
-                if (!skill.MatchesActivationOwner(card, appearedCard))
-                    continue;
-
-                if (skill.トリガー対象条件 != null && skill.トリガー対象条件.HasCondition())
-                {
-                    if (appearedCard == null || !appearedCard.MeetsCriteria(skill.トリガー対象条件))
-                        continue;
-                }
-
-                var tempCtx = new SkillContext(card, appearedCard, card.transform);
-                if (!skill.CanActivate(tempCtx))
-                    continue;
-
-                var skillKey = (card.GetInstanceID(), skill, SkillTrigger.他カードが登場した時);
-                if (skillsSet.Contains(skillKey))
-                    continue;
-
-                skillsSet.Add(skillKey);
-
-                var skillInfo = new SkillInfo
-                {
-                    Card = card,
-                    Skill = skill,
-                    Trigger = SkillTrigger.他カードが登場した時,
-                    MoveTarget = appearedCard,
-                    Context = tempCtx
-                };
-
-                if (skill.強制発動)
-                {
-                    if (isTurnPlayerCard)
-                        collectedSkills.TPForcedSkills.Add(skillInfo);
-                    else
-                        collectedSkills.NonTPForcedSkills.Add(skillInfo);
-                }
-                else
-                {
-                    if (isTurnPlayerCard)
-                        collectedSkills.TPOptionalSkills.Add(skillInfo);
-                    else
-                        collectedSkills.NonTPOptionalSkills.Add(skillInfo);
-                }
-            }
-        }
+        CollectOtherTriggerSkills(
+            SkillTrigger.他カードが登場した時,
+            appearedCard,
+            appearedCard,
+            isMyTurn,
+            collectedSkills,
+            skillsSet,
+            (card, skill) =>
+                skill.MatchesAppearKind(specialSummon)
+                && CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard)
+                && skill.MatchesActivationOwner(card, appearedCard)
+                && MatchesTriggerTarget(skill, appearedCard));
     }
 
     /// <summary>
@@ -664,68 +499,16 @@ public class SkillManager : MonoBehaviour
         HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet,
         CardZoneType fromLocation)
     {
-        var allCardsOnField = GetAllCardsOnField();
-
-        foreach (var card in allCardsOnField)
-        {
-            if (card != null && card.IsActionBlocked)
-                continue;
-
-            if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
-                continue;
-
-            bool isMyCard = card.isMyCard;
-            bool isTurnPlayerCard = isMyCard == isMyTurn;
-            var activeLocation = card.GetCurrentActiveLocation();
-
-            var returnedSkills = card.skills?.Where(s =>
-                s.タイミング == ActiveTiming.他のカードが手札に戻った時 &&
-                s.HasRemainingUses &&
-                (s.IncludesLocation(activeLocation) || s.IncludesLocation(ActiveLocation.None))
-            ).ToList() ?? new List<SkillDB>();
-
-            foreach (var skill in returnedSkills)
-            {
-                if (!CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard))
-                    continue;
-
-                if (!skill.MatchesActivationOwner(card, returnedCardIsMyCard))
-                    continue;
-
-                var tempCtx = new SkillContext(card, null, card.transform);
-                if (!skill.CanActivate(tempCtx))
-                    continue;
-
-                var skillKey = (card.GetInstanceID(), skill, SkillTrigger.他カードが手札に戻った時);
-                if (skillsSet.Contains(skillKey))
-                    continue;
-
-                skillsSet.Add(skillKey);
-
-                var skillInfo = new SkillInfo
-                {
-                    Card = card,
-                    Skill = skill,
-                    Trigger = SkillTrigger.他カードが手札に戻った時,
-                    Context = tempCtx
-                };
-
-                if (skill.強制発動)
-                {
-                    if (isTurnPlayerCard)
-                        collectedSkills.TPForcedSkills.Add(skillInfo);
-                    else
-                        collectedSkills.NonTPForcedSkills.Add(skillInfo);
-                }
-                else
-                {
-                    if (isTurnPlayerCard)
-                        collectedSkills.TPOptionalSkills.Add(skillInfo);
-                    else
-                        collectedSkills.NonTPOptionalSkills.Add(skillInfo);
-                }
-            }
-        }
+        CollectOtherTriggerSkills(
+            SkillTrigger.他カードが手札に戻った時,
+            subject: null,
+            excludedCard: null,
+            isMyTurn,
+            collectedSkills,
+            skillsSet,
+            (card, skill) =>
+                CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard)
+                && skill.MatchesActivationOwner(card, returnedCardIsMyCard));
     }
 
     /// <summary>
@@ -737,87 +520,145 @@ public class SkillManager : MonoBehaviour
         CollectedSkills collectedSkills,
         HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet)
     {
-        var allCardsOnField = GetAllCardsOnField();
+        // 撃破したバトラーがいるゾーン。スキル所持カードから見て「いる場所」と照らす
+        var defeaterZone = CardController.ZoneTypeFromTransform(
+            battlerWhoDefeated != null ? battlerWhoDefeated.transform.parent : null);
 
-        foreach (var card in allCardsOnField)
+        CollectOtherTriggerSkills(
+            SkillTrigger.他バトラー撃破時,
+            battlerWhoDefeated,
+            battlerWhoDefeated,
+            isMyTurn,
+            collectedSkills,
+            skillsSet,
+            (card, skill) =>
+                CardController.MatchesFromZone(skill.いる場所, defeaterZone, card.isMyCard)
+                && skill.MatchesActivationOwner(card, battlerWhoDefeated)
+                && MatchesTriggerTarget(skill, battlerWhoDefeated));
+    }
+
+    /// <summary>
+    /// 「他の〇〇が〇〇した時」系のスキルを集める共通処理。
+    /// 両者のBゾーン、Tゾーン、Fゾーン、手札、墓地、異次元を見て、スキルの場所と今いるゾーンが合うものを集める。
+    /// subject はトリガーの対象カードで、発動条件のコンテキストと MoveTarget に入る。
+    /// excludedCard はトリガーを起こしたカード自身で、集めない。
+    /// matches はトリガーごとの絞り込み（どこから、発動側、トリガー対象条件など）。
+    /// </summary>
+    private static void CollectOtherTriggerSkills(
+        SkillTrigger trigger,
+        CardController subject,
+        CardController excludedCard,
+        bool isMyTurn,
+        CollectedSkills collectedSkills,
+        HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet,
+        Func<CardController, SkillDB, bool> matches)
+    {
+        var timing = OtherTriggerTiming(trigger);
+        if (timing == ActiveTiming.None)
+            return;
+        bool online = BattleManager.Instance.IsOnlineMode;
+
+        foreach (var card in GetAllCardsForTrigger(null))
         {
-            if (card == battlerWhoDefeated)
+            if (card == null || card == excludedCard || card.IsActionBlocked)
                 continue;
-            if (card != null && card.IsActionBlocked)
+            if (NegateZoneEffectSkill.Blocks(card))
                 continue;
 
             // オンライン時は、自分のカードのスキルのみを収集
-            if (BattleManager.Instance.IsOnlineMode && !card.isMyCard)
+            if (online && !card.isMyCard)
                 continue;
-
-            bool isMyCard = card.isMyCard;
-            bool isTurnPlayerCard = isMyCard == isMyTurn;
+            if (card.skills == null)
+                continue;
 
             var activeLocation = card.GetCurrentActiveLocation();
 
-            var otherBattlerDefeatSkills = card.skills?.Where(s =>
-                s.タイミング == ActiveTiming.他のバトラーが撃破した時 &&
-                s.HasRemainingUses &&
-                (s.IncludesLocation(activeLocation) || s.IncludesLocation(ActiveLocation.None))
-            ).ToList() ?? new List<SkillDB>();
+            // 手札に残っている作戦は、出せて、作戦ゾーンに空きがあるときだけ候補にする。
+            if (card.cardKind == CardKind.作戦
+                && activeLocation == ActiveLocation.手札
+                && !BattleManager.Instance.CanCommitHandTactics(card))
+                continue;
 
-            foreach (var skill in otherBattlerDefeatSkills)
+            bool isTurnPlayerCard = card.isMyCard == isMyTurn;
+
+            foreach (var skill in card.skills)
             {
-                // 撃破したバトラーがいるゾーン。未指定ならどこでも。スキル所持カードから見たゾーン
-                var defeaterZone = CardController.ZoneTypeFromTransform(
-                    battlerWhoDefeated != null ? battlerWhoDefeated.transform.parent : null);
-                if (!CardController.MatchesFromZone(skill.いる場所, defeaterZone, card.isMyCard))
+                if (skill == null || skill.タイミング != timing || !skill.HasRemainingUses)
+                    continue;
+                if (!skill.IncludesLocation(activeLocation) && !skill.IncludesLocation(ActiveLocation.None))
+                    continue;
+                if (matches != null && !matches(card, skill))
                     continue;
 
-                if (!skill.MatchesActivationOwner(card, battlerWhoDefeated))
+                var tempCtx = new SkillContext(card, subject, card.transform);
+                if (!skill.CanActivate(tempCtx))
                     continue;
 
-                // トリガー対象条件をチェック
-                if (skill.トリガー対象条件 != null && skill.トリガー対象条件.HasCondition())
+                if (!skillsSet.Add((card.GetInstanceID(), skill, trigger)))
+                    continue;
+
+                var skillInfo = new SkillInfo
                 {
-                    if (!battlerWhoDefeated.MeetsCriteria(skill.トリガー対象条件))
-                        continue;
-                }
-
-                var tempCtx = new SkillContext(card, battlerWhoDefeated, card.transform);
-                if (skill.CanActivate(tempCtx))
-                {
-                    var skillKey = (card.GetInstanceID(), skill, SkillTrigger.他バトラー撃破時);
-                    if (skillsSet.Contains(skillKey))
-                        continue;
-
-                    skillsSet.Add(skillKey);
-
-                    var skillInfo = new SkillInfo
-                    {
-                        Card = card,
-                        Skill = skill,
-                        Trigger = SkillTrigger.他バトラー撃破時,
-                        MoveTarget = battlerWhoDefeated,
-                        Context = tempCtx
-                    };
-
-                    if (skill.強制発動)
-                    {
-                        if (isTurnPlayerCard)
-                            collectedSkills.TPForcedSkills.Add(skillInfo);
-                        else
-                            collectedSkills.NonTPForcedSkills.Add(skillInfo);
-                    }
-                    else
-                    {
-                        if (isTurnPlayerCard)
-                            collectedSkills.TPOptionalSkills.Add(skillInfo);
-                        else
-                            collectedSkills.NonTPOptionalSkills.Add(skillInfo);
-                    }
-                }
+                    Card = card,
+                    Skill = skill,
+                    Trigger = trigger,
+                    MoveTarget = subject,
+                    Context = tempCtx
+                };
+                AddCollected(collectedSkills, skillInfo, skill.強制発動, isTurnPlayerCard);
             }
         }
     }
 
     /// <summary>
-    /// 両プレイヤーの各ゾーンにいるカードの取得
+    /// 「他の〇〇が〇〇した時」系のトリガーに対応するスキルのタイミング。名前が揃っていないので個別に対応させる。
+    /// </summary>
+    private static ActiveTiming OtherTriggerTiming(SkillTrigger trigger)
+    {
+        switch (trigger)
+        {
+            case SkillTrigger.他カードが墓地に送られた時: return ActiveTiming.他のカードが墓地に送られた時;
+            case SkillTrigger.他カードが登場した時: return ActiveTiming.他のカードが登場した時;
+            case SkillTrigger.他カードが手札に戻った時: return ActiveTiming.他のカードが手札に戻った時;
+            case SkillTrigger.他バトラー撃破時: return ActiveTiming.他のバトラーが撃破した時;
+            case SkillTrigger.他効果誘発: return ActiveTiming.他効果誘発;
+            default: return ActiveTiming.None;
+        }
+    }
+
+    /// <summary>
+    /// トリガー対象条件が空なら通す。条件があるときは、対象カードがそれを満たすときだけ通す。
+    /// </summary>
+    private static bool MatchesTriggerTarget(SkillDB skill, CardController target)
+    {
+        if (skill.トリガー対象条件 == null || !skill.トリガー対象条件.HasCondition())
+            return true;
+        return target != null && target.MeetsCriteria(skill.トリガー対象条件);
+    }
+
+    /// <summary>
+    /// 強制／任意と、ターンプレイヤー側かどうかで、確認順の分類へ振り分ける。
+    /// </summary>
+    private static void AddCollected(CollectedSkills collectedSkills, SkillInfo skillInfo, bool forced, bool isTurnPlayerCard)
+    {
+        if (forced)
+        {
+            if (isTurnPlayerCard)
+                collectedSkills.TPForcedSkills.Add(skillInfo);
+            else
+                collectedSkills.NonTPForcedSkills.Add(skillInfo);
+        }
+        else
+        {
+            if (isTurnPlayerCard)
+                collectedSkills.TPOptionalSkills.Add(skillInfo);
+            else
+                collectedSkills.NonTPOptionalSkills.Add(skillInfo);
+        }
+    }
+
+    /// <summary>
+    /// 両プレイヤーのBゾーン、Tゾーン、Fゾーン、手札、墓地、異次元にいるカードの取得。
     /// 起点カードがまだゾーン配下に無い場合も結果に含める。
     /// </summary>
     private static List<CardController> GetAllCardsForTrigger(CardController sourceCard)
@@ -836,17 +677,17 @@ public class SkillManager : MonoBehaviour
         var allZones = new[]
         {
             BattleManager.Instance.pBattlerZone,
+            BattleManager.Instance.pTacticsZone,
+            BattleManager.Instance.pFieldZone,
             BattleManager.Instance.pHandZone,
             BattleManager.Instance.pGraveZone,
             BattleManager.Instance.pDimensionZone,
-            BattleManager.Instance.pTacticsZone,
-            BattleManager.Instance.pFieldZone,
             BattleManager.Instance.eBattlerZone,
+            BattleManager.Instance.eTacticsZone,
+            BattleManager.Instance.eFieldZone,
             BattleManager.Instance.eHandZone,
             BattleManager.Instance.eGraveZone,
-            BattleManager.Instance.eDimensionZone,
-            BattleManager.Instance.eTacticsZone,
-            BattleManager.Instance.eFieldZone
+            BattleManager.Instance.eDimensionZone
         };
 
         foreach (var zone in allZones)
@@ -854,31 +695,6 @@ public class SkillManager : MonoBehaviour
             if (zone == null) continue;
             foreach (var card in zone.GetComponentsInChildren<CardController>())
                 AddCard(card);
-        }
-
-        return cards;
-    }
-
-    /// <summary>
-    /// 場にいるすべてのカードを取得（Bゾーン、Tゾーン、Fゾーン）
-    /// </summary>
-    private static List<CardController> GetAllCardsOnField()
-    {
-        var cards = new List<CardController>();
-        var fieldZones = new Transform[]
-        {
-            BattleManager.Instance.pBattlerZone,
-            BattleManager.Instance.pTacticsZone,
-            BattleManager.Instance.pFieldZone,
-            BattleManager.Instance.eBattlerZone,
-            BattleManager.Instance.eTacticsZone,
-            BattleManager.Instance.eFieldZone
-        };
-
-        foreach (var zone in fieldZones)
-        {
-            if (zone == null) continue;
-            cards.AddRange(zone.GetComponentsInChildren<CardController>());
         }
 
         return cards;

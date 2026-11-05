@@ -340,7 +340,6 @@ public class CardSelectionUI : MonoBehaviour
         if (take < pool.Count)
             pool.RemoveRange(take, pool.Count - take);
 
-        Debug.Log($"[CardSelectionUI] CPUがカードをランダム選択: {pool.Count}枚");
         return pool;
     }
 
@@ -463,7 +462,9 @@ public class CardSelectionUI : MonoBehaviour
     private string GetZoneName(Transform parent)
     {
         var bm = BattleManager.Instance;
-        if (parent == bm.pHandZone) return "手札";
+        if (parent == bm.pBattlerZone || bm.pTacticsZone || bm.pFieldZone) return "自ゾーン";
+        else if (parent == bm.eBattlerZone || bm.eTacticsZone || bm.eFieldZone) return "敵ゾーン";
+        else if (parent == bm.pHandZone) return "手札";
         else if (parent == bm.pGraveZone) return "墓地";
         else if (parent == bm.pDimensionZone) return "異次元";
         else if (parent == bm.eHandZone) return "敵手札";
@@ -552,6 +553,20 @@ public class CardSelectionUI : MonoBehaviour
         return rejectWhen != null && item != null && rejectWhen(selectedItems, item);
     }
 
+    bool AllShownBlocked()
+    {
+        bool any = false;
+        foreach (var shown in shownCards)
+        {
+            if (shown.item == null)
+                continue;
+            any = true;
+            if (!IsBlocked(shown.item))
+                return false;
+        }
+        return any;
+    }
+
     void RefreshPickLocks()
     {
         if (!LocksSelection())
@@ -584,6 +599,9 @@ public class CardSelectionUI : MonoBehaviour
     bool CanConfirm()
     {
         if (selectedItems.Count == maxSelect)
+            return true;
+        // 最初から全部押せないときは、空のまま閉じて効果を終わらせる。
+        if (selectedItems.Count == 0 && AllShownBlocked())
             return true;
         // 異なるタイプは2体とも押す。候補が1体でも、そこを自動では確定しない。
         if (rejectSameType)

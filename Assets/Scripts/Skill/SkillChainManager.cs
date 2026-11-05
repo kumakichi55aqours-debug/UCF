@@ -81,15 +81,56 @@ public class SkillChainManager : MonoBehaviour
     /// <summary>
     /// 起動効果・自動スキルを含むチェーンの処理中。
     /// 発動確認、効果本体、その中のアニメーション完了まで待つタスクが終わるまで真。
+    /// 解決中に乗った後続トリガーが残っているあいだも真。
     /// </summary>
     public bool IsResolvingSkills
     {
         get
         {
             lock (chainLock)
-                return isProcessingChain || isDrainingDeferred;
+                return IsBusyUnlocked();
         }
     }
+
+    // チェーン本体と後続がすべて終わったときに完了する。待っている人がいるときだけ使う。
+    TaskCompletionSource<bool> idleWaiter;
+
+    /// <summary>
+    /// いまのチェーンと、その中で保留したトリガーが空になるまで待つ。
+    /// 処理中でなければすぐに返る。
+    /// </summary>
+    public Task WaitUntilIdle()
+    {
+        lock (chainLock)
+        {
+            if (!IsBusyUnlocked())
+                return Task.CompletedTask;
+
+            idleWaiter ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            return idleWaiter.Task;
+        }
+    }
+
+    bool IsBusyUnlocked()
+    {
+        return isProcessingChain || isDrainingDeferred || deferredChains.Count > 0;
+    }
+
+    void NotifyIdle()
+    {
+        TaskCompletionSource<bool> waiter;
+        lock (chainLock)
+        {
+            if (IsBusyUnlocked())
+                return;
+
+            waiter = idleWaiter;
+            idleWaiter = null;
+        }
+
+        waiter?.TrySetResult(true);
+    }
+
     // スキル処理完了タスク
     Task activeChain = Task.CompletedTask;
     readonly Queue<DeferredChainRequest> deferredChains = new Queue<DeferredChainRequest>();
@@ -130,15 +171,16 @@ public class SkillChainManager : MonoBehaviour
 
     /// <summary>
     /// 墓地へ送ったカードの「墓地に送られた時」を、今のチェーンが終わってから両者で解決する。
-    /// 処理中なら保留し、処理中でなければその場でチェーンを始める。
+    /// 処理中なら保留して true。処理中でなければその場でチェーンを始めて false。
     /// </summary>
-    public void ScheduleSentToGraveyard(CardController card, CardZoneType fromLocation)
+    public bool ScheduleSentToGraveyard(CardController card, CardZoneType fromLocation)
     {
         var trigger = new SkillTriggerEvent(SkillTrigger.墓地に送られた時, card, null, null, fromLocation);
         if (TryEnqueueTrigger(trigger))
-            return;
+            return true;
 
         EventBus.Publish(trigger);
+        return false;
     }
 
     /// <summary>
@@ -238,6 +280,7 @@ public class SkillChainManager : MonoBehaviour
             {
                 PersistentEffectManager.Instance?.RecalculateImmediately();
                 NotifySkillResolutionChanged();
+                NotifyIdle();
             }
         }
     }

@@ -138,13 +138,28 @@ public class CardContextMenu : MonoBehaviour
     // 手札ボタン表示
     public void ShowHandOptions(CardController card, Vector3 worldPos)
     {
-        if (PhaseManager.Instance.CurrentPhase != TurnPhase.メインフェイズ) return;
+        if (PhaseManager.Instance == null)
+            return;
+        TurnPhase phase = PhaseManager.Instance.CurrentPhase;
+        if (phase != TurnPhase.メインフェイズ && phase != TurnPhase.バトルフェイズ)
+            return;
         if (!OnlineSyncManager.Instance.CanPlayerOperateCards()) return;
         if (IsProcessing()) return;
 
         currentCard = card;
         DismissTransientWindows();
         HideAllButtons();
+
+        // バトルフェイズに出せる作戦だけ、このフェイズの手札から出す。
+        if (phase == TurnPhase.バトルフェイズ)
+        {
+            if (card.cardKind == CardKind.作戦
+                && CanPlayTacticsFromHand(card)
+                && PhaseCondition.CardRequires(card, TurnPhase.バトルフェイズ))
+                useFromHandButton.gameObject.SetActive(true);
+            ShowIfAnyButton(worldPos);
+            return;
+        }
 
         if (card.cardKind == CardKind.バトラー || card.cardKind == CardKind.フィールド)
         {
@@ -291,7 +306,7 @@ public class CardContextMenu : MonoBehaviour
             if (battler != null)
             {
                 // 技1の制限とエネルギー量をチェック
-                bool move1Restricted = currentCard.IsSkillRestricted(0, battler.moveElement1);
+                bool move1Restricted = MoveRestrictionSkill.Blocks(currentCard, 0);
                 int move1Cost = currentCard.GetMoveEnergyCost(0);
                 bool move1EnergySufficient = BattleManager.Instance.pResources.Energy.currentEnergy >= move1Cost;
                 bool move1Targetable = MoveTargetEvasion.HasLegalTarget(currentCard, 0);
@@ -299,7 +314,7 @@ public class CardContextMenu : MonoBehaviour
                 bool move1Available = !move1Restricted && move1EnergySufficient && move1Targetable && move1GrantOk;
 
                 // 技2の制限とエネルギー量をチェック
-                bool move2Restricted = currentCard.IsSkillRestricted(1, battler.moveElement2);
+                bool move2Restricted = MoveRestrictionSkill.Blocks(currentCard, 1);
                 int move2Cost = currentCard.GetMoveEnergyCost(1);
                 bool move2EnergySufficient = BattleManager.Instance.pResources.Energy.currentEnergy >= move2Cost;
                 bool move2Targetable = MoveTargetEvasion.HasLegalTarget(currentCard, 1);

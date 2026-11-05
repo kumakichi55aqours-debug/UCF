@@ -96,9 +96,9 @@ public static class MoveTargetEvasion
 
     /// <summary>
     /// 技を出せるか。
-    /// 1体選択で、対象ゾーンにバトラーがいないときはフィールドかプレイヤーHPへ進める。
+    /// 1体選択と、複数の「まで」は、対象ゾーンにバトラーがいないときフィールドかプレイヤーHPへ進める。
     /// 複数かつ「ちょうど」で、合法な対象が選択数未満なら出せない。バトラー1体は自分側も数える。
-    /// 複数かつ「まで」は、1体もいなければ出せない。
+    /// 「まで」でも、バトラーはいるが選べる相手がいないときは出せない。
     /// </summary>
     public static bool HasLegalTarget(CardController attacker, int moveIndex)
     {
@@ -162,9 +162,25 @@ public static class MoveTargetEvasion
         return legal;
     }
 
+    /// <summary>
+    /// 複数の「まで」で、対象ゾーンにバトラーがいない。解決は1体選択と同じくフィールドかプレイヤーHPへ進む。
+    /// </summary>
+    public static bool UpToMoveZoneIsEmpty(CardController attacker, int moveIndex)
+    {
+        var battler = attacker?.model as BattlerModel;
+        if (battler == null || !IsSelectableBattlerTarget(battler.GetMoveTarget(moveIndex)))
+            return false;
+
+        var select = battler.GetMoveSelect(moveIndex);
+        if (select.Count <= 1 || select.選択方式 != TargetCountMode.まで)
+            return false;
+
+        return ListZoneBattlers(attacker, battler.GetMoveSide(moveIndex)).Count == 0;
+    }
+
     static bool HasRequiredSelection(int presentCount, int legalCount, SelectTarget select)
     {
-        if (select.Count <= 1)
+        if (select.Count <= 1 || select.選択方式 == TargetCountMode.まで)
             return ZoneEmptyOrHasLegal(presentCount, legalCount);
 
         return legalCount >= select.MinimumCount;

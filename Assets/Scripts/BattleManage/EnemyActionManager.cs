@@ -53,6 +53,8 @@ public class EnemyActionManager : MonoBehaviour
             await Task.Delay(500);
         }
 
+        await EnemyUseTacticsAsync(card => PhaseCondition.CardRequires(card, TurnPhase.バトルフェイズ));
+
         await Task.Delay(300);
     }
 
@@ -137,7 +139,7 @@ public class EnemyActionManager : MonoBehaviour
     /// コスト0は他の手札より高くなくても使う。
     /// コスト1以上は、手札の支払いコストが最も高いときだけ使う。同コストのバトラーがいればバトラーを優先して使わない。
     /// </summary>
-    async Task EnemyUseTacticsAsync()
+    async Task EnemyUseTacticsAsync(System.Func<CardController, bool> include = null)
     {
         try
         {
@@ -149,7 +151,7 @@ public class EnemyActionManager : MonoBehaviour
             {
                 PersistentEffectManager.Instance?.RecalculateImmediately();
 
-                DeckCard chosen = ChooseEnemyTactics(battle);
+                DeckCard chosen = ChooseEnemyTactics(battle, include);
                 if (chosen == null)
                     return;
 
@@ -181,7 +183,7 @@ public class EnemyActionManager : MonoBehaviour
     /// <summary>
     /// 今の手札から、CPUが使う作戦を1枚選ぶ。無ければ null。
     /// </summary>
-    DeckCard ChooseEnemyTactics(BattleManager battle)
+    DeckCard ChooseEnemyTactics(BattleManager battle, System.Func<CardController, bool> include = null)
     {
         var hand = battle?.enemyHand;
         if (hand == null || hand.Count == 0)
@@ -192,6 +194,8 @@ public class EnemyActionManager : MonoBehaviour
         foreach (var deck in hand)
         {
             if (!CanPlayEnemyTactics(deck))
+                continue;
+            if (include != null && !include(FindEnemyHandCard(deck)))
                 continue;
 
             playable.Add(deck);
@@ -358,6 +362,8 @@ public class EnemyActionManager : MonoBehaviour
 
         if (skill is SpecialSummonSkill summon)
             return HasSummonCandidate(summon, source, ctx);
+        if (skill is ReturnWithGrantsSkill bounce)
+            return bounce.HasReturnCandidate(source);
 
         return HasSelectedTargets(skill, source);
     }
@@ -616,7 +622,7 @@ public class EnemyActionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 払える技のうち、技2を優先する。バトラー対象で対象が一人もいない技は選ばない。
+    /// 払える技のうち、技2を優先する。対象にできるバトラーがいない技は選ばない。対象ゾーンが空の「まで」は選ぶ。
     /// 付与スキルがないときだけの技は、付与があるあいだ選ばない。
     /// </summary>
     int ChooseEnemyMoveIndex(CardController card)
@@ -637,6 +643,7 @@ public class EnemyActionManager : MonoBehaviour
     {
         return energy >= card.GetMoveEnergyCost(moveIndex)
             && !NoGrantMoveSkill.Blocks(card, moveIndex)
+            && !MoveRestrictionSkill.Blocks(card, moveIndex)
             && MoveTargetEvasion.HasLegalTarget(card, moveIndex);
     }
 
@@ -676,7 +683,8 @@ public class EnemyActionManager : MonoBehaviour
             }
         }
 
-        if (MoveTargetEvasion.IsMultiSelect(enemyCard, moveIndex))
+        if (MoveTargetEvasion.IsMultiSelect(enemyCard, moveIndex)
+            && !MoveTargetEvasion.UpToMoveZoneIsEmpty(enemyCard, moveIndex))
         {
             await UseMultiTargetMove(enemyCard, moveIndex);
             return;
@@ -793,25 +801,13 @@ public class EnemyActionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 「相手の技使用時」のあと、キャンセルでなければCPUの技使用時を処理する。
+    /// 拡大・カットイン・技使用時のあと、「相手の技使用時」を開く。
     /// キャンセルしたときは false。
     /// </summary>
     async Task<bool> OpenMoveUseWindow(CardController attacker, int moveIndex)
     {
-        var battle = BattleManager.Instance;
-        await battle.TriggerOpponentMoveUsedSkills(attacker, moveIndex, null);
-        if (battle.IsApplyOpponentMoveCancellation(attacker))
-        {
-            battle.HandleMoveCancelled(attacker);
-            return false;
-        }
-
-        var specific = moveIndex == 0 ? SkillTrigger.技1使用時 : SkillTrigger.技2使用時;
-        await battle.ProcessSkillTriggerAndWait(specific, attacker, null, moveIndex: moveIndex);
-        await battle.ProcessSkillTriggerAndWait(SkillTrigger.技使用時, attacker, null, moveIndex: moveIndex);
-        if (CardAnimationManager.Instance != null)
-            await CardAnimationManager.Instance.PlayMoveCutIn(attacker, moveIndex);
-        return true;
+        bool cancelled = await BattleManager.Instance.FinishMoveDeclaration(attacker, moveIndex, null);
+        return !cancelled;
     }
 
     static void MarkMoveUsed(CardController card)

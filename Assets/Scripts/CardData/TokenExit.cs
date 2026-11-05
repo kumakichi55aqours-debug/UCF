@@ -19,6 +19,9 @@ public static class TokenExit
             return;
 
         card.RemoveAllPassiveEffects();
+        // 控えの取り出しは破棄より前。強化の移動はそのまま続ける。
+        if (BattleManager.Instance != null)
+            _ = BattleManager.Instance.RetireEnhancementsIfSpent(card);
         Object.Destroy(card.gameObject);
         PersistentEffectManager.Instance?.RecalculateImmediately();
     }

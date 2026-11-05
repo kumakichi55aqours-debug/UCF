@@ -62,6 +62,9 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
     public bool hasUsedMove = false;
 
+    // 最後に墓地へ入ったときの BattleManager.curTurn。まだ入っていなければ int.MinValue
+    public int 墓地に送られたターン = int.MinValue;
+
     // 墓地スキル一覧の見た目用。クリックしたときは墓地にある本体を開く
     CardController graveSkillSource;
 
@@ -157,7 +160,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         if (battle == null)
             return;
 
-        battle.OnBattlerLeftZone(this, transform.parent);
+        battle.OnCardLeftZone(this, transform.parent);
 
         var parent = transform.parent;
         if (parent == battle.pDimensionZone || parent == battle.eDimensionZone)
@@ -172,7 +175,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         parentBeforeChange = null;
 
         var battle = BattleManager.Instance;
-        battle?.OnBattlerLeftZone(this, leftZone);
+        battle?.OnCardLeftZone(this, leftZone);
         if (leftDimensionZone != null)
         {
             battle?.RefreshDimensionZonePresence(leftDimensionZone);
@@ -183,6 +186,10 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         bool enteredDimension = battle != null && (parent == battle.pDimensionZone || parent == battle.eDimensionZone);
         if (enteredDimension)
             battle.RefreshDimensionZonePresence(parent);
+
+        if (battle != null && (parent == battle.pGraveZone || parent == battle.eGraveZone)
+            && parent != leftZone)
+            墓地に送られたターン = battle.curTurn;
 
         if (cardKind == CardKind.None || !IsPlayZone()) return;
         SkillUseCountStore.ApplyTo(this);
@@ -242,17 +249,9 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
                 upElementPower = battler.属性増加値;
                 basePower1 = battler.power1;
                 basePower2 = battler.power2;
-                modifiedPower1 = basePower1 + bonusPower1;
-                modifiedPower2 = basePower2 + bonusPower2;
                 energy1 = battler.energy1;
                 energy2 = battler.energy2;
-                modifiedEnergy1 = energy1 + bonusEnergy1;
-                modifiedEnergy2 = energy2 + bonusEnergy2;
-
-                if (modifiedPower1 < 0) modifiedPower1 = 0;
-                if (modifiedPower2 < 0) modifiedPower2 = 0;
-                if (modifiedEnergy1 < 0) modifiedEnergy1 = 0;
-                if (modifiedEnergy2 < 0) modifiedEnergy2 = 0;
+                RecalculateModifiedPowers();
                 target1 = battler.target1;
                 対象側1 = battler.対象側1;
                 target2 = battler.target2;
@@ -342,6 +341,9 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
     public void OnPointerEnter(PointerEventData eventData)
     {
+        if (DeckEditCardDrag.IsDragging)
+            return;
+
         if (battleCardview != null && battleCardview.IsBack && !isPlayerCard)
             return;
 
@@ -418,25 +420,20 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         }
         else if (SceneManager.GetActiveScene().name == "DeckEditScene")
         {
+            if (DeckEditCardDrag.IsDragging || DeckEditManager.Instance == null)
+                return;
+
             if (zoneType == DeckEditCustomZone.カードリスト)
             {
                 if (eventData.button == PointerEventData.InputButton.Right)
-                {
-                    if (DeckEditManager.Instance.deckZone.childCount < 30)
-                        DeckEditManager.Instance.AddCardToDeck(cardData);
-                }
+                    DeckEditManager.Instance.AddCardToDeck(cardData);
             }
             else if (zoneType == DeckEditCustomZone.デッキリスト)
             {
-                if (eventData.button == PointerEventData.InputButton.Left)
-                {
-                    if (DeckEditManager.Instance.deckZone.childCount < 30)
-                        DeckEditManager.Instance.AddCardToDeck(cardData);
-                }
+                if (eventData.button == PointerEventData.InputButton.Middle)
+                    DeckEditManager.Instance.AddCardToDeck(cardData, transform.GetSiblingIndex() + 1);
                 else if (eventData.button == PointerEventData.InputButton.Right)
-                {
                     DeckEditManager.Instance.RemoveCardFromDeck(this);
-                }
             }
         }
     }
@@ -454,6 +451,19 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         if (modifiedPower2 < 0) modifiedPower2 = 0;
         if (modifiedEnergy1 < 0) modifiedEnergy1 = 0;
         if (modifiedEnergy2 < 0) modifiedEnergy2 = 0;
+
+        if (IsZeroPowerMove(0)) modifiedPower1 = 0;
+        if (IsZeroPowerMove(1)) modifiedPower2 = 0;
+    }
+
+    /// <summary>
+    /// カードに書かれたパワーが0の技。パワー補正を受けず常に0で、表示は「-」。
+    /// </summary>
+    public bool IsZeroPowerMove(int moveIndex)
+    {
+        return cardKind == CardKind.バトラー
+            && model is BattlerModel battler
+            && (moveIndex == 0 ? battler.power1 : battler.power2) <= 0;
     }
 
     public void ResetBonuses()
@@ -533,13 +543,39 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
             ReuseTargetCard = false
         };
 
-        foreach (var skill in skills)
-        {
-            if (skill == null || !skill.CanUseAt(ActiveTiming.起動効果, location, context))
-                continue;
+        var usable = skills
+            .Where(skill => skill != null && skill.CanUseAt(ActiveTiming.起動効果, location, context))
+            .ToList();
+        if (usable.Count == 0) return;
 
-            await SkillManager.ResolveDeclaredIgnition(this, skill, context);
+        var chosen = usable.Count == 1 ? usable[0] : await ChooseActivatedSkill(usable);
+        if (chosen == null) return;
+
+        await SkillManager.ResolveDeclaredIgnition(this, chosen, context);
+    }
+
+    static async Task<SkillDB> ChooseActivatedSkill(List<SkillDB> usable)
+    {
+        var ui = OpponentSelectUI.Ensure();
+        if (ui == null) return usable[0];
+
+        var labels = new string[usable.Count];
+        for (int i = 0; i < usable.Count; i++)
+        {
+            string name = usable[i].スキル名;
+            if (string.IsNullOrWhiteSpace(name))
+                name = usable[i].GetDisplayTypeName();
+            labels[i] = string.IsNullOrWhiteSpace(name) ? $"効果{i + 1}" : name;
         }
+
+        const string title = "どの効果を使用しますか？";
+        var sync = OnlineSyncManager.Instance;
+        bool online = BattleManager.Instance != null && BattleManager.Instance.IsOnlineMode;
+        int index = sync == null
+            ? await ui.WaitForChoice(title, labels, null)
+            : await sync.WhileOpponentDecides(() => ui.WaitForChoice(title, labels, null), notifyOpponent: online);
+
+        return index >= 0 && index < usable.Count ? usable[index] : null;
     }
 
     public void AddPassiveEffect(ActivePassiveEffect effect)
@@ -565,22 +601,55 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         }
     }
 
-    public void RemovePassivesFromSource(CardController source)
+    /// <summary>
+    /// 出し元の付与を外す。付与が書いていた状態異常も、ほかに同じ付与が無ければ外す。
+    /// </summary>
+    public bool RemovePassivesFromSource(CardController source)
     {
         if (source == null || passiveEffects == null)
-            return;
+            return false;
 
+        var removedStatuses = new List<StatusAilmentType>();
         int before = passiveEffects.Count;
-        passiveEffects.RemoveAll(effect => effect != null && effect.SourceCard == source);
+        passiveEffects.RemoveAll(effect =>
+        {
+            if (effect == null || effect.SourceCard != source)
+                return false;
+            if (effect.PassiveEffect is ApplyStatusAilmentSkill statusSkill)
+                removedStatuses.Add(statusSkill.状態異常);
+            return true;
+        });
         if (passiveEffects.Count == before)
-            return;
+            return false;
 
+        RemoveStatusesNoLongerGranted(removedStatuses);
         ResetBonuses();
         RecalculateModifiedPowers();
         UpdatePassiveEffectUI();
+        return true;
+    }
+
+    /// <summary>
+    /// 付与で付いた状態異常は期限なしで付くので、付与が無くなったらここで外す。
+    /// </summary>
+    void RemoveStatusesNoLongerGranted(IEnumerable<StatusAilmentType> types)
+    {
+        foreach (var type in types.Distinct())
+        {
+            bool stillGranted = passiveEffects.Any(e =>
+                e?.PassiveEffect is ApplyStatusAilmentSkill other && other.状態異常 == type);
+            if (!stillGranted)
+                RemoveStatus(type);
+        }
     }
 
     public void RemoveAllPassiveEffects()
+    {
+        BattleManager.Instance?.RememberEnhancementsLeftBy(this);
+        ClearPassiveEffectsOnly();
+    }
+
+    public void ClearPassiveEffectsOnly()
     {
         passiveEffects.Clear();
         ResetBonuses();
@@ -599,6 +668,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
             if (effect.RemainingTurns != 0)
                 continue;
 
+            BattleManager.Instance?.NoteExpiredEnhancement(effect.SourceCard);
+
             if (effect.PassiveEffect is ApplyStatusAilmentSkill statusSkill)
                 expiredStatuses.Add(statusSkill.状態異常);
             if (effect.RunsOnExpire && effect.PassiveEffect is GrantExpireSkill expire && expire.CanResolveOnExpire)
@@ -609,14 +680,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         passiveEffects.RemoveAll(e => e != null && e.RemainingTurns == 0);
         if (passiveEffects.Count < beforeCount)
         {
-            foreach (var type in expiredStatuses.Distinct())
-            {
-                bool stillGranted = passiveEffects.Any(e =>
-                    e?.PassiveEffect is ApplyStatusAilmentSkill other && other.状態異常 == type);
-                if (!stillGranted)
-                    RemoveStatus(type);
-            }
-
+            RemoveStatusesNoLongerGranted(expiredStatuses);
             ResetBonuses();
             RecalculateModifiedPowers();
         }
@@ -652,13 +716,13 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     }
 
     /// <summary>
-    /// 指定された技が制限されているかチェック
+    /// 付いているターン制限で、指定の技が使えないかチェック
     /// </summary>
-    public bool IsSkillRestricted(int skillID, ElementList skillElement)
+    public bool IsMoveRestricted(int moveIndex, ElementList moveElement)
     {
         foreach (var restriction in turnRestrictions)
         {
-            if (restriction.IsSkillRestricted(skillID, skillElement))
+            if (restriction.Restricts(moveIndex, moveElement))
             {
                 return true;
             }
@@ -1069,7 +1133,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     }
 
     /// <summary>
-    /// 「毒」のダメージ適用。エンドフェイズに 1。このダメージだけでは HP は 1 で止まる。
+    /// 「毒」のダメージ適用。エンドフェイズに 2。このダメージだけでは HP は 1 で止まる。
     /// </summary>
     public int ApplyPoisonDamage()
     {
@@ -1078,19 +1142,38 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         if (curHp <= 1)
             return 0;
 
-        curHp -= 1;
-        return 1;
+        int damage = Mathf.Min(2, curHp - 1);
+        curHp -= damage;
+        return damage;
+    }
+
+    /// <summary>
+    /// 付与済みの状態異常を、効果ごと外す。新しい状態異常を付ける直前に使う。
+    /// </summary>
+    public void RemoveGrantedStatusAilments()
+    {
+        RemovePassiveWhere(skill => skill is ApplyStatusAilmentSkill);
+        if (statusAilments == null || statusAilments.Count == 0)
+            return;
+
+        statusAilments.Clear();
+        RefreshHitRate();
+        UpdateDisplay();
     }
 
     public void ApplyStatus(StatusAilmentType type, int turns, string sourceName, bool syncOnline = true)
     {
+        if (type == StatusAilmentType.None)
+            return;
+
         if (statusAilments == null)
             statusAilments = new List<StatusAilment>();
 
         if (StatusAilment.ClearsWhenDamaged(type))
             turns = -1;
 
-        statusAilments.RemoveAll(ailment => ailment != null && ailment.Type == type);
+        // 状態異常は同時に1つ。残っているものは外してから、今の1つだけにする。
+        statusAilments.Clear();
         statusAilments.Add(new StatusAilment(type, turns, sourceName));
         RefreshHitRate();
         UpdateDisplay();
@@ -1237,6 +1320,8 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
         RefreshHitRate();
         UpdateDisplay();
+        if (allGrants)
+            _ = BattleManager.Instance?.RetireEnhancementsIfSpent(this);
     }
 
     public static bool CleanseNeedsRecalc(CleanseCategory categories)

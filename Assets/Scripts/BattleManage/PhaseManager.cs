@@ -32,9 +32,9 @@ public class PhaseManager : MonoBehaviour
     bool currentPhaseOwnedByLocal;
     public bool OwnsCurrentPhase => phaseInitialized && currentPhaseOwnedByLocal;
 
-    [Header("フェーズ進行ボタン")]
     [SerializeField] private Button nextPhaseButton;
     int playingTweenCount;
+    const int OnlinePhaseTransitionDelayMs = 100;
     
 
     private void Awake()
@@ -68,20 +68,23 @@ public class PhaseManager : MonoBehaviour
         // オンライン対戦時のフェーズ進行制御
         if (OnlineSyncManager.Instance.IsOnlineMode)
         {
+            // ホストが、先攻側に合わせてドローから始める。クライアントはホストの通知を待つ。
             if (OnlineSyncManager.Instance.IsHostPlayer)
-            {
-                if (OnlineSyncManager.Instance.IsMyTurn)
-                    _ = ExecuteInitialPhase();
-                else
-                    _ = OnlineSyncManager.Instance.BeginOpeningClientTurn();
-            }
-            // クライアントはホストからの通知でターンを開始する
+                _ = OnlineSyncManager.Instance.BeginActiveSideTurn();
         }
         else
         {
             // オフライン時は通常通りフェーズ進行を開始
             _ = ExecuteOfflinePhases();
         }
+    }
+
+    /// <summary>
+    /// ホスト手番のドローから、ボタン待ちを経てターン終了まで進める。
+    /// </summary>
+    public Task RunOnlineHostTurn()
+    {
+        return ExecuteInitialPhase();
     }
 
     /// <summary>
@@ -132,52 +135,6 @@ public class PhaseManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// スレーブ側の初期フェーズ実行
-    /// </summary>
-    private async Task ExecuteSlaveInitialPhase()
-    {
-        // ドローフェイズの実行
-        await ExecuteDrawPhaseWithSync();
-
-        // メインフェイズへの移行
-        await TransitionToSlaveMainPhase();
-
-        // スレーブ側の場合もNextPhaseButtonを有効化してプレイヤー操作を待つ
-        await WaitForPlayerAction("バトルフェイズへ");
-
-        // バトルフェイズ以降の処理を続行
-        await ExecuteSlaveRemainingPhases();
-    }
-    
-    /// <summary>
-    /// スレーブ側のメインフェイズへの移行
-    /// </summary>
-    private async Task TransitionToSlaveMainPhase()
-    {
-        await ApplyPhaseAsync(TurnPhase.メインフェイズ);
-        
-        // スレーブ側：メインフェイズへの移行をホストに通知
-        OnlineSyncManager.Instance.NotifyPhaseToHost(TurnPhase.メインフェイズ);
-    }
-    
-    /// <summary>
-    /// スレーブ側のバトルフェイズ以降のフェーズを実行
-    /// </summary>
-    private async Task ExecuteSlaveRemainingPhases()
-    {
-        // 現在のターンがどちらのターンかを判定
-        bool isHostTurn = BattleManager.Instance.IsActiveSideTurn;
-        string currentPlayer = isHostTurn ? "ホスト" : "スレーブ";
-        // バトルフェイズ（プレイヤー操作）
-        // WaitForPlayerActionでボタンを待ち、ボタンが押されるとHandleNextPhaseButton→NextPhase()が呼ばれる
-        // NextPhase()でエンドフェイズが処理されるため、ここではエンドフェイズを直接呼ばない
-        await ExecutePhase(TurnPhase.バトルフェイズ, currentPlayer, async () => await WaitForPlayerAction("エンドフェイズへ"), true);
-        
-        // エンドフェイズはNextPhase()で処理されるため、ここでは呼ばない
-        // スレーブ側でのターン切り替えはHandleNextPhaseButtonで処理されるため、ここでは呼ばない
-    }
-    
     /// <summary>
     /// バトルフェイズ以降のフェーズを実行
     /// </summary>
@@ -251,13 +208,10 @@ public class PhaseManager : MonoBehaviour
         
         // フェーズ完了後にUI更新（次のフェーズの準備）
         UpdatePhaseUI();
-        
-        // フェーズ間の待機時間（オンライン/オフラインで調整）
-        if (phase == TurnPhase.ドローフェイズ || phase == TurnPhase.エンドフェイズ)
-        {
-            int delayTime = isOnlineMode ? 10 : 100; // オンライン時は最小限、オフライン時は少し長め
-            await Task.Delay(delayTime);
-        }
+
+        // オフラインの間だけ、フェイズの切り替わりを少し見せる。オンラインは相手の完了通知で進む。
+        if (!isOnlineMode && (phase == TurnPhase.ドローフェイズ || phase == TurnPhase.エンドフェイズ))
+            await Task.Delay(10);
     }
 
     /// <summary>
@@ -265,9 +219,9 @@ public class PhaseManager : MonoBehaviour
     /// </summary>
     private async Task WaitForPlayerAction(string buttonText)
     {
-        // 最小限の待機時間
-        await Task.Delay(10);
-        
+        if (!OnlineSyncManager.Instance.IsOnlineMode)
+            await Task.Delay(10);
+
         if (OnlineSyncManager.Instance.IsOnlineMode)
         {
             // オンライン対戦時
@@ -280,10 +234,8 @@ public class PhaseManager : MonoBehaviour
             }
             else
             {
-                // 相手のターン中はボタンを確実に無効化
+                // 相手のターン中はボタンを確実に無効化。進行は相手の通知で届く。
                 DisableNextPhaseButton();
-                // ホスト主導方式では、ホストからの通知を待つだけ
-                await Task.Delay(10);
             }
         }
         else
@@ -298,7 +250,9 @@ public class PhaseManager : MonoBehaviour
 
     private async void NextTurn()
     {
-        await Task.Delay(500);
+        // オンラインはエンドフェイズの相互完了を待ってから来る。時間では間を空けない。
+        if (!OnlineSyncManager.Instance.IsOnlineMode)
+            await Task.Delay(500);
 
         // オンライン対戦時はOnlineSyncManagerに処理を委譲（ターン数増減も含む）
         if (OnlineSyncManager.Instance.IsOnlineMode)
@@ -346,12 +300,13 @@ public class PhaseManager : MonoBehaviour
             // オンライン対戦時はリスナーを設定
             if (OnlineSyncManager.Instance.IsOnlineMode)
             {
-                nextPhaseButton.onClick.RemoveAllListeners();
-                nextPhaseButton.onClick.AddListener(() => 
-                {
-                    CardContextMenu.DismissTransientWindows();
-                    OnlineSyncManager.Instance.HandleNextPhaseButton();
-                });
+            nextPhaseButton.onClick.RemoveAllListeners();
+            nextPhaseButton.onClick.AddListener(async () =>
+            {
+                nextPhaseButton.interactable = false;
+                CardContextMenu.DismissTransientWindows();
+                await OnlineSyncManager.Instance.HandleNextPhaseButton();
+            });
             }
         }
         else
@@ -413,10 +368,10 @@ public class PhaseManager : MonoBehaviour
             // 即座にボタンを非表示にして重複クリックを防ぐ
             DisableNextPhaseButton();
             
-            // オンライン対戦時はOnlineSyncManagerに処理を委譲
+            // オンライン対戦時は、エンドフェイズの処理が終わってからボタン待ちを解く
             if (OnlineSyncManager.Instance.IsOnlineMode)
             {
-                OnlineSyncManager.Instance.HandleNextPhaseButton();
+                await OnlineSyncManager.Instance.HandleNextPhaseButton();
             }
             else
             {
@@ -457,9 +412,18 @@ public class PhaseManager : MonoBehaviour
     /// <summary>
     /// フェイズを切り替え、自分のフェイズ開始時・終了時のスキル確認を待つ。
     /// 同じフェイズへの再設定ではスキルは走らない。
+    /// すでにスキル処理が残っているときは、それが空になってから切り替える。
     /// </summary>
     public async Task ApplyPhaseAsync(TurnPhase next)
     {
+        if (SkillChainManager.Instance != null)
+            await SkillChainManager.Instance.WaitUntilIdle();
+
+        // 相手から届いたフェイズは待たずに反映し、両画面の切り替えをそろえる
+        bool isOnline = OnlineSyncManager.Instance != null && OnlineSyncManager.Instance.IsOnlineMode;
+        if (isOnline && IsLocalTurn() && (!phaseInitialized || CurrentPhase != next))
+            await Task.Delay(OnlinePhaseTransitionDelayMs);
+
         bool changed = !phaseInitialized || CurrentPhase != next;
         TurnPhase previous = CurrentPhase;
         bool leavingOwnedByLocal = phaseInitialized && currentPhaseOwnedByLocal;

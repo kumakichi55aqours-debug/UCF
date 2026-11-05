@@ -112,7 +112,7 @@ public partial class BattleManager
         MarkAttackerMoveFinished(attacker);
         ClearTargetHighlights();
 
-        if (IsTargetSelectionMode)
+        if (selectedAttacker != null)
             EndMoveTargetSelection();
     }
     #endregion
@@ -312,7 +312,7 @@ public partial class BattleManager
 
         MarkAttackerMoveFinished(attacker);
 
-        if (IsTargetSelectionMode)
+        if (selectedAttacker != null)
             EndMoveTargetSelection();
     }
 
@@ -323,6 +323,7 @@ public partial class BattleManager
         if (!OnlineSyncManager.Instance.CanPlayerOperateCards()) return;
         if (attacker == null || attacker.hasUsedMove || attacker.IsActionBlocked) return;
         if (NoGrantMoveSkill.Blocks(attacker, moveIndex)) return;
+        if (MoveRestrictionSkill.Blocks(attacker, moveIndex)) return;
 
         bool moveHit = attacker.RollMoveHit();
         int extraHits = moveHit ? MultiHitSkill.RollExtraHits(attacker, moveIndex) : 0;
@@ -392,7 +393,8 @@ public partial class BattleManager
             return;
         }
 
-        if (MoveTargetEvasion.IsMultiSelect(attacker, moveIndex))
+        if (MoveTargetEvasion.IsMultiSelect(attacker, moveIndex)
+            && !MoveTargetEvasion.UpToMoveZoneIsEmpty(attacker, moveIndex))
         {
             await BeginMultiMoveSelection(attacker, moveIndex);
             return;
@@ -433,10 +435,9 @@ public partial class BattleManager
                 BeginStunResolveDefer();
                 try
                 {
-                    if (await ConsumeOpponentMoveCancellation(attacker, moveIndex, null))
+                    if (await FinishMoveDeclaration(attacker, moveIndex, null))
                         return;
 
-                    await ProcessMoveOnUseSkills(attacker, moveIndex, null);
                     await ApplyDamageToAllEnemyBattlers(attacker, moveIndex, legal);
                 }
                 finally
@@ -460,10 +461,9 @@ public partial class BattleManager
         BeginStunResolveDefer();
         try
         {
-            if (await ConsumeOpponentMoveCancellation(attacker, moveIndex, null))
+            if (await FinishMoveDeclaration(attacker, moveIndex, null))
                 return;
 
-            await ProcessMoveOnUseSkills(attacker, moveIndex, null);
             if (!ConsumeMoveHit(attacker))
             {
                 Vector3 missPos = attacker.isMyCard ? eFieldZone.position : pFieldZone.position;
@@ -513,7 +513,7 @@ public partial class BattleManager
         BeginStunResolveDefer();
         try
         {
-            await ProcessMoveOnUseSkills(attacker, moveIndex, attacker);
+            await ProcessMoveOnUseSkills(attacker, moveIndex, attacker, playActivation: false);
             await ProcessMoveUsedAfterSkills(attacker, moveIndex, attacker);
 
             MarkAttackerMoveFinished(attacker);
@@ -558,10 +558,9 @@ public partial class BattleManager
             BeginStunResolveDefer();
             try
             {
-                if (await ConsumeOpponentMoveCancellation(attacker, moveIndex, null))
+                if (await FinishMoveDeclaration(attacker, moveIndex, null))
                     return;
 
-                await ProcessMoveOnUseSkills(attacker, moveIndex, null);
                 await ApplyDamageToAllEnemyBattlers(attacker, moveIndex, list, emphasizeTargets: true);
             }
             finally
@@ -628,11 +627,9 @@ public partial class BattleManager
         BeginStunResolveDefer();
         try
         {
-            if (await ConsumeOpponentMoveCancellation(attacker, moveIndex, enemyCard))
+            // 拡大→カットイン→技使用時→「相手の技使用時」。技を受ける時はそのさらにあと。
+            if (await FinishMoveDeclaration(attacker, moveIndex, enemyCard))
                 return;
-
-            // 技1/技2使用時の窓を閉じてから技使用時を開く。同時に発火すると後者が入れ子になり、技を受ける時まで窓が残る
-            await ProcessMoveOnUseSkills(attacker, moveIndex, enemyCard);
             if (!ConsumeMoveHit(attacker))
             {
                 await FinishMissedMove(attacker, moveIndex, enemyCard, enemyCard.transform.position);
@@ -640,20 +637,29 @@ public partial class BattleManager
             }
 
             int finalDamage;
+            bool cancelled;
             if (enemyCard.cardKind == CardKind.バトラー)
             {
                 var resolved = await ResolveIncomingBattlerDamage(attacker, enemyCard, moveIndex);
                 enemyCard = resolved.target;
                 finalDamage = resolved.damage;
+                cancelled = resolved.cancelled;
             }
             else
             {
                 int calculatedDamage = GetMoveDamageAgainst(attacker, enemyCard, moveIndex);
                 var received = await ProcessDamageReceivedSkills(enemyCard, attacker, moveIndex, ElementList.None, calculatedDamage);
                 finalDamage = attacker.ModifyOutgoingMoveDamage(received.Damage);
+                cancelled = received.Cancelled;
             }
 
-            // 拡大は「相手の技使用時」の収集より前に再生済み。ここは対象の強調から。
+            if (cancelled)
+            {
+                HandleMoveCancelled(attacker);
+                return;
+            }
+
+            // 拡大は技使用時より前に再生済み。ここは対象の強調から。
             if (enemyCard != null)
                 await CardAnimationManager.Instance.EmphasizeSelectedCards(new[] { enemyCard });
             await CardAnimationManager.Instance.PlayMoveImpact(attacker.transform, enemyCard.transform, enemyCard);
@@ -705,6 +711,7 @@ public partial class BattleManager
             await CardAnimationManager.Instance.EmphasizeSelectedCards(enemyBattlers);
 
         // 各相手バトラーに対してダメージを適用
+        var hitBattlers = new List<CardController>();
         foreach (var enemyBattler in enemyBattlers)
         {
             if (enemyBattler == null)
@@ -714,6 +721,12 @@ public partial class BattleManager
 
             // 技を受ける時のスキルをイベント駆動で処理する
             var received = await ProcessDamageReceivedSkills(enemyBattler, attacker, moveIndex, attackerElement, calculatedDamage);
+            if (received.Cancelled)
+            {
+                await FinishCancelledMultiTargetMove(attacker, moveIndex, hitBattlers);
+                return;
+            }
+            hitBattlers.Add(enemyBattler);
             int finalDamage = attacker.ModifyOutgoingMoveDamage(received.Damage);
 
             // ── ステップ3: 矢印→ヒット音→対象の点滅 ──
@@ -756,6 +769,26 @@ public partial class BattleManager
         PersistentEffectManager.Instance?.RecalculateImmediately();
     }
 
+    /// <summary>
+    /// 複数対象の途中で技キャンセルされたとき。残りの対象と技使用後は行わず、与えたダメージはそのまま残す。
+    /// </summary>
+    async Task FinishCancelledMultiTargetMove(CardController attacker, int moveIndex, IReadOnlyList<CardController> hitBattlers)
+    {
+        ClearTargetHighlights();
+
+        foreach (var hit in hitBattlers)
+        {
+            if (hit == null)
+                continue;
+
+            await HandleGraveyardTransition(hit, attacker, moveIndex);
+            ResolveStunIfAlive(hit);
+        }
+
+        HandleMoveCancelled(attacker);
+        PersistentEffectManager.Instance?.RecalculateImmediately();
+    }
+
     void PayMoveEnergy(CardController attacker, int amount)
     {
         if (attacker.isMyCard)
@@ -775,17 +808,31 @@ public partial class BattleManager
     }
 
     /// <summary>
-    /// 技1／技2使用時のあと、技使用時を処理する。外れた技でも呼ぶ。
-    /// 効果処理が終わってから、技のカットインを出して終わるまで待つ。
+    /// 拡大・カットイン・技使用時まで処理してから「相手の技使用時」を開く。
+    /// キャンセルされたら true。
     /// </summary>
-    async Task ProcessMoveOnUseSkills(CardController attacker, int moveIndex, CardController targetCard)
+    public async Task<bool> FinishMoveDeclaration(CardController attacker, int moveIndex, CardController targetCard)
     {
+        await ProcessMoveOnUseSkills(attacker, moveIndex, targetCard);
+        return await ConsumeOpponentMoveCancellation(attacker, moveIndex, targetCard);
+    }
+
+    /// <summary>
+    /// 技を使うカードの拡大とカットインを出してから、技1／技2使用時、技使用時を処理する。外れた技でも呼ぶ。
+    /// 技1/技2使用時の窓を閉じてから技使用時を開く。同時に発火すると後者が入れ子になる。
+    /// </summary>
+    async Task ProcessMoveOnUseSkills(CardController attacker, int moveIndex, CardController targetCard, bool playActivation = true)
+    {
+        if (CardAnimationManager.Instance != null)
+        {
+            if (playActivation)
+                await CardAnimationManager.Instance.AnimateSkillActivation(attacker, playMoveSe: true);
+            await CardAnimationManager.Instance.PlayMoveCutIn(attacker, moveIndex);
+        }
+
         var specificTrigger = (moveIndex == 0) ? SkillTrigger.技1使用時 : SkillTrigger.技2使用時;
         await ProcessSkillTriggerAndWait(specificTrigger, attacker, targetCard, moveIndex: moveIndex);
         await ProcessSkillTriggerAndWait(SkillTrigger.技使用時, attacker, targetCard, moveIndex: moveIndex);
-
-        if (CardAnimationManager.Instance != null)
-            await CardAnimationManager.Instance.PlayMoveCutIn(attacker, moveIndex);
     }
 
     /// <summary>
@@ -856,16 +903,12 @@ public partial class BattleManager
     }
 
     /// <summary>
-    ///「相手の技使用時」のスキルの発動確認。
-    /// 収集の前に、技を使うカードの拡大を再生する。
+    ///「相手の技使用時」のスキルの発動確認。技使用時スキルの処理が終わってから開く。
     /// </summary>
     public async Task TriggerOpponentMoveUsedSkills(CardController attacker, int moveIndex, CardController targetCard = null)
     {
         if (attacker == null)
             return;
-
-        if (CardAnimationManager.Instance != null)
-            await CardAnimationManager.Instance.AnimateSkillActivation(attacker, playMoveSe: true);
 
         cancelledOpponentMoves.Remove(attacker);
         ClearMoveDamageNullification(attacker);

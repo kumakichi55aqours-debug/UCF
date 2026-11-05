@@ -272,6 +272,9 @@ public partial class BattleManager
             return;
         }
 
+        // 1体は選んだ瞬間にクリック受付を閉じる。赤枠はハイライト側が技の演出まで持つ。
+        moveTargetChoiceOpen = false;
+        IsTargetSelectionMode = false;
         IsAwaitingMoveTargetChoice = false;
         PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
         MessageManager.Instance.HideMessage();

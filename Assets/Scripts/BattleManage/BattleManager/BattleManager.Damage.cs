@@ -100,7 +100,7 @@ public partial class BattleManager
     /// バトラーへの技ダメージを決め、攻撃対象を移すスキルがあれば移し先で計算し直す。
     /// 同じバトラーの「技を受ける時」は、この攻撃では一度だけ処理する。
     /// </summary>
-    async Task<(CardController target, int damage)> ResolveIncomingBattlerDamage(CardController attacker, CardController target, int moveIndex)
+    async Task<(CardController target, int damage, bool cancelled)> ResolveIncomingBattlerDamage(CardController attacker, CardController target, int moveIndex)
     {
         var resolved = new HashSet<CardController>();
         int damage = 0;
@@ -115,6 +115,8 @@ public partial class BattleManager
             }
 
             var received = await ProcessDamageReceivedSkills(target, attacker, moveIndex, element, calculated);
+            if (received.Cancelled)
+                return (target, 0, true);
             damage = received.Damage;
             if (!IsRedirectDestination(target, received.RedirectedTarget))
                 break;
@@ -124,7 +126,7 @@ public partial class BattleManager
 
         if (attacker != null)
             damage = attacker.ModifyOutgoingMoveDamage(damage);
-        return (target, damage);
+        return (target, damage, false);
     }
 
     int CalculateIncomingMoveDamage(CardController attacker, CardController target, int moveIndex, out ElementList attackerElement)
@@ -140,6 +142,9 @@ public partial class BattleManager
             return baseDamage;
 
         attackerElement = moveIndex == 0 ? battler.moveElement1 : battler.moveElement2;
+        if (attacker.IsZeroPowerMove(moveIndex))
+            return 0;
+
         int calculated = baseDamage + attacker.CalculateElementDamageModification(attackerElement, targetBattler, moveIndex);
         if (CheckInvalidPassive(target, attackerElement))
             calculated = 0;
@@ -168,7 +173,10 @@ public partial class BattleManager
         return to.transform.parent == zone;
     }
 
-    private async Task<(int Damage, CardController RedirectedTarget)> ProcessDamageReceivedSkills(CardController defender, CardController attacker, int moveIndex, ElementList attackerElement, int calculatedDamage)
+    /// <summary>
+    /// 「技を受ける時」を処理する。技キャンセルされたら Cancelled が true で、ダメージは与えない。
+    /// </summary>
+    private async Task<(int Damage, CardController RedirectedTarget, bool Cancelled)> ProcessDamageReceivedSkills(CardController defender, CardController attacker, int moveIndex, ElementList attackerElement, int calculatedDamage)
     {
         var damageContext = new SkillContext(defender, defender, defender.transform);
         damageContext.SetDamageInfo(calculatedDamage, attackerElement, moveIndex, attacker);
@@ -185,8 +193,11 @@ public partial class BattleManager
                 await SkillChainManager.Instance.ProcessChainForCollectedSkills(collectedSkills);
             }
 
+            if (IsApplyOpponentMoveCancellation(attacker))
+                return (0, null, true);
+
             int finalDamage = damageContext.FinalDamage ?? calculatedDamage;
-            return (finalDamage, damageContext.移した攻撃対象);
+            return (finalDamage, damageContext.移した攻撃対象, false);
         }
 
         var offlineSkills = SkillManager.CollectSkillsForTrigger(
@@ -199,13 +210,16 @@ public partial class BattleManager
             || offlineSkills.NonTPForcedSkills.Count > 0
             || offlineSkills.NonTPOptionalSkills.Count > 0;
         if (!hasSkills)
-            return (calculatedDamage, null);
+            return (calculatedDamage, null, false);
 
         if (SkillChainManager.Instance != null)
             await SkillChainManager.Instance.ProcessChainForCollectedSkills(offlineSkills);
 
+        if (IsApplyOpponentMoveCancellation(attacker))
+            return (0, null, true);
+
         int offlineDamage = damageContext.FinalDamage ?? calculatedDamage;
-        return (offlineDamage, damageContext.移した攻撃対象);
+        return (offlineDamage, damageContext.移した攻撃対象, false);
     }
 
     /// <summary>
@@ -278,6 +292,9 @@ public partial class BattleManager
             if (targetCard.curHp <= 0)
             {
                 bool token = targetCard.トークン;
+                // 持ち主は、今いるゾーンで決まる。墓地へ送ったあとに相手側の一覧同期が
+                // このカードを破棄するので、4ダメージの向きは送る前に控える。
+                bool ownerIsLocal = targetCard.isMyCard;
                 // HPを最大HPにリセットしてから墓地に送る。トークンは墓地へ行かない。
                 targetCard.RemoveAllPassiveEffects();
                 targetCard.ClearStatusAilments(keepStun: true);
@@ -293,14 +310,13 @@ public partial class BattleManager
                 var defeatTrigger = (moveIndex == 0) ? SkillTrigger.技1撃破時 : SkillTrigger.技2撃破時;
                 await ProcessSkillTriggerAndWait(defeatTrigger, attacker, targetCard);
                 await ProcessSkillTriggerAndWait(SkillTrigger.技撃破時, attacker, targetCard);
+                await RetireEnhancementsIfSpent(targetCard);
 
                 // トークンの撃破では、持ち主へダメージを与えない。
                 if (!token)
                 {
-                    if (targetCard.isMyCard)
-                        pResources.Hp.TakeDamage(4);
-                    else
-                        eResources.Hp.TakeDamage(4);
+                    ResourceSystem ownerHp = ownerIsLocal ? pResources?.Hp : eResources?.Hp;
+                    ownerHp?.TakeDamage(4);
                 }
                 else
                     TokenExit.VanishLocal(targetCard);
@@ -311,10 +327,12 @@ public partial class BattleManager
             FieldModel targetField = (FieldModel)targetCard.model;
             if (targetCard.curHp <= 0)
             {
-                // HPを最大HPにリセットしてから墓地に送る
+                // HPを最大HPにリセットしてから墓地に送る。強化は、この墓地送りのあとに片づける。
+                targetCard.RemoveAllPassiveEffects();
                 targetCard.curHp = targetField.maxHp;
                 targetCard.UpdateDisplay();
                 await DiscardToOwnGrave(targetCard, attacker);
+                await RetireEnhancementsIfSpent(targetCard);
             }
         }
         
@@ -335,6 +353,9 @@ public partial class BattleManager
             graveZone as RectTransform,
             targetCard,
             suppressSkillTrigger: true);
+        // 発動アニメは相手の墓地表示を番号で拾う。一覧を先に送ってから窓を開く。
+        if (IsOnlineMode && targetCard != null && targetCard.isMyCard)
+            OnlineSyncManager.Instance?.SendGraveInfoToOpponent();
         await ProcessSkillTriggerAndWait(SkillTrigger.墓地に送られた時, targetCard, attacker, fromLocation);
     }
 
@@ -356,6 +377,7 @@ public partial class BattleManager
 
         if (targetCard.トークン)
         {
+            await RetireEnhancementsIfSpent(targetCard);
             if (syncOnline)
                 TokenExit.VanishSynced(targetCard, playExplosion: true);
             else
@@ -390,6 +412,7 @@ public partial class BattleManager
         else if (targetCard.cardKind == CardKind.フィールド && targetCard.model is FieldModel field)
             targetCard.curHp = field.maxHp;
         targetCard.UpdateDisplay();
+        await RetireEnhancementsIfSpent(targetCard);
     }
 
     private async void HandlePlayerDefeat()

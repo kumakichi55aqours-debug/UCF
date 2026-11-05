@@ -29,6 +29,10 @@ public class CleanseSkill : SkillDB
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
 
+    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     [Tooltip("外したいものを複数選べる。技使用済みは hasUsedMove。状態異常だけなら、下のリストが空のとき全部外す。")]
     public CleanseCategory 解除内容 = CleanseCategory.技使用済み;
 
@@ -37,13 +41,14 @@ public class CleanseSkill : SkillDB
 
     public override TargetList GetEffectTarget() => 効果対象;
     public override SearchCriteria GetTargetCriteria() => 対象条件;
+    public override IReadOnlyList<ISkillCondition> GetTargetState() => 対象状態;
 
     public override async Task ActivateEffect(SkillContext context)
     {
         if (解除内容 == CleanseCategory.なし)
             return;
 
-        var targets = KeepContextCard(await CollectTargetsAsync(効果対象, 対象側, 対象条件, context), context);
+        var targets = KeepContextCard(await CollectTargetsAsync(効果対象, 対象側, 対象条件, context, 対象状態), context);
 
         var kinds = new List<string>();
         var ids = new List<int>();
@@ -52,7 +57,7 @@ public class CleanseSkill : SkillDB
 
         foreach (var card in targets)
         {
-            if (card == null)
+            if (card == null || !ConditionsMet(対象状態, card))
                 continue;
 
             CardAddress.TryAdd(card, kinds, ids, zoneNames, indices);
@@ -74,5 +79,15 @@ public class CleanseSkill : SkillDB
 
         if (CardController.CleanseNeedsRecalc(解除内容))
             PersistentEffectManager.Instance?.QueueRecalculation();
+    }
+
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is CleanseSkill cleanse)
+        {
+            cleanse.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
+        }
     }
 }

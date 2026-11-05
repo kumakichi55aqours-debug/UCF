@@ -44,8 +44,8 @@ MonoBehaviour:
     "\u9078\u629E\u65B9\u5F0F": 0
   description1: "6\u30BF\u30FC\u30F3\u306E\u9593\u3001\u5BFE\u8C61\u30D0\u30C8\u30E9\u30FC\u306E\u62801\u306E\u5C5E\u6027\u3092\u96F7\u5C5E\u6027\u306B\u3059\u308B\u3002"
   moveName2: "\u30A8\u30EC\u30AF\u30C8\u30EA\u30C3\u30AF\u30C6\u30FC\u30EB"
-  energy2: 1
-  power2: 8
+  energy2: 2
+  power2: 6
   moveElement2: 4
   target2: 1
   "\u5BFE\u8C61\u50742": 1
@@ -85,6 +85,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 1
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u9078\u629E\u30AB\u30FC\u30C9\u306E\u30B3\u30B9\u30C8\u3092\u6255\u3046": 0
     - rid: 3123607303214858423
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:
@@ -170,6 +171,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": 6
         "\u4ED8\u4E0E\u30B9\u30AD\u30EB":
           rid: 3123607469372211253
@@ -200,6 +202,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u5BFE\u8C61\u5C5E\u6027": 
         "\u9069\u7528\u5148": 0
         "\u5909\u66F4\u5F8C\u5C5E\u6027": 4
@@ -232,6 +235,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": 4
         "\u4ED8\u4E0E\u30B9\u30AD\u30EB":
           rid: 3123607650032943164
@@ -330,6 +334,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 2
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": -1
         "\u4ED8\u4E0E\u30B9\u30AD\u30EB":
           rid: 7839874194012635151
@@ -360,6 +365,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u72B6\u614B": []
         "\u5BFE\u8C61\u5C5E\u6027": 
         "\u9069\u7528\u5148": 2
         "\u5909\u66F4\u5F8C\u5C5E\u6027": 4

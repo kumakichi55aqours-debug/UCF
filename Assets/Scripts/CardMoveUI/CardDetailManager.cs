@@ -141,17 +141,8 @@ public class CardDetailManager : MonoBehaviour
             elementImage2.sprite = CardIconManager.Instance.GetElementSprite(battler.moveElement2);
             moveDescription2Text.text = ConvertSkillDescription(battler.description2);
 
-            int displayPower1 = cc.modifiedPower1;
-            if (BattleManager.Instance != null)
-                displayPower1 += BattleManager.Instance.GetGlobalPowerBonus(cc);
-            power1Text.text = displayPower1.ToString();
-            power1Text.color = GetColorFromPowerDiff(battler.power1, displayPower1);
-
-            int displayPower2 = cc.modifiedPower2;
-            if (BattleManager.Instance != null)
-                displayPower2 += BattleManager.Instance.GetGlobalPowerBonus(cc);
-            power2Text.text = displayPower2.ToString();
-            power2Text.color = GetColorFromPowerDiff(battler.power2, displayPower2);
+            ShowPower(power1Text, cc, 0, battler.power1, cc.modifiedPower1);
+            ShowPower(power2Text, cc, 1, battler.power2, cc.modifiedPower2);
             ApplyTokenFrame(card != null && card.トークン);
         }
         else if (card.model is TacticsModel tactics)
@@ -259,9 +250,13 @@ public class CardDetailManager : MonoBehaviour
         description = description.Replace("氷属性", "<sprite name=\"Icons_Ice\">");
         description = description.Replace("光属性", "<sprite name=\"Icons_Light\">");
         description = description.Replace("闇属性", "<sprite name=\"Icons_Dark\">");
-        description = description.Replace("力タイプ", "<sprite name=\"Icons_POW\">");
-        description = description.Replace("速タイプ", "<sprite name=\"Icons_SPD\">");
-        description = description.Replace("技タイプ", "<sprite name=\"Icons_TEC\">");
+        description = description.Replace("力タイプ", "<sprite name=\"Icons_力\">");
+        description = description.Replace("速タイプ", "<sprite name=\"Icons_速\">");
+        description = description.Replace("技タイプ", "<sprite name=\"Icons_技\">");
+        description = description.Replace("作戦タイプ", "<sprite name=\"Icons_作戦\">");
+        description = description.Replace("強化タイプ", "<sprite name=\"Icons_強化\">");
+        description = description.Replace("即応タイプ", "<sprite name=\"Icons_即応\">");
+        description = description.Replace("Fタイプ", "<sprite name=\"Icons_フィールド\">");
         description = description.Replace("PAS", "<sprite name=\"Icons_PAS\">");
         description = description.Replace("ZON", "<sprite name=\"Icons_ZON\">");
         description = description.Replace("ACT", "<sprite name=\"Icons_ACT\">");
@@ -278,24 +273,24 @@ public class CardDetailManager : MonoBehaviour
         description = description.Replace("混乱", "<color=#FF8AD4>混乱</color>");
         description = description.Replace("従属", "<color=#C8E68C>従属</color>");
         description = description.Replace("石化", "<color=#4BC0C0>石化</color>");
-        description = description.Replace("+1", "<color=#FF6933>1</color>");
-        description = description.Replace("+2", "<color=#FF6933>2</color>");
-        description = description.Replace("+3", "<color=#FF6933>3</color>");
-        description = description.Replace("+4", "<color=#ff1745>4</color>");
-        description = description.Replace("+5", "<color=#ff1745>5</color>");
-        description = description.Replace("+6", "<color=#ff1745>6</color>");
-        description = description.Replace("+7", "<color=#ff1aab>7</color>");
-        description = description.Replace("+8", "<color=#ff1aab>8</color>");
-        description = description.Replace("+9", "<color=#ff1aab>9</color>");
-        description = description.Replace("-1", "<color=#9cff9c>1</color>");
-        description = description.Replace("-2", "<color=#9cff9c>2</color>");
-        description = description.Replace("-3", "<color=#9cff9c>3</color>");
-        description = description.Replace("-4", "<color=#8ad2ff>4</color>");
-        description = description.Replace("-5", "<color=#8ad2ff>5</color>");
-        description = description.Replace("-6", "<color=#8ad2ff>6</color>");
-        description = description.Replace("-7", "<color=#6b9fff>7</color>");
-        description = description.Replace("-8", "<color=#6b9fff>8</color>");
-        description = description.Replace("-9", "<color=#6b9fff>9</color>");
+        description = description.Replace("+1", "<color=#ffff0a>1</color>");
+        description = description.Replace("+2", "<color=#ffff0a>2</color>");
+        description = description.Replace("+3", "<color=#ffff0a>3</color>");
+        description = description.Replace("+4", "<color=#ff4c4c>4</color>");
+        description = description.Replace("+5", "<color=#ff4c4c>5</color>");
+        description = description.Replace("+6", "<color=#ff4c4c>6</color>");
+        description = description.Replace("+7", "<color=#ff66b2>7</color>");
+        description = description.Replace("+8", "<color=#ff66b2>8</color>");
+        description = description.Replace("+9", "<color=#ff66b2>9</color>");
+        description = description.Replace("-1", "<color=#60ffff>1</color>");
+        description = description.Replace("-2", "<color=#60ffff>2</color>");
+        description = description.Replace("-3", "<color=#60ffff>3</color>");
+        description = description.Replace("-4", "<color=#6bb5ff>4</color>");
+        description = description.Replace("-5", "<color=#6bb5ff>5</color>");
+        description = description.Replace("-6", "<color=#6bb5ff>6</color>");
+        description = description.Replace("-7", "<color=#bc7aff>7</color>");
+        description = description.Replace("-8", "<color=#bc7aff>8</color>");
+        description = description.Replace("-9", "<color=#bc7aff>9</color>");
 
         return description;
     }
@@ -320,6 +315,22 @@ public class CardDetailManager : MonoBehaviour
         if (shown > printedCost) return Color.red;
         if (shown < printedCost) return Color.green;
         return Color.white;
+    }
+
+    void ShowPower(TextMeshProUGUI label, CardController cc, int moveIndex, int printedPower, int modifiedPower)
+    {
+        if (cc.IsZeroPowerMove(moveIndex))
+        {
+            label.text = "-";
+            label.color = Color.white;
+            return;
+        }
+
+        int displayPower = modifiedPower;
+        if (BattleManager.Instance != null)
+            displayPower += BattleManager.Instance.GetGlobalPowerBonus(cc);
+        label.text = displayPower.ToString();
+        label.color = GetColorFromPowerDiff(printedPower, displayPower);
     }
 
     private Color GetColorFromPowerDiff(int basePower, int modified)

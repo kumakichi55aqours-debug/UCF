@@ -231,6 +231,37 @@ public class ToGraveSkill : SkillDB
         }
     }
 
+    /// <summary>
+    /// この端末のデッキから、指定の種類とIDのカードをすべて墓地へ送る。
+    /// 相手の効果で頼まれたときに使う。動きと一覧は相手へ同期する。
+    /// </summary>
+    public static async Task SendOwnDeckCardsToGrave(CardKind kind, int id)
+    {
+        var battle = BattleManager.Instance;
+        if (battle == null)
+            return;
+
+        var matches = battle.pBattleDeck
+            .Where(d => d != null && d.カード種類 == kind && d.カードID == id)
+            .ToList();
+        if (matches.Count == 0)
+            return;
+
+        await new ToGraveSkill().MoveDeckCardsToGrave(
+            battle.pBattleDeck,
+            matches,
+            battle.pDeckZone,
+            battle.pGraveZone,
+            syncToOpponent: true);
+        battle.UpdateDeckUI();
+
+        if (OnlineSyncManager.Instance != null)
+        {
+            OnlineSyncManager.Instance.SyncDeckCountToOpponent();
+            OnlineSyncManager.Instance.SendGraveInfoToOpponent();
+        }
+    }
+
     async Task<List<CardController>> MoveDeckCardsToGrave(
         List<DeckCard> deck,
         List<DeckCard> cardsToSend,
@@ -254,6 +285,11 @@ public class ToGraveSkill : SkillDB
                 continue;
             }
             CaptureHpOutput(tempCard);
+
+            // デッキが0枚になった瞬間の表示更新は、残っている子を消す。
+            // 動いているカードをデッキに置いたままだと、複数枚の最後の1枚がここで消える。
+            if (BattleManager.Instance.mainCanvas != null)
+                tempCard.transform.SetParent(BattleManager.Instance.mainCanvas.transform, true);
 
             bool sentSync = false;
             if (syncToOpponent && OnlineSyncManager.Instance != null)
@@ -382,6 +418,9 @@ public class ToGraveSkill : SkillDB
             {
                 await OnlineSyncManager.Instance.WaitForOpponentAnimation();
             }
+
+            if (BattleManager.Instance != null)
+                await BattleManager.Instance.RetireEnhancementsIfSpent(card);
 
             if (cardIsReceiversHand && syncOnline)
             {

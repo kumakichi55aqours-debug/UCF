@@ -262,6 +262,7 @@ public class ToHandSkill : SkillDB
         if (fromOwnDimension)
             OnlineSyncManager.Instance?.SendDimensionInfoToOpponent();
         SkillChainManager.Instance?.ScheduleCardReturnedToHand(fromLocation, returnedIsMyCard, notifyOpponent: true);
+        await BattleManager.Instance.RetireEnhancementsIfSpent(card);
         return card;
     }
 
@@ -454,9 +455,10 @@ public class ToHandSkill : SkillDB
             await CardAnimationManager.Instance.AnimateSearchedCard(card, 1.2f, 1.1f, 0.2f);
         }
 
+        SkillChainManager.Instance?.ScheduleCardReturnedToHand(fromLocation, returnedIsMyCard, notifyOpponent: true);
+        await battle.RetireEnhancementsIfSpent(card);
         battle.enemyHand.Add(new DeckCard(kind, id, cost, categories, cardType));
         UnityEngine.Object.Destroy(card.gameObject);
-        SkillChainManager.Instance?.ScheduleCardReturnedToHand(fromLocation, returnedIsMyCard, notifyOpponent: true);
     }
 
     /// <summary>
