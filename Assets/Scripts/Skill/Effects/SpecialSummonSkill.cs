@@ -8,6 +8,8 @@ using UnityEngine;
 [SkillDisplayName("登場")]
 public class SpecialSummonSkill : SkillDB
 {
+    const int BattlerZoneLimit = 5;
+
     public List<CardZoneType> 参照ゾーンリスト = new List<CardZoneType>();
     public SearchCriteria 対象条件;
 
@@ -67,6 +69,14 @@ public class SpecialSummonSkill : SkillDB
             .Where(d => !UniqueCardRestrictionHelper.IsDeckCardRestrictedByUniqueCardRule(d, isMyCard))
             .ToList();
 
+        // 登場先のバトラーゾーンが埋まっているカードは選べない。デッキのカードは発動した側に作って出す。
+        bool deckToPlayer = context.発動カード != null && context.発動カード.isPlayerCard;
+        existingCandidates = existingCandidates
+            .Where(c => HasBattlerRoom(c.isMyCard))
+            .ToList();
+        if (!HasBattlerRoom(deckToPlayer))
+            deckCandidates.Clear();
+
         // --- 3) 候補がないチェック ---
         if (existingCandidates.Count == 0 && deckCandidates.Count == 0)
         {
@@ -122,6 +132,17 @@ public class SpecialSummonSkill : SkillDB
 
             sel = selections[0];
         }
+
+        // 選んでいるあいだに埋まったときは出さない
+        bool selectedIsPlayer = sel.source == SelectionItem.SourceType.Existing
+            ? sel.existingCard != null && sel.existingCard.isMyCard
+            : deckToPlayer;
+        if (!HasBattlerRoom(selectedIsPlayer))
+        {
+            Debug.Log("SpecialSummonSkill: バトラーゾーンが埋まっているため登場しません。");
+            return;
+        }
+
         CardController toSummon = null;
 
         // --- 6) 選択結果に応じて本格処理 ---
@@ -195,6 +216,15 @@ public class SpecialSummonSkill : SkillDB
         }
 
         BattleManager.Instance.UpdateDeckUI();
+    }
+
+    static bool HasBattlerRoom(bool playerSide)
+    {
+        var battle = BattleManager.Instance;
+        if (battle == null)
+            return false;
+        Transform zone = playerSide ? battle.pBattlerZone : battle.eBattlerZone;
+        return zone != null && zone.childCount < BattlerZoneLimit;
     }
 
     static int PaymentOf(SelectionItem item)

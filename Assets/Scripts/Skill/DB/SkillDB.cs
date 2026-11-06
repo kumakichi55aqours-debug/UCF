@@ -398,6 +398,7 @@ public class CardSearchFilter
     public List<CardTypeList> カードのタイプ = new List<CardTypeList>();
     public List<CardCategoryList> カードのカテゴリ = new List<CardCategoryList>();
     public string サーチワード;
+    public bool 満たさない時 = false;
 
     public bool IsEmpty()
     {
@@ -455,7 +456,8 @@ public class SearchCriteria
                 コスト比較設定済み = true,
                 カードのタイプ = filter.カードのタイプ != null ? new List<CardTypeList>(filter.カードのタイプ) : new List<CardTypeList>(),
                 カードのカテゴリ = filter.カードのカテゴリ != null ? new List<CardCategoryList>(filter.カードのカテゴリ) : new List<CardCategoryList>(),
-                サーチワード = filter.サーチワード
+                サーチワード = filter.サーチワード,
+                満たさない時 = filter.満たさない時,
             });
         }
 
@@ -512,18 +514,42 @@ public class SearchCriteria
         if (フィルタ == null || フィルタ.Count == 0)
             return true;
 
-        bool sawFilter = false;
+        bool sawPositiveFilter = false;
+        bool matchedPositiveFilter = false;
+
         for (int i = 0; i < フィルタ.Count; i++)
         {
             var filter = フィルタ[i];
+
             if (filter == null || filter.IsEmpty())
                 continue;
-            sawFilter = true;
-            if (match(filter))
-                return true;
+
+            bool result = match(filter);
+
+            // 除外条件
+            if (filter.満たさない時)
+            {
+                // 除外条件に該当したら即座に不成立
+                if (result)
+                    return false;
+            }
+            // 通常条件
+            else
+            {
+                sawPositiveFilter = true;
+
+                // 通常条件は従来どおりOR判定
+                if (result)
+                    matchedPositiveFilter = true;
+            }
         }
 
-        return !sawFilter;
+        // 通常条件が存在する場合は、1つ以上の一致が必要
+        if (sawPositiveFilter)
+            return matchedPositiveFilter;
+
+        // 除外条件しかない場合は、除外されなければ成立
+        return true;
     }
 
     bool PassesCardSource(CardController card, CardController source, IReadOnlyList<CardController> processedCards)

@@ -3,6 +3,22 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
+/// <summary>
+/// 宣言した側が決めた、技の解決方法。オンラインでは番号のまま相手へ送る。
+/// </summary>
+public enum MovePlan
+{
+    対象なし,
+    キャンセル,
+    自分,
+    単体を選ぶ,
+    複数を選ぶ,
+    単体,
+    複数,
+    全員,
+    直接ダメージ,
+}
+
 public partial class BattleManager
 {
     private readonly HashSet<CardController> cancelledOpponentMoves = new HashSet<CardController>();
@@ -152,7 +168,7 @@ public partial class BattleManager
             return;
 
         MessageManager.Instance.ShowMessage("技の対象にできるバトラーがいません");
-        _ = HideNoTargetMessage();
+        HideNoTargetMessage().Forget("HideNoTargetMessage");
     }
 
     async Task HideNoTargetMessage()
@@ -236,7 +252,7 @@ public partial class BattleManager
                 return;
 
             ResourceSystem hp = attacker.isMyCard ? eResources.Hp : pResources.Hp;
-            Transform zone = attacker.isMyCard ? eFieldZone : pFieldZone;
+            Transform zone = GetHpTarget(!attacker.isMyCard);
             while (TakeExtraHit())
             {
                 if (hp == null)
@@ -302,11 +318,23 @@ public partial class BattleManager
     /// <summary>
     /// 技が外れたとき。ダメージと技を受ける時は行わず、技使用後スキルは行う。
     /// </summary>
-    public async Task FinishMissedMove(CardController attacker, int moveIndex, CardController targetCard, Vector3 missPosition)
+    public Task FinishMissedMove(CardController attacker, int moveIndex, CardController targetCard, Vector3 missPosition)
+    {
+        return FinishMissedMove(attacker, moveIndex, targetCard, new[] { missPosition });
+    }
+
+    /// <summary>
+    /// 複数対象の技が外れたとき。「ミス」は対象それぞれの位置に同時に出す。
+    /// </summary>
+    async Task FinishMissedMove(CardController attacker, int moveIndex, CardController targetCard, IReadOnlyList<Vector3> missPositions)
     {
         ClearPendingMoveHit();
 
-        await ShowLabelEffect(missPosition, "ミス", new Color(0.82f, 0.82f, 0.9f));
+        var missColor = new Color(0.82f, 0.82f, 0.9f);
+        var labels = new List<Task>();
+        foreach (var position in missPositions)
+            labels.Add(ShowLabelEffect(position, "ミス", missColor));
+        await Task.WhenAll(labels);
         ClearTargetHighlights();
         await ProcessMoveUsedAfterSkills(attacker, moveIndex, targetCard);
 
@@ -321,101 +349,107 @@ public partial class BattleManager
     public async Task UseMoveAsync(CardController attacker, int moveIndex)
     {
         if (!OnlineSyncManager.Instance.CanPlayerOperateCards()) return;
+        if (IsResolvingMove) return;
         if (attacker == null || attacker.hasUsedMove || attacker.IsActionBlocked) return;
         if (NoGrantMoveSkill.Blocks(attacker, moveIndex)) return;
         if (MoveRestrictionSkill.Blocks(attacker, moveIndex)) return;
+
+        // オンラインで宣言できるのは、自分のBゾーンにいるバトラーだけ
+        if (IsOnlineMode && GetCardIndexInZone(attacker, pBattlerZone) < 0) return;
 
         bool moveHit = attacker.RollMoveHit();
         int extraHits = moveHit ? MultiHitSkill.RollExtraHits(attacker, moveIndex) : 0;
         SetPendingMoveHit(moveHit, extraHits);
 
-        if (IsOnlineMode)
+        var targets = new List<CardController>();
+        MovePlan plan = DecideMovePlan(attacker, moveIndex, targets);
+        if (plan == MovePlan.対象なし)
         {
-            if (GetCardIndexInZone(attacker, pBattlerZone) >= 0)
-            {
-                OnlineSyncManager.Instance.SyncUseMove(attacker, moveIndex, moveHit, extraHits);
-
-                // 自分のカードは直接技使用処理を実行
-                await UseMoveRoutine(attacker, moveIndex);
-                return;
-            }
-
-            ClearPendingMoveHit();
+            AbortMoveNoTarget(attacker);
             return;
         }
 
-        await UseMoveRoutine(attacker, moveIndex);
+        if (IsOnlineMode)
+            OnlineSyncManager.Instance.SyncUseMove(attacker, moveIndex, moveHit, extraHits, plan, targets);
+
+        await ExecuteMovePlan(attacker, moveIndex, plan, targets);
     }
 
-    // 技使用処理
-    public async Task UseMoveRoutine(CardController attacker, int moveIndex)
+    /// <summary>
+    /// 相手が宣言した技を、届いた解決方法と対象のとおりに解決する。こちらの盤面で使えるかどうかは判定し直さない。
+    /// </summary>
+    public async Task ResolveRemoteMove(CardController attacker, int moveIndex, MovePlan plan, IReadOnlyList<CardController> targets)
     {
-        if (attacker != null && attacker.IsActionBlocked)
-        {
-            ClearPendingMoveHit();
-            return;
-        }
+        if (plan == MovePlan.キャンセル)
+            cancelledOpponentMoves.Remove(attacker);
 
+        await ExecuteMovePlan(attacker, moveIndex, plan, targets);
+    }
+
+    /// <summary>
+    /// 宣言した側だけが、技の解決方法と対象を決める。混乱の無作為な対象もここで選ぶ。
+    /// 決まった対象は targets に入れる。対象を選ぶ技では空のまま。
+    /// </summary>
+    MovePlan DecideMovePlan(CardController attacker, int moveIndex, List<CardController> targets)
+    {
         if (IsApplyOpponentMoveCancellation(attacker))
-        {
-            HandleMoveCancelled(attacker);
-            return;
-        }
+            return MovePlan.キャンセル;
 
-        // ── ダメージ／エネルギー取得 ──
         var battler = attacker.model as BattlerModel;
-        int energy = attacker.GetMoveEnergyCost(moveIndex);
+        if (battler == null)
+            return MovePlan.直接ダメージ;
+
+        TargetList targetType = battler.GetMoveTarget(moveIndex);
+        PlayerType moveSide = battler.GetMoveSide(moveIndex);
 
         // 「自分」対象の技は、対象選択・発動演出・ダメージ表示を出さずに解決する
-        if (battler != null)
-        {
-            TargetList moveTarget = moveIndex == 0 ? battler.target1 : battler.target2;
-            if (moveTarget == TargetList.自分)
-            {
-                await ResolveSelfTargetMove(attacker, moveIndex, payEnergy: true);
-                return;
-            }
-        }
-
-        TargetList targetType = battler != null
-            ? battler.GetMoveTarget(moveIndex)
-            : TargetList.None;
-        PlayerType moveSide = battler != null
-            ? battler.GetMoveSide(moveIndex)
-            : PlayerType.プレイヤー;
+        if (targetType == TargetList.自分)
+            return MovePlan.自分;
 
         if (MoveTargetEvasion.IsConfusedMove(attacker, moveIndex)
             && MoveTargetEvasion.ListZoneBattlers(attacker, PlayerType.両方).Count > 0)
         {
-            // 相手側は、宣言した側が選んだ対象の同期を待つ
-            if (!IsOnlineMode || attacker.isMyCard)
-                await ResolveConfusedMove(attacker, moveIndex, payEnergy: true);
-            return;
+            var select = MoveTargetEvasion.MoveSelect(attacker, moveIndex);
+            int needed = select.Count <= 1 ? 1 : select.MinimumCount;
+            var picked = MoveTargetEvasion.PickConfusedTargets(attacker, moveIndex);
+            if (picked.Count < needed)
+                return MovePlan.対象なし;
+
+            Debug.Log($"[混乱] {attacker.cardName} の対象: {string.Join(", ", picked.ConvertAll(card => card.cardName))}");
+            if (select.Count <= 1)
+            {
+                targets.Add(picked[0]);
+                return MovePlan.単体;
+            }
+
+            targets.AddRange(picked);
+            return MovePlan.複数;
         }
 
         if (MoveTargetEvasion.IsMultiSelect(attacker, moveIndex)
             && !MoveTargetEvasion.UpToMoveZoneIsEmpty(attacker, moveIndex))
         {
-            await BeginMultiMoveSelection(attacker, moveIndex);
-            return;
+            var select = MoveTargetEvasion.MoveSelect(attacker, moveIndex);
+            var legal = MoveTargetEvasion.ListLegalTargets(attacker, moveIndex);
+            if (legal.Count < select.MinimumCount)
+                return MovePlan.対象なし;
+
+            bool auto = (select.選択方式 == TargetCountMode.ちょうど && legal.Count == select.Count)
+                || (select.選択方式 == TargetCountMode.まで && legal.Count == 1);
+            if (!auto)
+                return MovePlan.複数を選ぶ;
+
+            targets.AddRange(legal);
+            return MovePlan.複数;
         }
 
         if (MoveTargetEvasion.IsSelectableBattlerTarget(targetType)
             && MoveTargetEvasion.ListZoneBattlers(attacker, moveSide).Count > 0)
         {
-            if (MoveTargetEvasion.ListLegalTargets(attacker, moveIndex).Count == 0)
-            {
-                AbortMoveNoTarget(attacker);
-                return;
-            }
-
-            OpenSingleMoveTargetChoice(attacker, moveIndex, targetType);
-            return;
+            return MoveTargetEvasion.ListLegalTargets(attacker, moveIndex).Count == 0
+                ? MovePlan.対象なし
+                : MovePlan.単体を選ぶ;
         }
-
-        // ── 各ゾーン参照 ──
-        var enemyFZ = attacker.isMyCard ? eFieldZone : pFieldZone;
-        var fieldCards = enemyFZ.GetComponentsInChildren<CardController>();
 
         // 人数を選ぶ対象は上で処理済み。ここはバトラー全員。
         if (targetType == TargetList.バトラー全員)
@@ -425,40 +459,99 @@ public partial class BattleManager
             {
                 var legal = MoveTargetEvasion.LegalBattlers(present, targetType, moveSide);
                 if (legal.Count == 0)
-                {
-                    AbortMoveNoTarget(attacker);
-                    return;
-                }
+                    return MovePlan.対象なし;
 
-                PayMoveEnergy(attacker, energy);
-
-                BeginStunResolveDefer();
-                try
-                {
-                    if (await FinishMoveDeclaration(attacker, moveIndex, null))
-                        return;
-
-                    await ApplyDamageToAllEnemyBattlers(attacker, moveIndex, legal);
-                }
-                finally
-                {
-                    EndStunResolveDefer();
-                }
-                return;
+                targets.AddRange(legal);
+                return MovePlan.全員;
             }
         }
 
-        // ── 次点：フィールド。単体と同じ解決に乗せる。両方の端末がこの処理を回すので、ダメージは送らない。 ──
+        // 次点：フィールド。単体と同じ解決に乗せる。
+        var enemyFZ = attacker.isMyCard ? eFieldZone : pFieldZone;
+        var fieldCards = enemyFZ.GetComponentsInChildren<CardController>();
         if (fieldCards.Length > 0)
         {
-            await SelectTargetRoutine(fieldCards[0], attacker, moveIndex, payEnergy: true);
-            return;
+            targets.Add(fieldCards[0]);
+            return MovePlan.単体;
         }
 
-        // ── どちらもいないなら直接ダメージ ──
-        PayMoveEnergy(attacker, energy);
+        return MovePlan.直接ダメージ;
+    }
 
-        BeginStunResolveDefer();
+    /// <summary>
+    /// 決まった解決方法で技を解決する。宣言した側と受け取った側で同じ処理を通る。
+    /// </summary>
+    async Task ExecuteMovePlan(CardController attacker, int moveIndex, MovePlan plan, IReadOnlyList<CardController> targets)
+    {
+        switch (plan)
+        {
+            case MovePlan.キャンセル:
+                HandleMoveCancelled(attacker);
+                return;
+            case MovePlan.自分:
+                await ResolveSelfTargetMove(attacker, moveIndex, payEnergy: true);
+                return;
+            case MovePlan.単体を選ぶ:
+                var battler = attacker.model as BattlerModel;
+                OpenSingleMoveTargetChoice(attacker, moveIndex, battler != null ? battler.GetMoveTarget(moveIndex) : TargetList.バトラー1体);
+                return;
+            case MovePlan.複数を選ぶ:
+                OpenMultiMoveTargetChoice(attacker, moveIndex);
+                return;
+            case MovePlan.単体:
+                CardController target = targets != null && targets.Count > 0 ? targets[0] : null;
+                if (target == null)
+                {
+                    Debug.LogError($"[BattleManager] 技の対象が見つかりません: {attacker.cardName}");
+                    ClearPendingMoveHit();
+                    return;
+                }
+                await SelectTargetRoutine(target, attacker, moveIndex, payEnergy: true);
+                return;
+            case MovePlan.複数:
+                await ResolveSelectedMoveTargets(attacker, moveIndex, targets, payEnergy: true);
+                return;
+            case MovePlan.全員:
+                await ResolveAllTargetsMove(attacker, moveIndex, targets);
+                return;
+            case MovePlan.直接ダメージ:
+                await ResolveDirectMove(attacker, moveIndex);
+                return;
+            default:
+                ClearPendingMoveHit();
+                return;
+        }
+    }
+
+    /// <summary>
+    /// 「バトラー全員」の技。選ばれた対象の強調はしない。
+    /// </summary>
+    async Task ResolveAllTargetsMove(CardController attacker, int moveIndex, IReadOnlyList<CardController> targets)
+    {
+        PayMoveEnergy(attacker, attacker.GetMoveEnergyCost(moveIndex));
+
+        BeginMoveResolution();
+        try
+        {
+            if (await FinishMoveDeclaration(attacker, moveIndex, null))
+                return;
+
+            await ApplyDamageToAllEnemyBattlers(attacker, moveIndex, targets);
+        }
+        finally
+        {
+            EndMoveResolution();
+        }
+    }
+
+    /// <summary>
+    /// 相手の場にバトラーもフィールドもいないときの、プレイヤーHPへの直接ダメージ。
+    /// </summary>
+    async Task ResolveDirectMove(CardController attacker, int moveIndex)
+    {
+        PayMoveEnergy(attacker, attacker.GetMoveEnergyCost(moveIndex));
+
+        BeginMoveResolution();
         try
         {
             if (await FinishMoveDeclaration(attacker, moveIndex, null))
@@ -473,7 +566,7 @@ public partial class BattleManager
 
             ResourceSystem directHp = attacker.isMyCard ? eResources.Hp : pResources.Hp;
             int hpBefore = directHp != null ? directHp.currentHp : 0;
-            Transform directHpZone = attacker.isMyCard ? eFieldZone : pFieldZone;
+            Transform directHpZone = GetHpTarget(!attacker.isMyCard);
             await CardAnimationManager.Instance.PlayMoveImpact(attacker.transform, directHpZone, null);
             int directDamageBase = GetMoveBaseDamage(attacker, moveIndex);
             int protectedDamage = ApplyHPProtectionToDirectHP(attacker, moveIndex, directDamageBase, directHp != null ? directHp.currentHp : 0);
@@ -489,12 +582,12 @@ public partial class BattleManager
             if (directHp != null && hpBefore > 0 && directHp.currentHp <= 0)
                 directHp.NotifyHpDepleted();
             ClearTargetHighlights();
-            await ProcessMoveUsedAfterSkills(attacker, moveIndex, null);
             MarkAttackerMoveFinished(attacker, resetDamageBonus: false);
+            await ProcessMoveUsedAfterSkills(attacker, moveIndex, null);
         }
         finally
         {
-            EndStunResolveDefer();
+            EndMoveResolution();
         }
     }
 
@@ -510,7 +603,7 @@ public partial class BattleManager
         if (payEnergy)
             PayMoveEnergy(attacker, attacker.GetMoveEnergyCost(moveIndex));
 
-        BeginStunResolveDefer();
+        BeginMoveResolution();
         try
         {
             await ProcessMoveOnUseSkills(attacker, moveIndex, attacker, playActivation: false);
@@ -520,7 +613,7 @@ public partial class BattleManager
         }
         finally
         {
-            EndStunResolveDefer();
+            EndMoveResolution();
         }
     }
     #endregion
@@ -537,40 +630,32 @@ public partial class BattleManager
         if (attacker == null)
             return;
 
-        resolvingSelectedMove = true;
+        var list = new List<CardController>();
+        if (targets != null)
+        {
+            foreach (var card in targets)
+            {
+                if (card != null && !list.Contains(card))
+                    list.Add(card);
+            }
+        }
+
+        RetainChosenTargetHighlights(list);
+
+        if (payEnergy)
+            PayMoveEnergy(attacker, attacker.GetMoveEnergyCost(moveIndex));
+
+        BeginMoveResolution();
         try
         {
-            var list = new List<CardController>();
-            if (targets != null)
-            {
-                foreach (var card in targets)
-                {
-                    if (card != null && !list.Contains(card))
-                        list.Add(card);
-                }
-            }
+            if (await FinishMoveDeclaration(attacker, moveIndex, null))
+                return;
 
-            RetainChosenTargetHighlights(list);
-
-            if (payEnergy)
-                PayMoveEnergy(attacker, attacker.GetMoveEnergyCost(moveIndex));
-
-            BeginStunResolveDefer();
-            try
-            {
-                if (await FinishMoveDeclaration(attacker, moveIndex, null))
-                    return;
-
-                await ApplyDamageToAllEnemyBattlers(attacker, moveIndex, list, emphasizeTargets: true);
-            }
-            finally
-            {
-                EndStunResolveDefer();
-            }
+            await ApplyDamageToAllEnemyBattlers(attacker, moveIndex, list, emphasizeTargets: true);
         }
         finally
         {
-            resolvingSelectedMove = false;
+            EndMoveResolution();
         }
     }
 
@@ -594,8 +679,6 @@ public partial class BattleManager
                 AbortMoveNoTarget(attacker);
             return;
         }
-
-        Debug.Log($"[混乱] {attacker.cardName} の対象: {string.Join(", ", picked.ConvertAll(card => card.cardName))}");
 
         if (select.Count <= 1)
         {
@@ -624,7 +707,7 @@ public partial class BattleManager
         if (payEnergy)
             PayMoveEnergy(attacker, attacker.GetMoveEnergyCost(moveIndex));
 
-        BeginStunResolveDefer();
+        BeginMoveResolution();
         try
         {
             // 拡大→カットイン→技使用時→「相手の技使用時」。技を受ける時はそのさらにあと。
@@ -668,8 +751,6 @@ public partial class BattleManager
             Color effectColor = attacker.GetDamageEffectColor(moveIndex, finalDamage);
             await ShowDamageEffectToCard(enemyCard, finalDamage, effectColor);
 
-            Debug.Log("攻撃実行！　ダメージ：" + finalDamage);
-
             await Task.Delay(800);
 
             // ── ステップ5: HPにダメージを適用 ──
@@ -678,23 +759,23 @@ public partial class BattleManager
             await PlayExtraHitsOnCard(attacker, enemyCard, moveIndex);
             ClearTargetHighlights();
 
+            MarkAttackerMoveFinished(attacker, setHasUsedMove:true);
             await ProcessMoveUsedAfterSkills(attacker, moveIndex, enemyCard);
 
-            // HP が 0 以下になった場合、墓地へ移動。撃破したときは、技撃破時の前に使用済みにする
-            bool defeatedByMove = await HandleGraveyardTransition(enemyCard, attacker, moveIndex);
+            if (enemyCard.curHp <= 0)
+                await HandleGraveyardTransition(enemyCard, attacker, moveIndex);
+
             ResolveStunIfAlive(enemyCard);
-            // 技撃破時に攻撃者自身が墓地へ送られると、相手側では墓地UIの再構築でこの参照が破棄される
-            MarkAttackerMoveFinished(attacker, setHasUsedMove: !defeatedByMove);
             PersistentEffectManager.Instance?.RecalculateImmediately();
         }
         finally
         {
-            EndStunResolveDefer();
+            EndMoveResolution();
         }
     }
 
     // 選ばれたバトラー、またはバトラー全員にダメージを適用する。
-    // 「技を受ける時」は、この一覧のバトラーごとに1回走る。
+    // 「技を受ける時」は、この一覧のバトラーごとに1回走る。攻撃対象を移したときは、移し先でも1回走る。
     public async Task ApplyDamageToAllEnemyBattlers(CardController attacker, int moveIndex, IReadOnlyList<CardController> enemyBattlers, bool emphasizeTargets = false)
     {
         if (enemyBattlers == null)
@@ -702,13 +783,29 @@ public partial class BattleManager
 
         if (!ConsumeMoveHit(attacker))
         {
-            Vector3 missPos = attacker != null ? attacker.transform.position : Vector3.zero;
-            await FinishMissedMove(attacker, moveIndex, null, missPos);
+            var missPositions = new List<Vector3>();
+            foreach (var enemyBattler in enemyBattlers)
+            {
+                if (enemyBattler != null)
+                    missPositions.Add(enemyBattler.transform.position);
+            }
+            if (missPositions.Count == 0)
+                missPositions.Add(attacker != null ? attacker.transform.position : Vector3.zero);
+
+            await FinishMissedMove(attacker, moveIndex, null, missPositions);
             return;
         }
 
         if (emphasizeTargets && CardAnimationManager.Instance != null)
             await CardAnimationManager.Instance.EmphasizeSelectedCards(enemyBattlers);
+
+        // すでにこの技の対象になっているバトラーへは、攻撃対象を移せない
+        var occupied = new HashSet<CardController>();
+        foreach (var enemyBattler in enemyBattlers)
+        {
+            if (enemyBattler != null)
+                occupied.Add(enemyBattler);
+        }
 
         // 各相手バトラーに対してダメージを適用
         var hitBattlers = new List<CardController>();
@@ -717,55 +814,49 @@ public partial class BattleManager
             if (enemyBattler == null)
                 continue;
 
-            int calculatedDamage = CalculateIncomingMoveDamage(attacker, enemyBattler, moveIndex, out ElementList attackerElement);
-
-            // 技を受ける時のスキルをイベント駆動で処理する
-            var received = await ProcessDamageReceivedSkills(enemyBattler, attacker, moveIndex, attackerElement, calculatedDamage);
-            if (received.Cancelled)
+            var resolved = await ResolveIncomingBattlerDamage(attacker, enemyBattler, moveIndex, occupied);
+            if (resolved.cancelled)
             {
                 await FinishCancelledMultiTargetMove(attacker, moveIndex, hitBattlers);
                 return;
             }
-            hitBattlers.Add(enemyBattler);
-            int finalDamage = attacker.ModifyOutgoingMoveDamage(received.Damage);
+
+            CardController hit = resolved.target;
+            occupied.Add(hit);
+            hitBattlers.Add(hit);
+            int finalDamage = resolved.damage;
 
             // ── ステップ3: 矢印→ヒット音→対象の点滅 ──
-            await CardAnimationManager.Instance.PlayMoveImpact(attacker.transform, enemyBattler.transform, enemyBattler);
+            await CardAnimationManager.Instance.PlayMoveImpact(attacker.transform, hit.transform, hit);
 
             // ── ステップ4: ダメージエフェクトを表示（元パワーと最終ダメージの差で色を決める） ──
             Color effectColor = attacker.GetDamageEffectColor(moveIndex, finalDamage);
-            await ShowDamageEffectToCard(enemyBattler, finalDamage, effectColor);
+            await ShowDamageEffectToCard(hit, finalDamage, effectColor);
 
             // ── ステップ5: HPにダメージを適用 ──
-            if (enemyBattler.cardKind == CardKind.バトラー)
+            if (hit.cardKind == CardKind.バトラー)
             {
-                enemyBattler.curHp -= finalDamage;
-                enemyBattler.UpdateDisplay();
+                hit.curHp -= finalDamage;
+                hit.UpdateDisplay();
             }
 
             // 各ターゲット間で少し待機
-            await Task.Delay(250);
+            await Task.Delay(300);
         }
 
-        await PlayExtraHitsOnEach(attacker, moveIndex, enemyBattlers);
+        await PlayExtraHitsOnEach(attacker, moveIndex, hitBattlers);
         await Task.Delay(800);
         ClearTargetHighlights();
 
+        MarkAttackerMoveFinished(attacker, setHasUsedMove: true);
         await ProcessMoveUsedAfterSkills(attacker, moveIndex);
 
         // 各ターゲットの墓地への移動を処理。撃破したときは、技撃破時の前に使用済みにする
-        bool defeatedByMove = false;
-        foreach (var enemyBattler in enemyBattlers)
+        foreach (var hit in hitBattlers)
         {
-            if (enemyBattler == null)
-                continue;
-
-            if (await HandleGraveyardTransition(enemyBattler, attacker, moveIndex))
-                defeatedByMove = true;
-            ResolveStunIfAlive(enemyBattler);
+            await HandleGraveyardTransition(hit, attacker, moveIndex);
+            ResolveStunIfAlive(hit);
         }
-
-        MarkAttackerMoveFinished(attacker, setHasUsedMove: !defeatedByMove);
         PersistentEffectManager.Instance?.RecalculateImmediately();
     }
 
@@ -988,22 +1079,28 @@ public partial class BattleManager
         attacker.GetComponent<BattleCardView>()?.UpdateCanUseMovePanel();
     }
 
-    int stunResolveDeferDepth;
+    int moveResolutionDepth;
     readonly List<CardController> pendingStunResolves = new List<CardController>();
 
     /// <summary>
-    /// 技の解決が終わるまで、気絶と混乱の解除を保留する。技撃破時スキルのあとにまとめて外す。
+    /// エネルギーを払ってから技撃破時スキルが終わるまで真。演出の待ち時間も含む。
+    /// このあいだは技の宣言、メニュー、フェイズ操作を受け付けない。
     /// </summary>
-    void BeginStunResolveDefer()
+    public bool IsResolvingMove => moveResolutionDepth > 0;
+
+    /// <summary>
+    /// 技の解決を始める。終わるまで、気絶と混乱の解除を保留する。技撃破時スキルのあとにまとめて外す。
+    /// </summary>
+    void BeginMoveResolution()
     {
-        stunResolveDeferDepth++;
+        moveResolutionDepth++;
     }
 
-    void EndStunResolveDefer()
+    void EndMoveResolution()
     {
-        if (stunResolveDeferDepth > 0)
-            stunResolveDeferDepth--;
-        if (stunResolveDeferDepth == 0)
+        if (moveResolutionDepth > 0)
+            moveResolutionDepth--;
+        if (moveResolutionDepth == 0)
             FlushPendingStunResolves();
     }
 
@@ -1022,7 +1119,7 @@ public partial class BattleManager
         if (!card.HasStatus(StatusAilmentType.気絶) && !card.HasStatus(StatusAilmentType.混乱))
             return;
 
-        if (stunResolveDeferDepth > 0)
+        if (moveResolutionDepth > 0)
         {
             if (!pendingStunResolves.Contains(card))
                 pendingStunResolves.Add(card);

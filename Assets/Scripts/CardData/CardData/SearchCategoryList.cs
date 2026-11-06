@@ -133,6 +133,8 @@ public enum TargetList
     フィールド1枚,
     手札,
     プレイヤー,
+    墓地,
+    異次元,
 }
 
 public static class TargetScope

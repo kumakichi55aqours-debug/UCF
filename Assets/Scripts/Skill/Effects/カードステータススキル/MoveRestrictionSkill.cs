@@ -35,7 +35,8 @@ public class MoveRestrictionSkill : SkillDB
 
     public override Task ActivateEffect(SkillContext context)
     {
-        if (!IsPermanent && context?.発動カード != null)
+        // 付与されたターン制限は、付与したときに1回だけ付ける。再計算のたびに付けると重なって残る。
+        if (!IsPermanent && context?.発動カード != null && !context.再計算)
             context.発動カード.AddTurnRestriction(new TurnRestrictionEffect(制限ターン数, 対象技, 対象属性));
         return Task.CompletedTask;
     }

@@ -72,8 +72,7 @@ public partial class BattleManager
     /// </summary>
     public async Task ShowDamageEffectToPlayerHP(int damage, Color effectColor = default)
     {
-        Vector3 targetPos = pFieldZone.transform.position;
-        await ShowEffect(targetPos, damage, effectColor);
+        await ShowEffect(GetHpTarget(true).position, damage, effectColor);
     }
 
     /// <summary>
@@ -81,8 +80,24 @@ public partial class BattleManager
     /// </summary>
     private async Task ShowDamageEffectToEnemyHP(int damage, Color effectColor = default)
     {
-        Vector3 targetPos = eFieldZone.transform.position;
-        await ShowEffect(targetPos, damage, effectColor);
+        await ShowEffect(GetHpTarget(false).position, damage, effectColor);
+    }
+
+    /// <summary>
+    /// HP直接ダメージ時の演出先（HPタイトル）。見つからなければフィールドゾーンを返す。
+    /// </summary>
+    public Transform GetHpTarget(bool player)
+    {
+        if (player)
+        {
+            if (pHpTitle == null)
+                pHpTitle = GameObject.Find("PHpTitle")?.transform;
+            return pHpTitle != null ? pHpTitle : pFieldZone;
+        }
+
+        if (eHpTitle == null)
+            eHpTitle = GameObject.Find("EHPTitle")?.transform;
+        return eHpTitle != null ? eHpTitle : eFieldZone;
     }
 
     /// <summary>
@@ -99,8 +114,13 @@ public partial class BattleManager
     /// <summary>
     /// バトラーへの技ダメージを決め、攻撃対象を移すスキルがあれば移し先で計算し直す。
     /// 同じバトラーの「技を受ける時」は、この攻撃では一度だけ処理する。
+    /// blocked にあるバトラーへは移さず、今の対象のまま受ける。
     /// </summary>
-    async Task<(CardController target, int damage, bool cancelled)> ResolveIncomingBattlerDamage(CardController attacker, CardController target, int moveIndex)
+    async Task<(CardController target, int damage, bool cancelled)> ResolveIncomingBattlerDamage(
+        CardController attacker,
+        CardController target,
+        int moveIndex,
+        ICollection<CardController> blocked = null)
     {
         var resolved = new HashSet<CardController>();
         int damage = 0;
@@ -119,6 +139,8 @@ public partial class BattleManager
                 return (target, 0, true);
             damage = received.Damage;
             if (!IsRedirectDestination(target, received.RedirectedTarget))
+                break;
+            if (blocked != null && blocked.Contains(received.RedirectedTarget))
                 break;
 
             target = received.RedirectedTarget;
@@ -348,11 +370,23 @@ public partial class BattleManager
     {
         Transform graveZone = targetCard.isMyCard ? pGraveZone : eGraveZone;
         CardZoneType fromLocation = CardController.ZoneTypeFromTransform(targetCard.transform.parent);
-        await CardAnimationManager.Instance.AnimateDiscard(
-            targetCard.transform.parent as RectTransform,
-            graveZone as RectTransform,
-            targetCard,
-            suppressSkillTrigger: true);
+        // 相手のカードは、持ち主から墓地一覧が届くと表示を合わせ直す。着く前に届いた一覧は、着いてから当てる。
+        bool enemyArrival = IsOnlineMode && !targetCard.isMyCard;
+        if (enemyArrival)
+            BeginEnemyGraveArrival();
+        try
+        {
+            await CardAnimationManager.Instance.AnimateDiscard(
+                targetCard.transform.parent as RectTransform,
+                graveZone as RectTransform,
+                targetCard,
+                suppressSkillTrigger: true);
+        }
+        finally
+        {
+            if (enemyArrival)
+                EndEnemyGraveArrival();
+        }
         // 発動アニメは相手の墓地表示を番号で拾う。一覧を先に送ってから窓を開く。
         if (IsOnlineMode && targetCard != null && targetCard.isMyCard)
             OnlineSyncManager.Instance?.SendGraveInfoToOpponent();

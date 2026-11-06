@@ -19,11 +19,8 @@ public class CardExistsCondition : ISkillCondition
 {
     [SerializeField] private List<CardZoneType> 対象ゾーンリスト;
     [SerializeField] private SearchCriteria searchCriteria;
-    [Tooltip("サーチに合ったカードのうち、この状態も満たすものだけを数える。状態があるときはデッキを数えない。")]
     [SerializeReference] private List<ISkillCondition> カード状態 = new List<ISkillCondition>();
-    [Tooltip("合致したカードをどう数えるか。異なるタイプは力・速などの種類の数で、同じタイプは1つ。タイプなしは数えない。異なるカードはカード種類とカードIDが同じものを1種類とする。異なるカテゴリの組は、カードが持つカテゴリの組み合わせの種類の数。")]
     [SerializeField] private ZoneCountUnit 数え方 = ZoneCountUnit.カード枚数;
-    [Tooltip("数え方で集めた数と比べる基準。")]
     [SerializeField] private int 基準枚数 = 1;
     [SerializeField] private MatchType 比較タイプ = MatchType.以上;
 

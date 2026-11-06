@@ -292,7 +292,6 @@ public class SkillChainManager : MonoBehaviour
     void NotifySkillResolutionChanged()
     {
         CardContextMenu.DismissTransientWindows();
-        PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
     }
 
     async Task DrainDeferredChains()
@@ -590,7 +589,6 @@ public class SkillChainManager : MonoBehaviour
             ? (collected.Context?.FinalDamage ?? collected.Context?.CalculatedDamage ?? 0)
             : 0;
         SkillChainSync.Instance.SendWindowClosed(activeWindowId, collected.Trigger, trackDamage, damage, collected.Context?.移した攻撃対象);
-        ArmLocalWaiters(collected, trackDamage, damage);
         PublishTacticsIfNeeded(collected);
     }
 
@@ -1301,7 +1299,6 @@ public class SkillChainManager : MonoBehaviour
         if (redirectedTarget != null && participatingCollection?.Context != null)
             participatingCollection.Context.移した攻撃対象 = redirectedTarget;
 
-        ArmLocalWaiters(participatingCollection, hasDamage, finalDamage);
         windowClosedTcs?.TrySetResult(true);
     }
 
@@ -1568,20 +1565,6 @@ public class SkillChainManager : MonoBehaviour
         if (reservedKeys.Contains(Key(card, skillName))) return null;
         if (card.skills == null || !card.skills.Any(s => s != null && s.スキル名 == skillName)) return null;
         return card;
-    }
-
-    static void ArmLocalWaiters(CollectedSkills collected, bool hasDamage, int damage)
-    {
-        var source = collected?.SourceCard;
-        if (hasDamage && source != null && !source.isMyCard)
-        {
-            SkillChainSync.Instance?.ArmDamageWait(damage);
-        }
-
-        if (collected?.Trigger == SkillTrigger.相手の技使用時 && source != null && source.isMyCard)
-        {
-            SkillChainSync.Instance?.ArmMoveWait();
-        }
     }
 
     /// <summary>

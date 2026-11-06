@@ -20,7 +20,7 @@ public partial class BattleManager
         // 召喚元の決定（デフォルトは手札）
         SummonSource actualSummonSource = summonSource ?? SummonSource.手札;
         bool leftOwnDimension = card != null && card.transform.parent == pDimensionZone;
-        OnlineSyncManager.Instance?.NoteCardLeftOpponentDimension(card);
+        OnlineSyncManager.Instance?.NoteCardLeavingOpponentPile(card);
         
         // オンライン対戦時はRPCで同期
         if (IsOnlineMode)
@@ -251,7 +251,7 @@ public partial class BattleManager
             // 召喚完了後にhasUsedMoveを明示的にfalseにリセット
             else
             {
-                await Task.Delay(300);
+                await Task.Delay(400);
                 EventBus.Publish(new SummonCompletedEvent(card, specialSummon, fromLocation));
                 if (card != null && card.cardKind == CardKind.バトラー)
                     card.hasUsedMove = false;

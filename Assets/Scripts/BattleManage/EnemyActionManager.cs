@@ -781,7 +781,7 @@ public class EnemyActionManager : MonoBehaviour
             return;
         }
 
-        await CardAnimationManager.Instance.PlayMoveImpact(enemyCard.transform, battle.pFieldZone, null);
+        await CardAnimationManager.Instance.PlayMoveImpact(enemyCard.transform, battle.GetHpTarget(true), null);
 
         int directDamageBase = battle.GetMoveBaseDamage(enemyCard, moveIndex);
         int protectedDamage = battle.ApplyHPProtectionToDirectHP(enemyCard, moveIndex, directDamageBase, battle.pResources.Hp.currentHp);

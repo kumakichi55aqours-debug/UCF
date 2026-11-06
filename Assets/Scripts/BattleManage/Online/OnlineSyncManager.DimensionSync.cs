@@ -91,18 +91,19 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 相手異次元にいる表示カードが、別の場所へ移る直前に一覧から外す。
+    /// 相手の墓地・異次元にいる表示カードが、別の場所へ移る直前に一覧から外す。
     /// </summary>
-    public void NoteCardLeftOpponentDimension(CardController card)
+    public void NoteCardLeavingOpponentPile(CardController card)
     {
         var battle = BattleManager.Instance;
-        if (card == null || battle == null || battle.eDimensionZone == null)
-            return;
-        if (card.transform.parent != battle.eDimensionZone)
+        Transform zone = card != null ? card.transform.parent : null;
+        if (battle == null || zone == null)
             return;
 
-        int index = battle.GetCardIndexInZone(card, battle.eDimensionZone);
-        RemoveCardFromOpponentDimension(card.cardKind, card.cardID, index);
+        if (zone == battle.eDimensionZone)
+            RemoveCardFromOpponentDimension(card.cardKind, card.cardID, battle.GetCardIndexInZone(card, zone));
+        else if (zone == battle.eGraveZone)
+            RemoveCardFromOpponentGraveyard(card.cardKind, card.cardID, battle.GetCardIndexInZone(card, zone));
     }
 
     [PunRPC]
@@ -188,6 +189,7 @@ public partial class OnlineSyncManager
             if (card == null || battle == null || CardAnimationManager.Instance == null)
                 return;
 
+            NoteCardLeavingOpponentPile(card);
             ResetCardStatusForGrave(card);
             Transform destination = card.isMyCard ? battle.pDimensionZone : battle.eDimensionZone;
             RectTransform from = card.transform.parent as RectTransform;

@@ -235,6 +235,7 @@ public class PersistentEffectManager : MonoBehaviour
             {
                 var context = new SkillContext(card, card, card.transform);
                 context.相手も同じ効果を実行する = true;
+                context.再計算 = true;
                 _ = skillInstance.ActivateEffect(context);
             }
         }
@@ -248,6 +249,7 @@ public class PersistentEffectManager : MonoBehaviour
 
             var context = new SkillContext(card, card, card.transform);
             context.相手も同じ効果を実行する = true;
+            context.再計算 = true;
             _ = passiveEffect.PassiveEffect.ActivateEffect(context);
         }
     }

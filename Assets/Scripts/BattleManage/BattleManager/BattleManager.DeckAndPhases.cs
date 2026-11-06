@@ -171,7 +171,7 @@ public partial class BattleManager
         }
     }
 
-    const int OnlineDrawPauseMs = 100;
+    const int DrawPauseMs = 200;
 
     public async Task ExecuteDrawPhase()
     {
@@ -184,11 +184,7 @@ public partial class BattleManager
             OnlineSyncManager.Instance.SyncOpponentResourcesReset(turnNumber);
 
             if (curTurn > 1)
-            {
-                await Task.Delay(OnlineDrawPauseMs);
-                await DrawCardAsync(pHandZone);
-                await Task.Delay(OnlineDrawPauseMs);
-            }
+                await DrawWithPauses(() => DrawCardAsync(pHandZone));
         }
         else if (IsActiveSideTurn)
         {
@@ -198,7 +194,7 @@ public partial class BattleManager
             OnResourcesReset(true);
 
             if (curTurn > 1)
-                await DrawCardAsync(pHandZone);
+                await DrawWithPauses(() => DrawCardAsync(pHandZone));
         }
         else
         {
@@ -208,13 +204,17 @@ public partial class BattleManager
             OnResourcesReset(false);
 
             if (curTurn > 1)
-                await EnemyDrawCardAsync();
+                await DrawWithPauses(EnemyDrawCardAsync);
         }
 
         await ResetAllUsedCounts();
+    }
 
-        if (!IsOnlineMode)
-            await Task.Delay(200);
+    static async Task DrawWithPauses(System.Func<Task> draw)
+    {
+        await Task.Delay(DrawPauseMs);
+        await draw();
+        await Task.Delay(DrawPauseMs);
     }
 
     // このターンのエンドフェイズで、盤面の経過処理を済ませたターン。
@@ -466,10 +466,24 @@ public partial class BattleManager
         countText.text = count.ToString();
     }
 
+    // 相手手札のカードを、こちらの画面で順に動かしている途中。作り直すと、まだ動かしていないカードが消える。
+    int enemyHandHolds;
+    bool enemyHandRefreshPending;
+
     public void UpdateEnemyHandUI()
     {
+        if (enemyHandHolds > 0)
+        {
+            enemyHandRefreshPending = true;
+            return;
+        }
+
         foreach (Transform child in eHandZone)
+        {
+            // 破棄はフレーム末なので、同じフレームの枚数や住所に数えないよう先に隠す
+            child.gameObject.SetActive(false);
             Destroy(child.gameObject);
+        }
 
         List<DeckCard> cardsToShow = IsOnlineMode ? OnlineSyncManager.Instance.GetOpponentHand() : enemyHand;
         foreach (DeckCard deckCard in cardsToShow)
@@ -484,16 +498,61 @@ public partial class BattleManager
         PersistentEffectManager.Instance?.RecalculateImmediately();
     }
 
+    /// <summary>
+    /// 相手手札の表示カードを動かし終えるまで、手札表示の作り直しを止める。終わったら EndEnemyHandHold を呼ぶ。
+    /// </summary>
+    public void BeginEnemyHandHold()
+    {
+        enemyHandHolds++;
+    }
+
+    public void EndEnemyHandHold()
+    {
+        if (enemyHandHolds > 0)
+            enemyHandHolds--;
+        if (enemyHandHolds > 0 || !enemyHandRefreshPending)
+            return;
+
+        enemyHandRefreshPending = false;
+        UpdateEnemyHandUI();
+    }
+
+    // 一覧の同期で作ったカード。場から動いてきたカードと同じ種類・IDなら、動いてきた方を残す。
+    readonly HashSet<CardController> listCreatedZoneCards = new HashSet<CardController>();
+
+    // 相手のカードが、技でこちらの画面の墓地へ動いている途中の枚数。
+    int enemyGraveArrivals;
+    bool enemyGraveRefreshPending;
+
     public void UpdateEnemyGraveyardUI()
     {
-        foreach (Transform child in eGraveZone)
-            Destroy(child.gameObject);
-
-        foreach (DeckCard deckCard in OnlineSyncManager.Instance.GetOpponentGrave())
+        // 動いてくるカードより先に一覧が届いたら、着いてから合わせる。先に作ると同じカードが2枚になる。
+        if (enemyGraveArrivals > 0)
         {
-            CardController cc = Instantiate(cardPrefab, eGraveZone);
-            cc.Init(deckCard.カード種類, deckCard.カードID);
+            enemyGraveRefreshPending = true;
+            return;
         }
+
+        SyncZoneCards(eGraveZone, OnlineSyncManager.Instance.GetOpponentGrave());
+    }
+
+    /// <summary>
+    /// 相手のカードを、こちらの画面で墓地へ動かし始める。終わったら EndEnemyGraveArrival を呼ぶ。
+    /// </summary>
+    public void BeginEnemyGraveArrival()
+    {
+        enemyGraveArrivals++;
+    }
+
+    public void EndEnemyGraveArrival()
+    {
+        if (enemyGraveArrivals > 0)
+            enemyGraveArrivals--;
+        if (enemyGraveArrivals > 0 || !enemyGraveRefreshPending)
+            return;
+
+        enemyGraveRefreshPending = false;
+        UpdateEnemyGraveyardUI();
     }
 
     public void UpdateEnemyDimensionUI()
@@ -501,27 +560,94 @@ public partial class BattleManager
         if (eDimensionZone == null || OnlineSyncManager.Instance == null)
             return;
 
-        // 作り直すあいだは有効にしておく。空のまま非表示だと、新しいカードが有効にならない。
+        // 合わせるあいだは有効にしておく。空のまま非表示だと、新しいカードが有効にならない。
         if (!eDimensionZone.gameObject.activeSelf)
             eDimensionZone.gameObject.SetActive(true);
 
-        foreach (Transform child in eDimensionZone)
-            Destroy(child.gameObject);
-
-        int shown = 0;
-        foreach (DeckCard deckCard in OnlineSyncManager.Instance.GetOpponentDimension())
-        {
-            if (deckCard == null)
-                continue;
-
-            shown++;
-            CardController cc = Instantiate(cardPrefab, eDimensionZone);
-            cc.Init(deckCard.カード種類, deckCard.カードID);
-        }
+        int shown = SyncZoneCards(eDimensionZone, OnlineSyncManager.Instance.GetOpponentDimension());
 
         // 破棄待ちの子が残っていても、同期した枚数を表示の正にする。
         if (eDimensionZone.gameObject.activeSelf != (shown > 0))
             eDimensionZone.gameObject.SetActive(shown > 0);
+    }
+
+    /// <summary>
+    /// 相手の墓地・異次元の表示を、届いた一覧に合わせる。作り直さず、違うところだけ直す。
+    /// 種類とIDが同じカードはそのまま使い、並びだけ一覧に合わせる。足りない分だけ作り、余った分だけ消す。
+    /// 使い回すカードは、場にいたときの状態を残さない。表示した枚数を返す。
+    /// </summary>
+    int SyncZoneCards(Transform zone, IReadOnlyList<DeckCard> cards)
+    {
+        if (zone == null)
+            return 0;
+
+        listCreatedZoneCards.RemoveWhere(card => card == null);
+
+        var current = new List<CardController>();
+        foreach (Transform child in zone)
+        {
+            // 消す途中のカードは非表示にしてあるので数えない
+            if (!child.gameObject.activeSelf)
+                continue;
+            var card = child.GetComponent<CardController>();
+            if (card != null)
+                current.Add(card);
+        }
+
+        var used = new HashSet<CardController>();
+        int slot = 0;
+        if (cards != null)
+        {
+            foreach (DeckCard deckCard in cards)
+            {
+                if (deckCard == null)
+                    continue;
+
+                CardController card = FindReusableZoneCard(current, used, deckCard);
+                if (card == null)
+                {
+                    card = Instantiate(cardPrefab, zone);
+                    card.Init(deckCard.カード種類, deckCard.カードID);
+                    listCreatedZoneCards.Add(card);
+                }
+                else
+                {
+                    OnlineSyncManager.ResetCardStatusForGrave(card);
+                    card.UpdateDisplay();
+                }
+
+                used.Add(card);
+                card.transform.SetSiblingIndex(slot++);
+            }
+        }
+
+        foreach (var card in current)
+        {
+            if (used.Contains(card))
+                continue;
+
+            listCreatedZoneCards.Remove(card);
+            card.gameObject.SetActive(false);
+            Destroy(card.gameObject);
+        }
+
+        return slot;
+    }
+
+    CardController FindReusableZoneCard(List<CardController> current, HashSet<CardController> used, DeckCard deckCard)
+    {
+        CardController listCreated = null;
+        foreach (var card in current)
+        {
+            if (used.Contains(card) || card.cardKind != deckCard.カード種類 || card.cardID != deckCard.カードID)
+                continue;
+            if (!listCreatedZoneCards.Contains(card))
+                return card;
+            if (listCreated == null)
+                listCreated = card;
+        }
+
+        return listCreated;
     }
 
     /// <summary>
@@ -565,7 +691,7 @@ public partial class BattleManager
         for (int i = 0; i < zone.childCount; i++)
         {
             Transform child = zone.GetChild(i);
-            if (child == null)
+            if (child == null || !child.gameObject.activeSelf)
                 continue;
             if (child.GetComponent<CardController>() != null)
                 return true;

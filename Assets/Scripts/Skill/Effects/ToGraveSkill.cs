@@ -107,6 +107,12 @@ public class ToGraveSkill : SkillDB
 
         // このクライアントのデッキを削ったときだけ、相手へ同期する。
         bool localDeck = deck == battle.pBattleDeck;
+        if (!localDeck && battle.IsOnlineMode && OnlineSyncManager.Instance != null)
+        {
+            context?.SetProcessedCards(await SendOpponentDeckCardsToGrave(cardsToSend));
+            battle.UpdateDeckUI();
+            return;
+        }
         if (localDeck && OnlineSyncManager.Instance != null)
             OnlineSyncManager.Instance.SendDetailedHandInfoToOpponent();
 
@@ -203,8 +209,11 @@ public class ToGraveSkill : SkillDB
         }
         if (enemyDeck.Count > 0)
         {
-            processed.AddRange(await MoveDeckCardsToGrave(
-                battle.eBattleDeck, enemyDeck, battle.eDeckZone, battle.eGraveZone, syncToOpponent: false));
+            if (battle.IsOnlineMode && OnlineSyncManager.Instance != null)
+                processed.AddRange(await SendOpponentDeckCardsToGrave(enemyDeck));
+            else
+                processed.AddRange(await MoveDeckCardsToGrave(
+                    battle.eBattleDeck, enemyDeck, battle.eDeckZone, battle.eGraveZone, syncToOpponent: false));
         }
 
         foreach (var pair in existingByZone)
@@ -244,12 +253,21 @@ public class ToGraveSkill : SkillDB
         var matches = battle.pBattleDeck
             .Where(d => d != null && d.カード種類 == kind && d.カードID == id)
             .ToList();
-        if (matches.Count == 0)
+        await SendOwnDeckCardsToGrave(matches);
+    }
+
+    /// <summary>
+    /// この端末のデッキから、渡したカードを墓地へ送る。相手の効果で頼まれたときに使う。動きと一覧は相手へ同期する。
+    /// </summary>
+    public static async Task SendOwnDeckCardsToGrave(List<DeckCard> cards)
+    {
+        var battle = BattleManager.Instance;
+        if (battle == null || cards == null || cards.Count == 0)
             return;
 
         await new ToGraveSkill().MoveDeckCardsToGrave(
             battle.pBattleDeck,
-            matches,
+            cards,
             battle.pDeckZone,
             battle.pGraveZone,
             syncToOpponent: true);
@@ -336,24 +354,6 @@ public class ToGraveSkill : SkillDB
         if (toSend.Count == 0)
             return new List<CardController>();
 
-        bool batchedBoard = false;
-        if (OnlineSyncManager.Instance != null && IsBoardZone(sourceZoneType) && toSend.Count > 0)
-        {
-            var graveKinds = new List<string>();
-            var graveIds = new List<int>();
-            var graveZones = new List<string>();
-            var graveIndices = new List<int>();
-            foreach (var card in toSend)
-                CardAddress.TryAdd(card, graveKinds, graveIds, graveZones, graveIndices);
-
-            if (graveIndices.Count > 0)
-            {
-                OnlineSyncManager.Instance.SyncAreaGrave(graveKinds.ToArray(), graveIds.ToArray(), graveZones.ToArray(), graveIndices.ToArray());
-                await OnlineSyncManager.Instance.WaitForOpponentAnimation();
-                batchedBoard = true;
-            }
-        }
-
         // 相手手札は、この端末では表示用のカード。実カードは相手端末の手札にある。
         bool cardIsReceiversHand = sourceZoneType == CardZoneType.相手手札;
         bool syncOnline = OnlineSyncManager.Instance != null && BattleManager.Instance.IsOnlineMode;
@@ -364,72 +364,112 @@ public class ToGraveSkill : SkillDB
             && !BattleManager.Instance.IsOnlineMode
             && sourceZone == BattleManager.Instance.eHandZone;
 
-        // 3. カードを墓地に移動
-        foreach (var card in toSend)
+        // 相手手札の一覧が途中で届いても、まだ送っていない表示カードを作り直さない
+        bool holdEnemyHand = cardIsReceiversHand && syncOnline;
+        if (holdEnemyHand)
+            BattleManager.Instance.BeginEnemyHandHold();
+
+        // 相手のカードは、持ち主が墓地一覧を送ってくる。こちらで動かし終えるまで、届いた一覧を当てない。
+        bool holdEnemyGrave = syncOnline
+            && graveZone == BattleManager.Instance.eGraveZone
+            && toSend.Exists(card => !card.isMyCard);
+        if (holdEnemyGrave)
+            BattleManager.Instance.BeginEnemyGraveArrival();
+
+        try
         {
-            if (offlineCpuHand)
-                RemoveOneEnemyHandCard(card);
-            OnlineSyncManager.Instance?.NoteCardLeftOpponentDimension(card);
-            CaptureHpOutput(card);
-            ResetCardStateForGraveyard(card);
-            if (!card.isMyCard)
-                card.battleCardview?.Show(card.model);
-            CardKind discardedKind = card.cardKind;
-            int discardedId = card.cardID;
-            RectTransform sourceSlot = sourceZone as RectTransform;
-            RectTransform graveSlot = graveZone as RectTransform;
-
-            bool sentPerCard = false;
-            if (OnlineSyncManager.Instance != null)
+            bool batchedBoard = false;
+            if (OnlineSyncManager.Instance != null && IsBoardZone(sourceZoneType))
             {
-                if (IsHandZone(sourceZoneType) || !IsBoardZone(sourceZoneType))
-                {
-                    bool addressed = CardAddress.TryFrom(card, out CardAddress address);
-                    if (cardIsReceiversHand && syncOnline && BattleManager.Instance.mainCanvas != null)
-                        card.transform.SetParent(BattleManager.Instance.mainCanvas.transform, true);
+                var graveKinds = new List<string>();
+                var graveIds = new List<int>();
+                var graveZones = new List<string>();
+                var graveIndices = new List<int>();
+                foreach (var card in toSend)
+                    CardAddress.TryAdd(card, graveKinds, graveIds, graveZones, graveIndices);
 
-                    if (addressed)
+                if (graveIndices.Count > 0)
+                {
+                    OnlineSyncManager.Instance.SyncAreaGrave(graveKinds.ToArray(), graveIds.ToArray(), graveZones.ToArray(), graveIndices.ToArray());
+                    await OnlineSyncManager.Instance.WaitForOpponentAnimation();
+                    batchedBoard = true;
+                }
+            }
+
+            // 3. カードを墓地に移動
+            foreach (var card in toSend)
+            {
+                if (offlineCpuHand)
+                    RemoveOneEnemyHandCard(card);
+                OnlineSyncManager.Instance?.NoteCardLeavingOpponentPile(card);
+                CaptureHpOutput(card);
+                ResetCardStateForGraveyard(card);
+                if (!card.isMyCard)
+                    card.battleCardview?.Show(card.model);
+                CardKind discardedKind = card.cardKind;
+                int discardedId = card.cardID;
+                RectTransform sourceSlot = sourceZone as RectTransform;
+                RectTransform graveSlot = graveZone as RectTransform;
+
+                bool sentPerCard = false;
+                if (OnlineSyncManager.Instance != null)
+                {
+                    if (IsHandZone(sourceZoneType) || !IsBoardZone(sourceZoneType))
                     {
-                        OnlineSyncManager.Instance.SyncDiscardAnimation(
-                            address.Kind.ToString(),
-                            address.Id,
-                            address.ZoneName,
-                            address.Index);
+                        bool addressed = CardAddress.TryFrom(card, out CardAddress address);
+                        if (cardIsReceiversHand && syncOnline && BattleManager.Instance.mainCanvas != null)
+                            card.transform.SetParent(BattleManager.Instance.mainCanvas.transform, true);
+
+                        if (addressed)
+                        {
+                            OnlineSyncManager.Instance.SyncDiscardAnimation(
+                                address.Kind.ToString(),
+                                address.Id,
+                                address.ZoneName,
+                                address.Index);
+                            sentPerCard = true;
+                        }
+                    }
+                    else if (!batchedBoard && CardAddress.TryFrom(card, out CardAddress boardAddress))
+                    {
+                        OnlineSyncManager.Instance.SyncCardToGrave(
+                            boardAddress.Kind.ToString(),
+                            boardAddress.Id,
+                            boardAddress.ZoneName,
+                            boardAddress.Index);
                         sentPerCard = true;
                     }
                 }
-                else if (!batchedBoard && CardAddress.TryFrom(card, out CardAddress boardAddress))
+
+                await CardAnimationManager.Instance.AnimateDiscard(
+                    sourceSlot,
+                    graveSlot,
+                    card,
+                    suppressSkillTrigger: cardIsReceiversHand && syncOnline);
+                if (sentPerCard)
                 {
-                    OnlineSyncManager.Instance.SyncCardToGrave(
-                        boardAddress.Kind.ToString(),
-                        boardAddress.Id,
-                        boardAddress.ZoneName,
-                        boardAddress.Index);
-                    sentPerCard = true;
+                    await OnlineSyncManager.Instance.WaitForOpponentAnimation();
                 }
+
+                if (BattleManager.Instance != null)
+                    await BattleManager.Instance.RetireEnhancementsIfSpent(card);
+
+                if (cardIsReceiversHand && syncOnline)
+                {
+                    discardedMirror.Add((discardedKind, discardedId));
+                    continue;
+                }
+
+                card.UpdateDisplay();
+                card.battleCardview?.UpdateCanUseMovePanel();
             }
-
-            await CardAnimationManager.Instance.AnimateDiscard(
-                sourceSlot,
-                graveSlot,
-                card,
-                suppressSkillTrigger: cardIsReceiversHand && syncOnline);
-            if (sentPerCard)
-            {
-                await OnlineSyncManager.Instance.WaitForOpponentAnimation();
-            }
-
-            if (BattleManager.Instance != null)
-                await BattleManager.Instance.RetireEnhancementsIfSpent(card);
-
-            if (cardIsReceiversHand && syncOnline)
-            {
-                discardedMirror.Add((discardedKind, discardedId));
-                continue;
-            }
-
-            card.UpdateDisplay();
-            card.battleCardview?.UpdateCanUseMovePanel();
+        }
+        finally
+        {
+            if (holdEnemyGrave)
+                BattleManager.Instance.EndEnemyGraveArrival();
+            if (holdEnemyHand)
+                BattleManager.Instance.EndEnemyHandHold();
         }
 
         List<CardController> processed;
@@ -437,7 +477,7 @@ public class ToGraveSkill : SkillDB
         {
             BattleManager.Instance.UpdateEnemyHandUI();
             BattleManager.Instance.UpdateEnemyGraveyardUI();
-            processed = ResolveMirrorGraveCards(discardedMirror);
+            processed = ResolveArrivedCards(BattleManager.Instance.eGraveZone, discardedMirror);
             context?.SetProcessedCards(processed);
             ScheduleOpponentHandGraveTriggers(discardedMirror, processed);
         }
@@ -458,11 +498,30 @@ public class ToGraveSkill : SkillDB
         return processed ?? new List<CardController>();
     }
 
-    // 相手の手札一覧で作り直した墓地カードを、捨てた順に取り出す。見つからない位置は null。
-    private List<CardController> ResolveMirrorGraveCards(List<(CardKind kind, int id)> discarded)
+    // 相手のデッキは相手端末にある。相手に送らせ、相手墓地に着いた表示カードを処理済みとして返す。
+    async Task<List<CardController>> SendOpponentDeckCardsToGrave(List<DeckCard> cards)
     {
-        var graveCards = BattleManager.Instance.eGraveZone != null
-            ? BattleManager.Instance.eGraveZone.GetComponentsInChildren<CardController>()
+        var sent = new List<(CardKind kind, int id)>();
+        foreach (var card in cards)
+        {
+            if (card != null)
+                sent.Add((card.カード種類, card.カードID));
+        }
+
+        await OnlineSyncManager.Instance.RequestOpponentDeckCardsToOwnPile(cards, toDimension: false);
+
+        var arrived = ResolveArrivedCards(BattleManager.Instance.eGraveZone, sent);
+        arrived.RemoveAll(card => card == null);
+        foreach (var card in arrived)
+            CaptureHpOutput(card);
+        return arrived;
+    }
+
+    // ゾーンの末尾から、送った順にカードを取り出す。見つからない位置は null。
+    internal static List<CardController> ResolveArrivedCards(Transform zone, List<(CardKind kind, int id)> discarded)
+    {
+        var graveCards = zone != null
+            ? zone.GetComponentsInChildren<CardController>()
             : System.Array.Empty<CardController>();
         var used = new HashSet<int>();
         var resolved = new CardController[discarded.Count];

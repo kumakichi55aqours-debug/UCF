@@ -155,7 +155,11 @@ public partial class OnlineSyncManager
         finally
         {
             if (notifyComplete)
+            {
+                // 送り元は自分の画面で動かし終えるまで一覧を当てない。完了通知より先に送る。
+                SendGraveInfoToOpponent();
                 SendOpponentAnimationComplete();
+            }
         }
     }
 
@@ -180,11 +184,15 @@ public partial class OnlineSyncManager
         }
         finally
         {
+            SendGraveInfoToOpponent();
             SendOpponentAnimationComplete();
         }
     }
 
-    private void ResetCardStatusForGrave(CardController card)
+    /// <summary>
+    /// 墓地・異次元に置く相手のカードを、場にいたときの状態から戻す。HPは最大に戻す。
+    /// </summary>
+    public static void ResetCardStatusForGrave(CardController card)
     {
         if (card == null)
             return;
@@ -263,24 +271,69 @@ public partial class OnlineSyncManager
     /// 相手のデッキにある、指定の種類とIDのカードをすべて、相手自身に墓地へ送らせる。
     /// 実際のデッキは相手の端末にしかないので、こちらの写しだけを削らない。
     /// </summary>
-    public async Task RequestOpponentDeckToOwnGrave(CardKind kind, int id)
+    public Task RequestOpponentDeckToOwnGrave(CardKind kind, int id)
     {
         if (!IsOnlineMode)
-            return;
+            return Task.CompletedTask;
 
-        var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        opponentOwnHandFinished = finished;
+        return AwaitOpponentOwnMove(() => SendRPC("ReceiveOpponentDeckToOwnGrave", kind.ToString(), id));
+    }
+
+    /// <summary>
+    /// 相手デッキから選んだカードを、相手自身に墓地か異次元へ送らせる。
+    /// デッキの中の同じ種類・IDのカードは区別しないので、並びは送らない。
+    /// </summary>
+    public Task RequestOpponentDeckCardsToOwnPile(IReadOnlyList<DeckCard> cards, bool toDimension)
+    {
+        if (!IsOnlineMode || cards == null || cards.Count == 0)
+            return Task.CompletedTask;
+
+        var kinds = new int[cards.Count];
+        var ids = new int[cards.Count];
+        for (int i = 0; i < cards.Count; i++)
+        {
+            kinds[i] = cards[i] != null ? (int)cards[i].カード種類 : -1;
+            ids[i] = cards[i] != null ? cards[i].カードID : -1;
+        }
+
+        return AwaitOpponentOwnMove(() => SendRPC("ReceiveOpponentDeckCardsToOwnPile", kinds, ids, toDimension));
+    }
+
+    [PunRPC]
+    void ReceiveOpponentDeckCardsToOwnPile(int[] kinds, int[] ids, bool toDimension)
+    {
+        _ = ResolveOpponentDeckCardsToOwnPile(kinds, ids, toDimension);
+    }
+
+    async Task ResolveOpponentDeckCardsToOwnPile(int[] kinds, int[] ids, bool toDimension)
+    {
         BeginOperationBlock();
         try
         {
-            SendRPC("ReceiveOpponentDeckToOwnGrave", kind.ToString(), id);
-            await finished.Task;
+            var deck = BattleManager.Instance != null ? BattleManager.Instance.pBattleDeck : null;
+            var picked = new List<DeckCard>();
+            int count = kinds != null && ids != null ? Mathf.Min(kinds.Length, ids.Length) : 0;
+            for (int i = 0; deck != null && i < count; i++)
+            {
+                DeckCard match = deck.Find(d => d != null && !picked.Contains(d)
+                    && (int)d.カード種類 == kinds[i] && d.カードID == ids[i]);
+                if (match != null)
+                    picked.Add(match);
+            }
+
+            if (toDimension)
+                await ToDimensionSkill.SendOwnDeckCardsToDimension(picked);
+            else
+                await ToGraveSkill.SendOwnDeckCardsToGrave(picked);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[OnlineSyncManager] 自分のデッキからの送りでエラー: {ex.Message}");
         }
         finally
         {
-            if (opponentOwnHandFinished == finished)
-                opponentOwnHandFinished = null;
             EndOperationBlock();
+            SendRPC("ReceiveOpponentOwnHandFinished");
         }
     }
 
@@ -307,6 +360,18 @@ public partial class OnlineSyncManager
             EndOperationBlock();
             SendRPC("ReceiveOpponentOwnHandFinished");
         }
+    }
+
+    /// <summary>
+    /// こちらの画面で相手のカードを相手墓地へ動かしたあと、相手墓地の一覧に足す。着いていなければ足さない。
+    /// </summary>
+    public void NoteCardEnteredOpponentGrave(CardController card)
+    {
+        var battle = BattleManager.Instance;
+        if (!IsOnlineMode || card == null || battle == null || card.transform.parent != battle.eGraveZone)
+            return;
+
+        RememberEnemyGraveCard(card);
     }
 
     void RememberEnemyGraveCard(CardController card)

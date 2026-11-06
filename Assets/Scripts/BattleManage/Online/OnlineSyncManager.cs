@@ -29,9 +29,6 @@ public partial class OnlineSyncManager : MonoBehaviourPunCallbacks
             if (!IsOnlineMode)
                 return BattleManager.Instance.IsActiveSideTurn;
 
-            // ターン切り替えの間の場合は操作不可
-            if (isTurnTransitionPhase) return false;
-
             // 先攻がホストなら奇数ターンがホスト、後攻なら偶数ターンがホスト
             bool isHostTurn = BattleManager.Instance.IsActiveSideTurn;
             return isHostTurn == IsHostPlayer;
@@ -41,13 +38,6 @@ public partial class OnlineSyncManager : MonoBehaviourPunCallbacks
     // ゲーム開始前同期待機。先に届いた準備完了は消さない。
     bool opponentReadyForBattle;
     bool opponentHasSeenLocalReady;
-
-    // ターン切り替えの間の管理
-    private bool isTurnTransitionPhase = false;
-
-    // ターン切り替え完了同期
-    private SyncState clientTurnTransitionComplete = new SyncState();
-    private SyncState hostTurnTransitionComplete = new SyncState();
 
     // 手札同期
     private List<DeckCard> opponentHand = new List<DeckCard>();
@@ -97,23 +87,15 @@ public partial class OnlineSyncManager : MonoBehaviourPunCallbacks
     {
         PresentationBlocking = true;
         CardContextMenu.DismissTransientWindows();
-        PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
     }
 
     public void EndOperationBlock()
     {
         PresentationBlocking = false;
-        PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
     }
 
-    // クライアントドロー完了同期
+    // クライアントの初期ドロー完了同期
     private SyncState clientDrawsCompleted = new SyncState();
-
-    // ホスト側のドローフェイズ移行完了確認同期
-    private SyncState hostDrawPhaseTransitionComplete = new SyncState();
-
-    // ホスト側のドロー完了確認同期
-    private SyncState hostDrawCompleteAcknowledged = new SyncState();
 
     private void Awake()
     {

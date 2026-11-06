@@ -38,7 +38,7 @@ public class CardContextMenu : MonoBehaviour
     /// <summary>
     /// 処理中かどうかをチェック（召喚演出、技の処理、スキルの処理中など）
     /// </summary>
-    private bool IsProcessing()
+    public bool IsProcessing()
     {
         // スキル使用中は処理中止
         if (isUsingSkill)
@@ -46,6 +46,10 @@ public class CardContextMenu : MonoBehaviour
 
         // チェーン上の効果処理中（確認、効果、そのアニメーション完了まで）
         if (SkillChainManager.Instance != null && SkillChainManager.Instance.IsResolvingSkills)
+            return true;
+
+        // 技の解決中（演出の待ち時間を含む）
+        if (BattleManager.Instance != null && BattleManager.Instance.IsResolvingMove)
             return true;
 
         // アニメーション表示中は処理中止
@@ -205,47 +209,40 @@ public class CardContextMenu : MonoBehaviour
     // バトルフェイズ、ゾーンボタン表示
     public void ShowBattleOptions(CardController card, Vector3 worldPos)
     {
+        // オンライン対戦時のターン制御 && 処理中の制御
+        if (!OnlineSyncManager.Instance.CanPlayerOperateCards()) return;
+        if (IsProcessing()) return;
+
+        currentCard = card;
+        DismissTransientWindows();
+        HideAllButtons();
+
         if (PhaseManager.Instance.CurrentPhase == TurnPhase.バトルフェイズ)
         {
-            // オンライン対戦時のターン制御
-            if (!OnlineSyncManager.Instance.CanPlayerOperateCards()) return;
-
-            // 処理中（召喚演出、技の処理、スキルの処理中など）の場合は表示しない
-            if (IsProcessing()) return;
-
-            currentCard = card;
-            DismissTransientWindows();
-            HideAllButtons();
-
-            // 1ターン目以外 && 技未使用か。気絶中は技を宣言できない
+            // 1ターン目以外 && 技未使用 && 気絶中は技を宣言できない
             if (!card.hasUsedMove && !card.IsActionBlocked && BattleManager.Instance.curTurn != 1)
                 useMoveButton.gameObject.SetActive(true);
-
-            if (HasGrantedSkills(card) && grantedSkillButton != null)
-                grantedSkillButton.gameObject.SetActive(true);
-
-            ShowIfAnyButton(worldPos);
+            
+            // 起動効果スキル確認
+            if (!card.IsActionBlocked
+                && HasCanUseSkill(card, ActiveTiming.起動効果, card.GetCurrentActiveLocation())
+                && PhaseCondition.CardRequires(card, TurnPhase.バトルフェイズ))
+                useSkillButton.gameObject.SetActive(true);
         }
         else if (PhaseManager.Instance.CurrentPhase == TurnPhase.メインフェイズ)
         {
-            // オンライン対戦時のターン制御
-            if (!OnlineSyncManager.Instance.CanPlayerOperateCards()) return;
-
-            // 処理中（召喚演出、技の処理、スキルの処理中など）の場合は表示しない
-            if (IsProcessing()) return;
-
-            currentCard = card;
-            DismissTransientWindows();
-            HideAllButtons();
-
-            if (!card.IsActionBlocked && HasCanUseSkill(card, ActiveTiming.起動効果, card.GetCurrentActiveLocation()))
+            // 起動効果スキル確認
+            if (!card.IsActionBlocked
+                && HasCanUseSkill(card, ActiveTiming.起動効果, card.GetCurrentActiveLocation()))
                 useSkillButton.gameObject.SetActive(true);
-
-            if (HasGrantedSkills(card) && grantedSkillButton != null)
-                grantedSkillButton.gameObject.SetActive(true);
-
-            ShowIfAnyButton(worldPos);
         }
+
+        // 付与スキル確認
+        if (HasGrantedSkills(card) && grantedSkillButton != null)
+            grantedSkillButton.gameObject.SetActive(true);
+
+        ShowIfAnyButton(worldPos);
+
     }
 
     /// <summary>

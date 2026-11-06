@@ -4,6 +4,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
+public enum SelectCountMode
+{
+    ちょうど,
+    // 1枚以上、選択数以下で選べる。
+    まで,
+}
+
 [System.Serializable]
 [SkillDisplayName("手札へ")]
 public class ToHandSkill : SkillDB
@@ -11,6 +18,7 @@ public class ToHandSkill : SkillDB
     [SerializeField] public SearchCriteria 参照条件; // 検索条件
     [SerializeField] public List<CardZoneType> 参照場所 = new List<CardZoneType>(); // 追加元のゾーン複数
     [SerializeField] public int 選択数 = 1; // 選択数
+    [SerializeField] public SelectCountMode 選択数の扱い = SelectCountMode.ちょうど;
     [SerializeField] public PlayerType 選択プレイヤー = PlayerType.プレイヤー; // どちらが選択するか
     [SerializeField] public bool ランダム = false;
 
@@ -67,6 +75,8 @@ public class ToHandSkill : SkillDB
 
             List<SelectionItem> selections;
             int totalCandidates = existingCandidates.Count + deckCandidates.Count;
+            bool upTo = 選択数の扱い == SelectCountMode.まで;
+            bool chooseCount = upTo && totalCandidates > 1;
 
             if (ランダム)
             {
@@ -75,7 +85,7 @@ public class ToHandSkill : SkillDB
                     .Take(Mathf.Min(count, totalCandidates))
                     .ToList();
             }
-            else if (totalCandidates <= count)
+            else if (totalCandidates <= count && !chooseCount)
             {
                 selections = SelectionItem.FromCandidates(existingCandidates, deckCandidates);
             }
@@ -86,14 +96,15 @@ public class ToHandSkill : SkillDB
                     deckCandidates,
                     count,
                     rejectSameKind: false,
-                    letCpuChoose: false);
+                    letCpuChoose: false,
+                    allowFewer: upTo);
                 if (selections == null || selections.Count == 0)
                     return;
             }
             else
             {
                 var pool = SelectionItem.FromCandidates(existingCandidates, deckCandidates);
-                selections = await ChooseRemote(pool, count, context, ownerIsLocal);
+                selections = await ChooseRemote(pool, count, context, ownerIsLocal, upTo);
                 if (selections == null || selections.Count == 0)
                     return;
             }
@@ -231,10 +242,17 @@ public class ToHandSkill : SkillDB
             return null;
         }
 
+        // 相手の画面で同じ種類・IDの別のカードを動かさないよう、受信者から見た住所を付ける
+        if (string.IsNullOrEmpty(mirrorZone) && CardAddress.TryFrom(card, out CardAddress ownAddress))
+        {
+            mirrorZone = BattleManager.CovertOpponentZoneName(ownAddress.ZoneName);
+            mirrorIndex = ownAddress.Index;
+        }
+
         var to = (RectTransform)BattleManager.Instance.pHandZone;
         var from = (RectTransform)card.transform.parent;
         bool fromOwnDimension = from != null && from == BattleManager.Instance.pDimensionZone;
-        OnlineSyncManager.Instance?.NoteCardLeftOpponentDimension(card);
+        OnlineSyncManager.Instance?.NoteCardLeavingOpponentPile(card);
         SummonSource source = GetSummonSourceFromZone(from);
         CardZoneType fromLocation = CardController.ZoneTypeFromTransform(from);
         bool returnedIsMyCard = card.isMyCard;
@@ -432,7 +450,7 @@ public class ToHandSkill : SkillDB
 
         var to = (RectTransform)battle.eHandZone;
         var from = (RectTransform)card.transform.parent;
-        OnlineSyncManager.Instance?.NoteCardLeftOpponentDimension(card);
+        OnlineSyncManager.Instance?.NoteCardLeavingOpponentPile(card);
         CardZoneType fromLocation = CardController.ZoneTypeFromTransform(from);
         bool returnedIsMyCard = card.isMyCard;
         ResetCardStatusForReturnToHand(card);
@@ -572,7 +590,7 @@ public class ToHandSkill : SkillDB
         return chooserIsOwner ? ownerIsLocal : !ownerIsLocal;
     }
 
-    static async Task<List<SelectionItem>> ChooseRemote(List<SelectionItem> pool, int count, SkillContext context, bool ownerIsLocal)
+    static async Task<List<SelectionItem>> ChooseRemote(List<SelectionItem> pool, int count, SkillContext context, bool ownerIsLocal, bool upTo)
     {
         if (pool == null || pool.Count == 0)
             return null;
@@ -598,7 +616,7 @@ public class ToHandSkill : SkillDB
             }
         }
 
-        int[] picked = await OnlineSyncManager.Instance.RequestOpponentCardPick(context.発動カード, kinds, ids, take);
+        int[] picked = await OnlineSyncManager.Instance.RequestOpponentCardPick(context.発動カード, kinds, ids, take, upTo);
         return TakeByIndices(pool, picked, take);
     }
 

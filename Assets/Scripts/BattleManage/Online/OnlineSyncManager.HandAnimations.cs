@@ -422,47 +422,42 @@ public partial class OnlineSyncManager
     /// 相手の実カードを、相手の手札へ移させる。
     /// deckIndex が 0 以上なら相手デッキのその並び。それ以外は送信者から見た場の住所。
     /// </summary>
-    public async Task RequestOpponentCardToOwnHand(string cardKind, int cardId, string zoneName, int zoneIndex, int deckIndex)
+    public Task RequestOpponentCardToOwnHand(string cardKind, int cardId, string zoneName, int zoneIndex, int deckIndex)
     {
         if (!IsOnlineMode)
-            return;
+            return Task.CompletedTask;
 
-        var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        opponentOwnHandFinished = finished;
-        BeginOperationBlock();
-        try
-        {
-            SendRPC(
-                "ReceiveOpponentCardToOwnHand",
-                cardKind ?? string.Empty,
-                cardId,
-                zoneName ?? string.Empty,
-                zoneIndex,
-                deckIndex);
-            await finished.Task;
-        }
-        finally
-        {
-            if (opponentOwnHandFinished == finished)
-                opponentOwnHandFinished = null;
-            EndOperationBlock();
-        }
+        return AwaitOpponentOwnMove(() => SendRPC(
+            "ReceiveOpponentCardToOwnHand",
+            cardKind ?? string.Empty,
+            cardId,
+            zoneName ?? string.Empty,
+            zoneIndex,
+            deckIndex));
     }
 
     /// <summary>
     /// 相手の手札へ加えたあとに、相手側で手札を混ぜて一覧を返させる。
     /// </summary>
-    public async Task RequestOpponentShuffleAddedHand()
+    public Task RequestOpponentShuffleAddedHand()
     {
         if (!IsOnlineMode)
-            return;
+            return Task.CompletedTask;
 
+        return AwaitOpponentOwnMove(() => SendRPC("ReceiveOpponentShuffleAddedHand"));
+    }
+
+    /// <summary>
+    /// 相手に相手自身のカードを動かすよう頼み、終わりの合図 ReceiveOpponentOwnHandFinished まで待つ。
+    /// </summary>
+    async Task AwaitOpponentOwnMove(System.Action send)
+    {
         var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         opponentOwnHandFinished = finished;
         BeginOperationBlock();
         try
         {
-            SendRPC("ReceiveOpponentShuffleAddedHand");
+            send();
             await finished.Task;
         }
         finally

@@ -615,8 +615,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         {
             if (effect == null || effect.SourceCard != source)
                 return false;
-            if (effect.PassiveEffect is ApplyStatusAilmentSkill statusSkill)
-                removedStatuses.Add(statusSkill.状態異常);
+            removedStatuses.AddRange(CompositeSkill.GrantedStatuses(effect.PassiveEffect));
             return true;
         });
         if (passiveEffects.Count == before)
@@ -637,7 +636,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         foreach (var type in types.Distinct())
         {
             bool stillGranted = passiveEffects.Any(e =>
-                e?.PassiveEffect is ApplyStatusAilmentSkill other && other.状態異常 == type);
+                e != null && CompositeSkill.GrantedStatuses(e.PassiveEffect).Contains(type));
             if (!stillGranted)
                 RemoveStatus(type);
         }
@@ -670,8 +669,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
             BattleManager.Instance?.NoteExpiredEnhancement(effect.SourceCard);
 
-            if (effect.PassiveEffect is ApplyStatusAilmentSkill statusSkill)
-                expiredStatuses.Add(statusSkill.状態異常);
+            expiredStatuses.AddRange(CompositeSkill.GrantedStatuses(effect.PassiveEffect));
             if (effect.RunsOnExpire && effect.PassiveEffect is GrantExpireSkill expire && expire.CanResolveOnExpire)
                 expiredGrants.Add(expire);
         }
@@ -1129,7 +1127,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         damage = Mathf.Max(0, damage);
         if (damage == 0 || !HasStatus(StatusAilmentType.火傷))
             return damage;
-        return damage - 3;
+        return Mathf.Max(0, damage - 3);
     }
 
     /// <summary>
@@ -1152,7 +1150,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     /// </summary>
     public void RemoveGrantedStatusAilments()
     {
-        RemovePassiveWhere(skill => skill is ApplyStatusAilmentSkill);
+        RemovePassiveWhere(skill => CompositeSkill.Contains<ApplyStatusAilmentSkill>(skill));
         if (statusAilments == null || statusAilments.Count == 0)
             return;
 
@@ -1255,7 +1253,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
         int before = passiveEffects.Count;
         passiveEffects.RemoveAll(effect =>
-            effect?.PassiveEffect is ApplyStatusAilmentSkill skill && StatusAilment.ClearsWhenDamaged(skill.状態異常));
+            effect != null && CompositeSkill.GrantedStatuses(effect.PassiveEffect).Any(StatusAilment.ClearsWhenDamaged));
         if (passiveEffects.Count != before)
             UpdatePassiveEffectUI();
     }
@@ -1294,13 +1292,13 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
             if ((categories & CleanseCategory.属性無効) != 0)
             {
-                RemovePassiveWhere(skill => skill is InvalidPassiveSkill);
+                RemovePassiveWhere(skill => CompositeSkill.Contains<InvalidPassiveSkill>(skill));
                 ClearInvalidElements();
             }
 
             if ((categories & CleanseCategory.HP保護) != 0)
             {
-                RemovePassiveWhere(skill => skill is HPProtectionSkill);
+                RemovePassiveWhere(skill => CompositeSkill.Contains<HPProtectionSkill>(skill));
                 ClearHpProtection();
             }
 
@@ -1338,8 +1336,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     {
         bool all = filter == null || filter.Count == 0;
         RemovePassiveWhere(skill =>
-            skill is ApplyStatusAilmentSkill statusSkill
-            && (all || filter.Contains(statusSkill.状態異常)));
+            CompositeSkill.GrantedStatuses(skill).Any(type => all || filter.Contains(type)));
 
         if (all)
             ClearStatusAilments();
@@ -1358,8 +1355,13 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
         foreach (var effect in passiveEffects)
         {
-            if (effect?.PassiveEffect is ApplyStatusAilmentSkill skill && !types.Contains(skill.状態異常))
-                types.Add(skill.状態異常);
+            if (effect == null)
+                continue;
+            foreach (var type in CompositeSkill.GrantedStatuses(effect.PassiveEffect))
+            {
+                if (!types.Contains(type))
+                    types.Add(type);
+            }
         }
         return types;
     }
@@ -1371,7 +1373,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
         foreach (var effect in passiveEffects)
         {
-            if (effect?.PassiveEffect is T)
+            if (effect != null && CompositeSkill.Contains<T>(effect.PassiveEffect))
                 return true;
         }
         return false;

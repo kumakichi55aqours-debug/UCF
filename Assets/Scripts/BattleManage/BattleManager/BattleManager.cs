@@ -23,6 +23,7 @@ public partial class BattleManager : MonoBehaviour
     public Transform pDimensionZone;
     public ResourceGroup pResources;
     [SerializeField] private TextMeshProUGUI pDeckCountText;
+    [SerializeField] private Transform pHpTitle;
 
     [Header("エネミー")]
     public Transform eBattlerZone;
@@ -34,6 +35,7 @@ public partial class BattleManager : MonoBehaviour
     public Transform eDimensionZone;
     public ResourceGroup eResources;
     [SerializeField] private TextMeshProUGUI eDeckCountText;
+    [SerializeField] private Transform eHpTitle;
 
     public List<DeckCard> pBattleDeck = new List<DeckCard>();
     public List<DeckCard> eBattleDeck = new List<DeckCard>();

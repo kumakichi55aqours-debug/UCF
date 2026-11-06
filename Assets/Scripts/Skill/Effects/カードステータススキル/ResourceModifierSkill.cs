@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 
 [Serializable]
-[SkillDisplayName("(付与〇)カードリソース")]
+[SkillDisplayName("(〇付与)カードリソース")]
 public class ResourceModifierSkill : SkillDB
 {
     public TargetList 効果対象;
@@ -27,7 +27,6 @@ public class ResourceModifierSkill : SkillDB
 
     public override async Task ActivateEffect(SkillContext context)
     {
-        Debug.Log($"[ResourceModifierSkill] 発動開始 - リソースタイプ: {リソースタイプ}, 効果対象: {効果対象}, 対象属性: {対象属性}, 適用先: {適用先}, 効果数: {効果数}");
         var targetCards = await CollectTargetsAsync(効果対象, 対象側, 対象条件, context, 対象状態);
 
         if (context != null && context.RestrictTargetsToContextCard && context.対象カード != null)

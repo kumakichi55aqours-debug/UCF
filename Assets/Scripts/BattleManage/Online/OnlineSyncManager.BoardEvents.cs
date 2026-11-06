@@ -161,14 +161,20 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 手札から墓地へのアニメーションを実行
+    /// 手札・異次元から墓地へのアニメーションを実行
     /// </summary>
     private async Task ExecuteDiscardAnimation(string cardKindStr, int cardID, string zoneName, int zoneIndex)
     {
+        var battle = BattleManager.Instance;
         CardController addressed = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
-        if (addressed != null && BattleManager.Instance.pHandZone != null && addressed.transform.parent == BattleManager.Instance.pHandZone)
+        if (addressed != null && addressed.isMyCard && addressed.transform.parent != battle.pGraveZone)
         {
-            await ExecuteOwnHandDiscard(addressed);
+            await ExecuteOwnCardDiscard(addressed);
+            return;
+        }
+        if (addressed != null && !addressed.isMyCard && addressed.transform.parent == battle.eDimensionZone)
+        {
+            await ExecuteOpponentDimensionDiscard(addressed);
             return;
         }
         CardController tempCard = null;
@@ -200,14 +206,16 @@ public partial class OnlineSyncManager
         }
         finally
         {
-            // アニメーション完了後にカードオブジェクトを確実に破棄
-            if (tempCard != null && tempCard.gameObject != null)
+            // 墓地へ着いたカードは、相手から届く墓地一覧の同期でそのまま使う。着かなかったときだけ破棄する。
+            bool arrived = tempCard != null && tempCard.transform.parent == BattleManager.Instance.eGraveZone;
+            if (tempCard != null && !arrived)
             {
                 try
                 {
                     // DOTweenアニメーションを強制終了（残っている場合）
                     DOTween.Kill(tempCard.transform);
-                    // カードオブジェクトを破棄
+                    // 一覧の同期が、破棄待ちのカードを使い回さないよう先に隠す
+                    tempCard.gameObject.SetActive(false);
                     Destroy(tempCard.gameObject);
                 }
                 catch (System.Exception)
@@ -220,33 +228,85 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 受信者自身の手札にあるカードを、自分の墓地へ動かす。
-    /// 終わったら手札と墓地の一覧を送り、発動側の相手表示を合わせる。
+    /// 受信者自身の手札・異次元にあるカードを、自分の墓地へ動かす。
+    /// 終わったら元のゾーンと墓地の一覧を送り、発動側の相手表示を合わせる。
     /// </summary>
-    private async Task ExecuteOwnHandDiscard(CardController card)
+    private async Task ExecuteOwnCardDiscard(CardController card)
     {
         try
         {
             if (card == null)
                 return;
+            bool fromHand = card.transform.parent == BattleManager.Instance.pHandZone;
             if (card.トークン)
             {
                 TokenExit.VanishLocal(card);
-                SendDetailedHandInfoToOpponent();
+                if (fromHand)
+                    SendDetailedHandInfoToOpponent();
+                else
+                    SendDimensionInfoToOpponent();
                 return;
             }
             ResetCardStatusForGrave(card);
-            RectTransform handSlot = BattleManager.Instance.pHandZone as RectTransform;
+            RectTransform fromSlot = card.transform.parent as RectTransform;
             RectTransform graveSlot = BattleManager.Instance.pGraveZone as RectTransform;
-            await CardAnimationManager.Instance.AnimateDiscard(handSlot, graveSlot, card, suppressSkillTrigger: true);
+            // 手札からの「墓地に送られた時」は、発動側が両者の窓をそろえて出す
+            await CardAnimationManager.Instance.AnimateDiscard(fromSlot, graveSlot, card, suppressSkillTrigger: fromHand);
             card.UpdateDisplay();
             card.battleCardview?.UpdateCanUseMovePanel();
-            SendDetailedHandInfoToOpponent();
+            if (fromHand)
+                SendDetailedHandInfoToOpponent();
+            else
+                SendDimensionInfoToOpponent();
             SendGraveInfoToOpponent();
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"ExecuteOwnHandDiscardでエラー: {ex.Message}");
+            Debug.LogError($"ExecuteOwnCardDiscardでエラー: {ex.Message}");
+        }
+        finally
+        {
+            SendOpponentAnimationComplete();
+        }
+    }
+
+    /// <summary>
+    /// 相手異次元にある表示カードを、相手墓地へ動かす。相手が自分の異次元のカードを墓地へ送ったとき。
+    /// </summary>
+    private async Task ExecuteOpponentDimensionDiscard(CardController card)
+    {
+        var battle = BattleManager.Instance;
+        try
+        {
+            if (card.トークン)
+            {
+                NoteCardLeavingOpponentPile(card);
+                TokenExit.VanishLocal(card);
+                return;
+            }
+
+            RectTransform fromSlot = card.transform.parent as RectTransform;
+            NoteCardLeavingOpponentPile(card);
+            ResetCardStatusForGrave(card);
+            card.battleCardview?.Show(card.model);
+
+            battle.BeginEnemyGraveArrival();
+            try
+            {
+                await CardAnimationManager.Instance.AnimateDiscard(fromSlot, battle.eGraveZone as RectTransform, card);
+                NoteCardEnteredOpponentGrave(card);
+            }
+            finally
+            {
+                battle.EndEnemyGraveArrival();
+            }
+
+            card.UpdateDisplay();
+            battle.UpdateEnemyDimensionUI();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"ExecuteOpponentDimensionDiscardでエラー: {ex.Message}");
         }
         finally
         {

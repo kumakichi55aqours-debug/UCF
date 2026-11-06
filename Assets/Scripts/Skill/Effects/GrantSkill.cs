@@ -54,7 +54,7 @@ public class GrantSkill : SkillDB
 
             var grantedInst = 付与スキル.Clone();
             // 再計算では外さない。新しい付与のときだけ、今ある状態異常を消してから1つにする。
-            if (grantedInst is ApplyStatusAilmentSkill && (context == null || !context.相手も同じ効果を実行する))
+            if (CompositeSkill.Contains<ApplyStatusAilmentSkill>(grantedInst) && (context == null || !context.相手も同じ効果を実行する))
                 target.RemoveGrantedStatusAilments();
 
             var grantContext = new SkillContext(target, target, target.transform);

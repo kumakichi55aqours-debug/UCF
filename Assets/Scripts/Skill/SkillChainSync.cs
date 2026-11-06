@@ -72,11 +72,6 @@ public class SkillChainSync : MonoBehaviour, IOnEventCallback
         Receivers = ReceiverGroup.Others
     };
 
-    private TaskCompletionSource<int> damageReceivedTcs;
-    private int? pendingFinalDamage;
-    private TaskCompletionSource<bool> opponentMoveUsedTcs;
-    private bool pendingOpponentMoveUsed;
-
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -293,58 +288,6 @@ public class SkillChainSync : MonoBehaviour, IOnEventCallback
         string zone = data[start + 3] as string ?? string.Empty;
         int index = Convert.ToInt32(data[start + 4]);
         return CardAddress.Resolve(kind.ToString(), id, zone, index);
-    }
-
-    public void ArmDamageWait(int finalDamage)
-    {
-        if (damageReceivedTcs != null && !damageReceivedTcs.Task.IsCompleted)
-        {
-            damageReceivedTcs.TrySetResult(finalDamage);
-        }
-        else
-        {
-            pendingFinalDamage = finalDamage;
-        }
-    }
-
-    public void ArmMoveWait()
-    {
-        if (opponentMoveUsedTcs != null && !opponentMoveUsedTcs.Task.IsCompleted)
-        {
-            opponentMoveUsedTcs.TrySetResult(true);
-        }
-        else
-        {
-            pendingOpponentMoveUsed = true;
-        }
-    }
-
-    public async Task<int> WaitForDamageReceivedSkillComplete()
-    {
-        if (pendingFinalDamage.HasValue)
-        {
-            int cached = pendingFinalDamage.Value;
-            pendingFinalDamage = null;
-            return cached;
-        }
-
-        damageReceivedTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        int result = await damageReceivedTcs.Task;
-        damageReceivedTcs = null;
-        return result;
-    }
-
-    public async Task WaitForOpponentMoveUsedSkillComplete()
-    {
-        if (pendingOpponentMoveUsed)
-        {
-            pendingOpponentMoveUsed = false;
-            return;
-        }
-
-        opponentMoveUsedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await opponentMoveUsedTcs.Task;
-        opponentMoveUsedTcs = null;
     }
 
     public void OnEvent(EventData photonEvent)

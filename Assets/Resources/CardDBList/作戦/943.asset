@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardName: "\u30D4\u30B0\u30E2\u30F3&\u30AB\u30CD\u30B4\u30F3"
   cardKind: 2
-  type: 7
   cardId: 943
   rarity: 0
   artwork: {fileID: 21300000, guid: 4de4c478a9494ad47a21fb2f32ddc04c, type: 3}
   cost: 0
-  category: 
-  skillDescription: "ACT \u624B\u672D1\u679A\u3092\u5893\u5730\u3078\u9001\u308A\u3001\u30C7\u30C3\u30AD\u304B\u3089\u30B3\u30B9\u30C81\u306E\u300C\u602A\u7363\u300D\u30D0\u30C8\u30E9\u30FC1\u4F53\u3092\u7279\u6B8A\u767B\u5834\u3055\u305B\u308B\u3002"
+  category: 00000000
+  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u602A\u7363\nACT \u624B\u672D1\u679A\u3092\u5893\u5730\u3078\u9001\u308A\u3001\u30C7\u30C3\u30AD\u304B\u3089\u30B3\u30B9\u30C81\u306E\u300C\u602A\u7363\u300D\u30D0\u30C8\u30E9\u30FC1\u4F53\u3092\u7279\u6B8A\u767B\u5834\u3055\u305B\u308B\u3002"
   skills:
   - rid: 3123607464156594179
+  type: 7
   references:
     version: 2
     RefIds:
@@ -41,6 +41,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 00000000
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 1
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
@@ -52,6 +53,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 04000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6":
         - rid: 3123607344477634589
@@ -77,6 +80,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 00000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -96,6 +101,8 @@ MonoBehaviour:
         "\u9078\u629E\u6570": 1
         "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
         "\u30E9\u30F3\u30C0\u30E0": 0
+        "\u51FA\u529B\u30AD\u30FC": 0
+        "\u51FA\u529B\u3059\u308B\u5024": 0
     - rid: 3123607464156594186
       type: {class: SpecialSummonSkill, ns: , asm: Assembly-CSharp}
       data:
@@ -104,6 +111,8 @@ MonoBehaviour:
         "\u5834\u6240\u30EA\u30B9\u30C8": 00000000
         "\u4E0A\u9650\u56DE\u6570": 1
         "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
@@ -128,6 +137,7 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 00000000
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+        "\u9078\u629E\u30AB\u30FC\u30C9\u306E\u30B3\u30B9\u30C8\u3092\u6255\u3046": 0
     - rid: 3123607464156594189
       type: {class: HandCountCondition, ns: , asm: Assembly-CSharp}
       data:

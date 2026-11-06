@@ -16,6 +16,9 @@ public class SkillContext
     // 付与の再実行や永続の再計算では、相手も同じ効果を自分で走らせる。結果のRPCは出さない。
     public bool 相手も同じ効果を実行する { get; set; }
 
+    // 永続効果の再計算からの実行。付けるたびに増える効果は、ここでは付け直さない。
+    public bool 再計算 { get; set; }
+
     // サブスキル間で共有するランタイム変数格納用
     public Dictionary<string, int> IntVariables { get; private set; } = new Dictionary<string, int>();
 

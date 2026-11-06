@@ -19,6 +19,8 @@ public class CardSelectionUI : MonoBehaviour
     private TaskCompletionSource<List<SelectionItem>> tcs;
     private bool rejectSameKind;
     private bool rejectSameType;
+    // 真なら、1枚以上選べば上限に届かなくても確定できる。
+    private bool allowFewer;
     // 選ばれているカードを見て、この候補を選べなくする。真なら押せない。
     private Func<IReadOnlyList<SelectionItem>, SelectionItem, bool> rejectWhen;
     private readonly List<ShownCard> shownCards = new();
@@ -45,7 +47,8 @@ public class CardSelectionUI : MonoBehaviour
         bool rejectSameKind = false,
         bool letCpuChoose = true,
         bool rejectSameType = false,
-        Func<IReadOnlyList<SelectionItem>, SelectionItem, bool> rejectWhen = null)
+        Func<IReadOnlyList<SelectionItem>, SelectionItem, bool> rejectWhen = null,
+        bool allowFewer = false)
     {
         // CPUの効果でも、選ぶ側が人間のときはUIを出す。
         if (letCpuChoose && SkillContext.IsOfflineCpuResolving)
@@ -54,6 +57,7 @@ public class CardSelectionUI : MonoBehaviour
         this.rejectSameKind = rejectSameKind;
         this.rejectSameType = rejectSameType;
         this.rejectWhen = rejectWhen;
+        this.allowFewer = allowFewer;
         shownCards.Clear();
         maxSelect = Mathf.Max(1, count);
         selectedItems.Clear();
@@ -150,6 +154,7 @@ public class CardSelectionUI : MonoBehaviour
             rejectSameKind = false;
             rejectSameType = false;
             rejectWhen = null;
+            allowFewer = false;
             shownCards.Clear();
         }
     }
@@ -158,7 +163,7 @@ public class CardSelectionUI : MonoBehaviour
     /// 渡された候補をそのまま並べ、選ばれた元リストの番号を返す。
     /// 呼び出し側が自分か相手かを決める。ここでは無作為に置き換えない。
     /// </summary>
-    public async Task<List<int>> ShowIndexedAsync(IReadOnlyList<SelectionItem> items, int count)
+    public async Task<List<int>> ShowIndexedAsync(IReadOnlyList<SelectionItem> items, int count, bool allowFewer = false)
     {
         if (items == null || items.Count == 0)
             return new List<int>();
@@ -166,6 +171,7 @@ public class CardSelectionUI : MonoBehaviour
         rejectSameKind = false;
         rejectSameType = false;
         rejectWhen = null;
+        this.allowFewer = allowFewer;
         shownCards.Clear();
         int take = Mathf.Min(Mathf.Max(1, count), items.Count);
         maxSelect = take;
@@ -221,7 +227,7 @@ public class CardSelectionUI : MonoBehaviour
                 HookButton(go, shown);
             }
 
-            if (indexOf.Count <= take)
+            if (indexOf.Count <= take && !(allowFewer && indexOf.Count > 1))
             {
                 return new List<int>(indexOf.Values);
             }
@@ -232,6 +238,7 @@ public class CardSelectionUI : MonoBehaviour
         finally
         {
             panel.SetActive(false);
+            this.allowFewer = false;
         }
 
         var indices = new List<int>();
@@ -375,6 +382,7 @@ public class CardSelectionUI : MonoBehaviour
         rejectSameKind = false;
         rejectSameType = false;
         rejectWhen = null;
+        allowFewer = false;
         shownCards.Clear();
         maxSelect = choose ? Mathf.Max(1, take) : Mathf.Max(1, pool.Count);
         selectedItems.Clear();
@@ -599,6 +607,8 @@ public class CardSelectionUI : MonoBehaviour
     bool CanConfirm()
     {
         if (selectedItems.Count == maxSelect)
+            return true;
+        if (allowFewer && selectedItems.Count > 0)
             return true;
         // 最初から全部押せないときは、空のまま閉じて効果を終わらせる。
         if (selectedItems.Count == 0 && AllShownBlocked())

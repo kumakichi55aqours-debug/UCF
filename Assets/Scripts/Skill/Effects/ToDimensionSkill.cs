@@ -98,6 +98,13 @@ public class ToDimensionSkill : SkillDB
             return;
 
         bool localDeck = deck == battle.pBattleDeck;
+        if (!localDeck && battle.IsOnlineMode && OnlineSyncManager.Instance != null)
+        {
+            context?.SetProcessedCards(await SendOpponentDeckCards(cardsToSend));
+            battle.UpdateDeckUI();
+            return;
+        }
+
         var sent = await MoveDeckCards(deck, cardsToSend, deckZone, dimensionZone, localDeck);
         context?.SetProcessedCards(sent);
         battle.UpdateDeckUI();
@@ -171,7 +178,12 @@ public class ToDimensionSkill : SkillDB
         if (playerDeck.Count > 0)
             processed.AddRange(await MoveDeckCards(battle.pBattleDeck, playerDeck, battle.pDeckZone, battle.pDimensionZone, true));
         if (enemyDeck.Count > 0)
-            processed.AddRange(await MoveDeckCards(battle.eBattleDeck, enemyDeck, battle.eDeckZone, battle.eDimensionZone, false));
+        {
+            if (battle.IsOnlineMode && OnlineSyncManager.Instance != null)
+                processed.AddRange(await SendOpponentDeckCards(enemyDeck));
+            else
+                processed.AddRange(await MoveDeckCards(battle.eBattleDeck, enemyDeck, battle.eDeckZone, battle.eDimensionZone, false));
+        }
 
         foreach (var pair in existingByZone)
         {
@@ -192,8 +204,45 @@ public class ToDimensionSkill : SkillDB
         if (OnlineSyncManager.Instance != null)
         {
             OnlineSyncManager.Instance.SendDetailedHandInfoToOpponent();
+            OnlineSyncManager.Instance.SendGraveInfoToOpponent();
             OnlineSyncManager.Instance.SendDimensionInfoToOpponent();
         }
+    }
+
+    /// <summary>
+    /// この端末のデッキから、渡したカードを異次元へ送る。相手の効果で頼まれたときに使う。動きと一覧は相手へ同期する。
+    /// </summary>
+    public static async Task SendOwnDeckCardsToDimension(List<DeckCard> cards)
+    {
+        var battle = BattleManager.Instance;
+        if (battle == null || cards == null || cards.Count == 0)
+            return;
+
+        await new ToDimensionSkill().MoveDeckCards(battle.pBattleDeck, cards, battle.pDeckZone, battle.pDimensionZone, true);
+        battle.UpdateDeckUI();
+
+        if (OnlineSyncManager.Instance != null)
+        {
+            OnlineSyncManager.Instance.SyncDeckCountToOpponent();
+            OnlineSyncManager.Instance.SendDimensionInfoToOpponent();
+        }
+    }
+
+    // 相手のデッキは相手端末にある。相手に送らせ、相手異次元に着いた表示カードを処理済みとして返す。
+    static async Task<List<CardController>> SendOpponentDeckCards(List<DeckCard> cards)
+    {
+        var sent = new List<(CardKind kind, int id)>();
+        foreach (var card in cards)
+        {
+            if (card != null)
+                sent.Add((card.カード種類, card.カードID));
+        }
+
+        await OnlineSyncManager.Instance.RequestOpponentDeckCardsToOwnPile(cards, toDimension: true);
+
+        var arrived = ToGraveSkill.ResolveArrivedCards(BattleManager.Instance.eDimensionZone, sent);
+        arrived.RemoveAll(card => card == null);
+        return arrived;
     }
 
     async Task<List<CardController>> MoveDeckCards(
@@ -294,46 +343,59 @@ public class ToDimensionSkill : SkillDB
             && !BattleManager.Instance.IsOnlineMode
             && sourceZone == BattleManager.Instance.eHandZone;
 
-        foreach (var card in toSend)
+        // 相手手札の一覧が途中で届いても、まだ送っていない表示カードを作り直さない
+        bool holdEnemyHand = cardIsReceiversHand && syncOnline;
+        if (holdEnemyHand)
+            BattleManager.Instance.BeginEnemyHandHold();
+
+        try
         {
-            if (offlineCpuHand)
-                RemoveOneEnemyHandCard(card);
-            OnlineSyncManager.Instance?.NoteCardLeftOpponentDimension(card);
-            ResetCardState(card);
-            if (!card.isMyCard)
-                card.battleCardview?.Show(card.model);
-
-            bool sentPerCard = false;
-            if (OnlineSyncManager.Instance != null && !batchedBoard && CardAddress.TryFrom(card, out CardAddress address))
+            foreach (var card in toSend)
             {
-                if (cardIsReceiversHand && syncOnline && BattleManager.Instance.mainCanvas != null)
-                    card.transform.SetParent(BattleManager.Instance.mainCanvas.transform, true);
+                if (offlineCpuHand)
+                    RemoveOneEnemyHandCard(card);
+                OnlineSyncManager.Instance?.NoteCardLeavingOpponentPile(card);
+                ResetCardState(card);
+                if (!card.isMyCard)
+                    card.battleCardview?.Show(card.model);
 
-                OnlineSyncManager.Instance.SyncCardToDimension(
-                    address.Kind.ToString(),
-                    address.Id,
-                    address.ZoneName,
-                    address.Index);
-                sentPerCard = true;
+                bool sentPerCard = false;
+                if (OnlineSyncManager.Instance != null && !batchedBoard && CardAddress.TryFrom(card, out CardAddress address))
+                {
+                    if (cardIsReceiversHand && syncOnline && BattleManager.Instance.mainCanvas != null)
+                        card.transform.SetParent(BattleManager.Instance.mainCanvas.transform, true);
+
+                    OnlineSyncManager.Instance.SyncCardToDimension(
+                        address.Kind.ToString(),
+                        address.Id,
+                        address.ZoneName,
+                        address.Index);
+                    sentPerCard = true;
+                }
+
+                if (CardAnimationManager.Instance != null)
+                {
+                    await CardAnimationManager.Instance.AnimateRelocate(
+                        sourceZone as RectTransform,
+                        dimensionZone as RectTransform,
+                        card);
+                }
+
+                if (sentPerCard)
+                    await OnlineSyncManager.Instance.WaitForOpponentAnimation();
+
+                if (BattleManager.Instance != null)
+                    await BattleManager.Instance.RetireEnhancementsIfSpent(card);
+
+                card.UpdateDisplay();
+                if (dimensionZone == BattleManager.Instance.eDimensionZone)
+                    OnlineSyncManager.Instance?.RememberOpponentDimensionCard(card);
             }
-
-            if (CardAnimationManager.Instance != null)
-            {
-                await CardAnimationManager.Instance.AnimateRelocate(
-                    sourceZone as RectTransform,
-                    dimensionZone as RectTransform,
-                    card);
-            }
-
-            if (sentPerCard)
-                await OnlineSyncManager.Instance.WaitForOpponentAnimation();
-
-            if (BattleManager.Instance != null)
-                await BattleManager.Instance.RetireEnhancementsIfSpent(card);
-
-            card.UpdateDisplay();
-            if (dimensionZone == BattleManager.Instance.eDimensionZone)
-                OnlineSyncManager.Instance?.RememberOpponentDimensionCard(card);
+        }
+        finally
+        {
+            if (holdEnemyHand)
+                BattleManager.Instance.EndEnemyHandHold();
         }
 
         if (cardIsReceiversHand && syncOnline)
@@ -343,6 +405,7 @@ public class ToDimensionSkill : SkillDB
         if (OnlineSyncManager.Instance != null)
         {
             OnlineSyncManager.Instance.SendDetailedHandInfoToOpponent();
+            OnlineSyncManager.Instance.SendGraveInfoToOpponent();
             OnlineSyncManager.Instance.SendDimensionInfoToOpponent();
         }
 

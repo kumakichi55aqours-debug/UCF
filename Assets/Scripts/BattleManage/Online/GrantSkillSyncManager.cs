@@ -124,7 +124,7 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
             
             OnlineSyncManager.Instance?.BeginOperationBlock();
 
-            if (skillInstance is ApplyStatusAilmentSkill)
+            if (CompositeSkill.Contains<ApplyStatusAilmentSkill>(skillInstance))
                 targetCard.RemoveGrantedStatusAilments();
 
             SkillContext context = new SkillContext(targetCard, targetCard, targetCard.transform);

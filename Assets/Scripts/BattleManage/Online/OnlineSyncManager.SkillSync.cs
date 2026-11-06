@@ -628,7 +628,7 @@ public partial class OnlineSyncManager
     /// <summary>
     /// 相手に候補カードから枚数だけ選ばせ、選ばれた番号が届くまで待つ。
     /// </summary>
-    public async Task<int[]> RequestOpponentCardPick(CardController sourceCard, int[] kinds, int[] ids, int pickCount)
+    public async Task<int[]> RequestOpponentCardPick(CardController sourceCard, int[] kinds, int[] ids, int pickCount, bool upTo = false)
     {
         if (!IsOnlineMode || sourceCard == null)
         {
@@ -654,7 +654,8 @@ public partial class OnlineSyncManager
             pickCount,
             kinds ?? new int[0],
             ids ?? new int[0],
-            sourceCard.cardName ?? string.Empty);
+            sourceCard.cardName ?? string.Empty,
+            upTo);
 
         int[] result = await opponentCardPickTcs.Task;
         opponentCardPickTcs = null;
@@ -663,19 +664,19 @@ public partial class OnlineSyncManager
     }
 
     [PunRPC]
-    private void ReceiveOpponentCardPickRequest(int requestId, int pickCount, int[] kinds, int[] ids, string sourceCardName)
+    private void ReceiveOpponentCardPickRequest(int requestId, int pickCount, int[] kinds, int[] ids, string sourceCardName, bool upTo)
     {
         if (!IsOnlineMode) return;
-        _ = ResolveOpponentCardPick(requestId, pickCount, kinds, ids, sourceCardName);
+        _ = ResolveOpponentCardPick(requestId, pickCount, kinds, ids, sourceCardName, upTo);
     }
 
-    async Task ResolveOpponentCardPick(int requestId, int pickCount, int[] kinds, int[] ids, string sourceCardName)
+    async Task ResolveOpponentCardPick(int requestId, int pickCount, int[] kinds, int[] ids, string sourceCardName, bool upTo)
     {
         BeginOperationBlock();
         int[] indices = new int[0];
         try
         {
-            indices = await BuildOpponentCardPick(pickCount, kinds, ids, sourceCardName);
+            indices = await BuildOpponentCardPick(pickCount, kinds, ids, sourceCardName, upTo);
         }
         catch (System.Exception ex)
         {
@@ -690,7 +691,7 @@ public partial class OnlineSyncManager
         }
     }
 
-    async Task<int[]> BuildOpponentCardPick(int pickCount, int[] kinds, int[] ids, string sourceCardName)
+    async Task<int[]> BuildOpponentCardPick(int pickCount, int[] kinds, int[] ids, string sourceCardName, bool upTo)
     {
         int length = Mathf.Min(kinds != null ? kinds.Length : 0, ids != null ? ids.Length : 0);
         int take = Mathf.Clamp(pickCount, 0, length);
@@ -714,7 +715,7 @@ public partial class OnlineSyncManager
 
         if (!string.IsNullOrEmpty(sourceCardName))
 
-        if (length <= take)
+        if (length <= take && !(upTo && length > 1))
         {
             var all = new int[length];
             for (int i = 0; i < length; i++)
@@ -722,7 +723,7 @@ public partial class OnlineSyncManager
             return all;
         }
 
-        var chosen = await CardSelectionUI.Instance.ShowIndexedAsync(items, take);
+        var chosen = await CardSelectionUI.Instance.ShowIndexedAsync(items, take, upTo);
         if (chosen == null || chosen.Count == 0)
             return RandomIndices(length, take);
 
@@ -807,22 +808,4 @@ public partial class OnlineSyncManager
 
         return string.Empty;
     }
-
-    #region 技を受ける時スキルの同期
-    public Task<int> WaitForDamageReceivedSkillComplete(int defaultDamage)
-    {
-        if (!IsOnlineMode) return Task.FromResult(defaultDamage);
-        if (SkillChainSync.Instance == null) return Task.FromResult(defaultDamage);
-        return SkillChainSync.Instance.WaitForDamageReceivedSkillComplete();
-    }
-    #endregion
-
-    #region 相手の技使用時スキルの同期
-    public Task WaitForOpponentMoveUsedSkillComplete()
-    {
-        if (!IsOnlineMode) return Task.CompletedTask;
-        if (SkillChainSync.Instance == null) return Task.CompletedTask;
-        return SkillChainSync.Instance.WaitForOpponentMoveUsedSkillComplete();
-    }
-    #endregion
 }

@@ -176,25 +176,66 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 技使用のRPC同期
+    /// 技使用のRPC同期。宣言した側が決めた解決方法と対象もいっしょに送る。
     /// </summary>
-    public void SyncUseMove(CardController attacker, int moveIndex, bool moveHit, int extraHits)
+    public void SyncUseMove(CardController attacker, int moveIndex, bool moveHit, int extraHits, MovePlan plan, IReadOnlyList<CardController> targets)
     {
         if (!CardAddress.TryFrom(attacker, out CardAddress address))
             return;
 
-        SendRPC("ReceiveUseMove", address.Kind.ToString(), address.Id, address.ZoneName, address.Index, moveIndex, moveHit, extraHits);
+        var kinds = new List<string>();
+        var ids = new List<int>();
+        var zones = new List<string>();
+        var indices = new List<int>();
+        if (targets != null)
+        {
+            foreach (var card in targets)
+                CardAddress.TryAdd(card, kinds, ids, zones, indices);
+        }
+
+        SendRPC(
+            "ReceiveUseMove",
+            address.Kind.ToString(),
+            address.Id,
+            address.ZoneName,
+            address.Index,
+            moveIndex,
+            moveHit,
+            extraHits,
+            (int)plan,
+            kinds.ToArray(),
+            ids.ToArray(),
+            zones.ToArray(),
+            indices.ToArray());
     }
 
     /// <summary>
-    /// 技使用のRPC受信
+    /// 技使用のRPC受信。届いた解決方法と対象のとおりに解決する。
     /// </summary>
     [PunRPC]
-    private async void ReceiveUseMove(string cardKindStr, int cardID, string zoneName, int zoneIndex, int moveIndex, bool moveHit, int extraHits)
+    private async void ReceiveUseMove(
+        string cardKindStr, int cardID, string zoneName, int zoneIndex,
+        int moveIndex, bool moveHit, int extraHits, int planInt,
+        string[] targetKinds, int[] targetIds, string[] targetZones, int[] targetIndices)
     {
         CardController attacker = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
         if (attacker == null)
+        {
+            Debug.LogError($"[ReceiveUseMove] 攻撃者カードが見つかりません: {cardKindStr} ID:{cardID} {zoneName}[{zoneIndex}]");
             return;
+        }
+
+        // 対象の番号は、どのカードも動く前に解決する
+        var targets = new List<CardController>();
+        int count = CardAddress.Count(targetKinds, targetIds, targetZones, targetIndices);
+        for (int i = 0; i < count; i++)
+        {
+            CardController card = CardAddress.ResolveAt(targetKinds, targetIds, targetZones, targetIndices, i);
+            if (card != null && !targets.Contains(card))
+                targets.Add(card);
+        }
+        if (targets.Count < count)
+            Debug.LogError($"[ReceiveUseMove] 技の対象が {count - targets.Count} 体見つかりません: {attacker.cardName}");
 
         // カードの初期化が完全に終わるまで少し待機
         await Task.Yield();
@@ -207,7 +248,7 @@ public partial class OnlineSyncManager
         }
 
         BattleManager.Instance.SetPendingMoveHit(moveHit, extraHits);
-        await BattleManager.Instance.UseMoveRoutine(attacker, moveIndex);
+        await BattleManager.Instance.ResolveRemoteMove(attacker, moveIndex, (MovePlan)planInt, targets);
     }
 
     /// <summary>
@@ -259,7 +300,8 @@ public partial class OnlineSyncManager
 
         BattleManager.Instance.selectedAttacker = attacker;
         BattleManager.Instance.selectedMoveIndex = moveIndex;
-        await BattleManager.Instance.SelectTargetRoutine(target);
+        BattleManager.Instance.PrepareRemoteMoveResolution();
+        await BattleManager.Instance.SelectTargetRoutine(target, attacker, moveIndex);
     }
 
     /// <summary>
@@ -398,10 +440,8 @@ public partial class OnlineSyncManager
                 await SkillChainManager.Instance.WaitUntilIdle();
             }
 
+            // 墓地へ着いたカードはそのまま墓地表示として使う。一覧の同期が、同じ種類・IDの枠に当てる。
             RememberEnemyGraveCard(cardKind, cardID);
-            if (tacticsCard != null && tacticsCard.gameObject != null)
-                Destroy(tacticsCard.gameObject);
-
             BattleManager.Instance.UpdateEnemyGraveyardUI();
             PersistentEffectManager.Instance?.RecalculateImmediately();
         }

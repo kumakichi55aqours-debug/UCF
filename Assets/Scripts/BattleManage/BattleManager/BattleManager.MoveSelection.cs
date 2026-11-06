@@ -11,7 +11,6 @@ public partial class BattleManager
     bool moveTargetChoiceOpen;
     bool moveMultiSelect;
     bool moveTargetCommitting;
-    bool resolvingSelectedMove;
     int moveSelectMax = 1;
     int moveSelectMin = 1;
     TargetCountMode moveSelectMode = TargetCountMode.ちょうど;
@@ -68,7 +67,6 @@ public partial class BattleManager
         IsTargetSelectionMode = false;
         IsAwaitingMoveTargetChoice = false;
         MessageManager.Instance?.HideMessage();
-        PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
     }
 
     void OpenSingleMoveTargetChoice(CardController attacker, int moveIndex, TargetList targetType)
@@ -83,7 +81,6 @@ public partial class BattleManager
         if (!IsOnlineMode || attacker.isMyCard)
         {
             IsAwaitingMoveTargetChoice = true;
-            PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
             var moveBattler = attacker?.model as BattlerModel;
             bool opponentSingle = targetType == TargetList.バトラー1体
                 && moveBattler != null
@@ -95,27 +92,17 @@ public partial class BattleManager
         }
     }
 
-    async Task BeginMultiMoveSelection(CardController attacker, int moveIndex)
+    /// <summary>
+    /// 複数体を選ぶ技の選択を開く。対象の数が足りるか、自動で決まるかは宣言時に判定済み。
+    /// </summary>
+    void OpenMultiMoveTargetChoice(CardController attacker, int moveIndex)
     {
-        if (resolvingSelectedMove || attacker == null)
+        if (attacker == null)
             return;
 
         var select = MoveTargetEvasion.MoveSelect(attacker, moveIndex);
         var legal = MoveTargetEvasion.ListLegalTargets(attacker, moveIndex);
-        if (legal.Count < select.MinimumCount)
-        {
-            AbortMoveNoTarget(attacker);
-            return;
-        }
-
         int selectableMax = Mathf.Min(select.Count, legal.Count);
-        bool auto = (select.選択方式 == TargetCountMode.ちょうど && legal.Count == select.Count)
-            || (select.選択方式 == TargetCountMode.まで && legal.Count == 1);
-        if (auto)
-        {
-            await ResolveSelectedMoveTargets(attacker, moveIndex, legal, payEnergy: true);
-            return;
-        }
 
         selectedAttacker = attacker;
         selectedMoveIndex = moveIndex;
@@ -132,7 +119,6 @@ public partial class BattleManager
             return;
 
         IsAwaitingMoveTargetChoice = true;
-        PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
         bool focused = MoveTargetsAreFocused(attacker, moveIndex);
         string who = focused ? "攻撃集中しているバトラー" : "バトラー";
         string message = moveSelectMode == TargetCountMode.まで
@@ -176,7 +162,7 @@ public partial class BattleManager
         card.SetTargetChosen(true);
         if (chosenMoveTargets.Count >= moveSelectMax)
         {
-            _ = CommitMoveTargets();
+            CommitMoveTargets().Forget("CommitMoveTargets");
             return;
         }
 
@@ -198,7 +184,7 @@ public partial class BattleManager
         if (chosenMoveTargets.Count < moveSelectMin)
             return;
 
-        _ = CommitMoveTargets();
+        CommitMoveTargets().Forget("CommitMoveTargets");
     }
 
     async Task CommitMoveTargets()
@@ -219,7 +205,6 @@ public partial class BattleManager
             IsTargetSelectionMode = false;
             MessageManager.Instance?.HideMessage();
             ResetMoveMultiState();
-            PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
 
             if (IsOnlineMode && attacker.isMyCard)
                 OnlineSyncManager.Instance?.SyncSelectMoveTargets(attacker, targets, moveIndex);
@@ -253,7 +238,6 @@ public partial class BattleManager
         IsTargetSelectionMode = false;
         IsAwaitingMoveTargetChoice = false;
         selectedAttacker = null;
-        PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
     }
 
     // ターゲット選択（オンライン同期処理を担当）
@@ -276,13 +260,12 @@ public partial class BattleManager
         moveTargetChoiceOpen = false;
         IsTargetSelectionMode = false;
         IsAwaitingMoveTargetChoice = false;
-        PhaseManager.Instance?.RefreshNextPhaseButtonVisibility();
         MessageManager.Instance.HideMessage();
 
         if (IsOnlineMode)
         {
             OnlineSyncManager.Instance.SyncSelectEnemyTarget(selectedAttacker, enemyCard, selectedMoveIndex);
-            _ = SelectTargetRoutine(enemyCard);
+            SelectTargetRoutine(enemyCard).Forget("SelectTargetRoutine");
             return;
         }
         await SelectTargetRoutine(enemyCard);
@@ -445,6 +428,10 @@ public partial class BattleManager
         Transform opponentFieldZone = treatSourceAsPlayer ? eFieldZone : pFieldZone;
         Transform myHandZone = treatSourceAsPlayer ? pHandZone : eHandZone;
         Transform opponentHandZone = treatSourceAsPlayer ? eHandZone : pHandZone;
+        Transform myGraveZone = treatSourceAsPlayer ? pGraveZone : eGraveZone;
+        Transform opponentGraveZone = treatSourceAsPlayer ? eGraveZone : pGraveZone;
+        Transform myDimensionZone = treatSourceAsPlayer ? pDimensionZone : eDimensionZone;
+        Transform opponentDimensionZone = treatSourceAsPlayer ? eDimensionZone : pDimensionZone;
 
         switch (targetList)
         {
@@ -454,6 +441,10 @@ public partial class BattleManager
                 return CardsOnSide(side, myFieldZone, opponentFieldZone, CardKind.フィールド);
             case TargetList.手札:
                 return CardsOnSide(side, myHandZone, opponentHandZone, null);
+            case TargetList.墓地:
+                return CardsOnSide(side, myGraveZone, opponentGraveZone, null);
+            case TargetList.異次元:
+                return CardsOnSide(side, myDimensionZone, opponentDimensionZone, null);
             default:
                 return Enumerable.Empty<CardController>();
         }
