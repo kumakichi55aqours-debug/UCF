@@ -97,7 +97,7 @@ public class ResourceConsumeSkill : SkillDB
         switch (リソースタイプ)
         {
             case ResourceType.コスト:
-                OnlineSyncManager.Instance.SyncOpponentCostConsumption(amount);
+                OnlineSyncManager.Instance.SyncOpponentCostChange(amount);
                 break;
             case ResourceType.エネルギー:
                 OnlineSyncManager.Instance.SyncOpponentEnergyChange(-amount);

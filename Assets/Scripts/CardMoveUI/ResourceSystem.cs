@@ -44,8 +44,7 @@ public class ResourceSystem : MonoBehaviour
     /// </summary>
     public void LoseHp(int damage)
     {
-        if (damage <= 0)
-            return;
+        if (damage == 0) return;
 
         currentHp -= damage;
         if (currentHp < 0) currentHp = 0;

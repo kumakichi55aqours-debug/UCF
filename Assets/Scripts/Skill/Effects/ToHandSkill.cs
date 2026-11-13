@@ -4,13 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public enum SelectCountMode
-{
-    ちょうど,
-    // 1枚以上、選択数以下で選べる。
-    まで,
-}
-
 [System.Serializable]
 [SkillDisplayName("手札へ")]
 public class ToHandSkill : SkillDB
@@ -18,9 +11,11 @@ public class ToHandSkill : SkillDB
     [SerializeField] public SearchCriteria 参照条件; // 検索条件
     [SerializeField] public List<CardZoneType> 参照場所 = new List<CardZoneType>(); // 追加元のゾーン複数
     [SerializeField] public int 選択数 = 1; // 選択数
-    [SerializeField] public SelectCountMode 選択数の扱い = SelectCountMode.ちょうど;
+    [SerializeField] public CountMode 選択数の扱い = CountMode.ちょうど;
     [SerializeField] public PlayerType 選択プレイヤー = PlayerType.プレイヤー; // どちらが選択するか
     [SerializeField] public bool ランダム = false;
+
+    [SerializeField] public bool 全選択 = false;
 
     public override async Task ActivateEffect(SkillContext context)
     {
@@ -75,10 +70,16 @@ public class ToHandSkill : SkillDB
 
             List<SelectionItem> selections;
             int totalCandidates = existingCandidates.Count + deckCandidates.Count;
-            bool upTo = 選択数の扱い == SelectCountMode.まで;
+            bool upTo = 選択数の扱い == CountMode.まで;
             bool chooseCount = upTo && totalCandidates > 1;
 
-            if (ランダム)
+            if (全選択)
+            {
+                selections = SelectionItem.FromCandidates(
+                    existingCandidates,
+                    deckCandidates);
+            }
+            else if (ランダム)
             {
                 selections = SelectionItem.FromCandidates(existingCandidates, deckCandidates)
                     .OrderBy(_ => UnityEngine.Random.value)
@@ -175,10 +176,6 @@ public class ToHandSkill : SkillDB
                 {
                     await MoveMirrorCardToEnemyHand(card);
                     addedToEnemy = true;
-                }
-                else
-                {
-                    Debug.LogWarning($"[手札へ] 相手カードの住所が取れないため、手札へ移せません: {card.cardName}");
                 }
             }
             else

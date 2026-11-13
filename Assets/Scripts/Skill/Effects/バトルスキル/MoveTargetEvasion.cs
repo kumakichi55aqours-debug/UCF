@@ -75,7 +75,7 @@ public static class MoveTargetEvasion
         var select = MoveSelect(attacker, moveIndex);
         int count = select.Count <= 1
             ? 1
-            : select.選択方式 == TargetCountMode.まで
+            : select.選択方式 == CountMode.まで
                 ? Mathf.Min(select.Count, legal.Count)
                 : select.Count;
         if (count <= 0 || count > legal.Count)
@@ -172,7 +172,7 @@ public static class MoveTargetEvasion
             return false;
 
         var select = battler.GetMoveSelect(moveIndex);
-        if (select.Count <= 1 || select.選択方式 != TargetCountMode.まで)
+        if (select.Count <= 1 || select.選択方式 != CountMode.まで)
             return false;
 
         return ListZoneBattlers(attacker, battler.GetMoveSide(moveIndex)).Count == 0;
@@ -180,7 +180,7 @@ public static class MoveTargetEvasion
 
     static bool HasRequiredSelection(int presentCount, int legalCount, SelectTarget select)
     {
-        if (select.Count <= 1 || select.選択方式 == TargetCountMode.まで)
+        if (select.Count <= 1 || select.選択方式 == CountMode.まで)
             return ZoneEmptyOrHasLegal(presentCount, legalCount);
 
         return legalCount >= select.MinimumCount;

@@ -17,8 +17,9 @@ public class SkillConditionDrawer : PropertyDrawer
         typeof(AttackerElementCondition),
         typeof(MoveElementCondition),
         typeof(PlayerResourceCondition),
-        typeof(StatusAilmentCondition),
+        typeof(StatusAlimentCondition),
         typeof(PhaseCondition),
+        typeof(CostCondition),
         typeof(NotSentToGraveThisTurnCondition),
     };
     static readonly string[] _typeNames = _types.Select(t => t.Name).ToArray();

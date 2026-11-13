@@ -13,7 +13,7 @@ public partial class BattleManager
     bool moveTargetCommitting;
     int moveSelectMax = 1;
     int moveSelectMin = 1;
-    TargetCountMode moveSelectMode = TargetCountMode.ちょうど;
+    CountMode moveSelectMode = CountMode.ちょうど;
     readonly List<CardController> chosenMoveTargets = new List<CardController>();
     public CardController selectedAttacker;
     public int selectedMoveIndex;  // 0: 技1, 1: 技2
@@ -121,12 +121,12 @@ public partial class BattleManager
         IsAwaitingMoveTargetChoice = true;
         bool focused = MoveTargetsAreFocused(attacker, moveIndex);
         string who = focused ? "攻撃集中しているバトラー" : "バトラー";
-        string message = moveSelectMode == TargetCountMode.まで
+        string message = moveSelectMode == CountMode.まで
             ? $"{who}を{select.Count}体まで選択してください"
             : $"{who}を{select.Count}体選択してください";
         MessageManager.Instance?.ShowMessage(
             message,
-            moveSelectMode == TargetCountMode.まで ? ConfirmMoveTargetSelection : null);
+            moveSelectMode == CountMode.まで ? ConfirmMoveTargetSelection : null);
         RefreshMoveConfirm();
     }
 
@@ -171,7 +171,7 @@ public partial class BattleManager
 
     void RefreshMoveConfirm()
     {
-        bool canConfirm = moveSelectMode == TargetCountMode.まで
+        bool canConfirm = moveSelectMode == CountMode.まで
             && chosenMoveTargets.Count >= moveSelectMin
             && chosenMoveTargets.Count < moveSelectMax;
         MessageManager.Instance?.SetConfirmInteractable(canConfirm);
@@ -179,7 +179,7 @@ public partial class BattleManager
 
     public void ConfirmMoveTargetSelection()
     {
-        if (!moveMultiSelect || moveSelectMode != TargetCountMode.まで)
+        if (!moveMultiSelect || moveSelectMode != CountMode.まで)
             return;
         if (chosenMoveTargets.Count < moveSelectMin)
             return;
@@ -222,7 +222,7 @@ public partial class BattleManager
         moveMultiSelect = false;
         moveSelectMax = 1;
         moveSelectMin = 1;
-        moveSelectMode = TargetCountMode.ちょうど;
+        moveSelectMode = CountMode.ちょうど;
         for (int i = 0; i < chosenMoveTargets.Count; i++)
         {
             if (chosenMoveTargets[i] != null)

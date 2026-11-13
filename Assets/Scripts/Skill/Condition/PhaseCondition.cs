@@ -20,10 +20,8 @@ public class PhaseCondition : ISkillCondition
         if (card == null || BattleManager.Instance == null)
             return false;
 
-        // オフラインの相手ターンでも、この端末がフェイズを進めている。持ち主のターンかで見る。
-        // フェイズ切り替え中も開始時・終了時のスキルは発動するので、操作可否ではなく手番で見る。
         if (card.isMyCard && BattleManager.Instance.IsOnlineMode)
-            return OnlineSyncManager.Instance != null && OnlineSyncManager.Instance.IsMyTurn;
+            return OnlineSyncManager.Instance != null;
         if (card.isMyCard)
             return BattleManager.Instance.IsActiveSideTurn;
         return !BattleManager.Instance.IsActiveSideTurn;

@@ -166,7 +166,7 @@ MonoBehaviour:
         "\u30B9\u30AD\u30EB\u540D": "\u62801\u52B9\u679C"
         "\u30BF\u30A4\u30DF\u30F3\u30B0": 9
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
-        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u4E0A\u9650\u56DE\u6570": 255
         "\u5F37\u5236\u767A\u52D5": 1
         "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
         "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
@@ -312,13 +312,6 @@ MonoBehaviour:
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 4
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 1
-    - rid: 3123607492588208163
-      type: {class: PlayerResourceCondition, ns: , asm: Assembly-CSharp}
-      data:
-        "\u5BFE\u8C61\u30D7\u30EC\u30A4\u30E4\u30FC": 0
-        "\u30EA\u30BD\u30FC\u30B9\u30BF\u30A4\u30D7": 1
-        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
-        "\u57FA\u6E96\u5024": 1
     - rid: 7839874268133589085
       type: {class: SpecialSummonSkill, ns: , asm: Assembly-CSharp}
       data:
@@ -334,7 +327,7 @@ MonoBehaviour:
         - rid: 3123607303214858266
         - rid: 3123607303214858267
         - rid: 3123607464156594176
-        - rid: 3123607492588208163
+        - rid: 7839874373588090883
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u30D5\u30A3\u30EB\u30BF": []
@@ -359,3 +352,6 @@ MonoBehaviour:
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
         "\u9078\u629E\u30AB\u30FC\u30C9\u306E\u30B3\u30B9\u30C8\u3092\u6255\u3046": 1
+    - rid: 7839874373588090883
+      type: {class: CostCondition, ns: , asm: Assembly-CSharp}
+      data: 

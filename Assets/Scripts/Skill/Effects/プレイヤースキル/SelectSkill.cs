@@ -26,16 +26,9 @@ public class SelectChoice
 [SkillDisplayName("選択(セレクト)")]
 public class SelectSkill : SkillDB
 {
-    [Tooltip("空なら「どちらを選択しますか？」")]
     public string タイトル = "どちらを選択しますか？";
-
-    [Tooltip("プレイヤーは発動したカードの側。エネミーはその相手")]
     public SelectSide 選択者 = SelectSide.エネミー;
-
-    [Tooltip("選ぶ側がCPUのとき、先頭の選択肢を選ぶ。オフにするとランダム")]
     public bool オフラインは先頭を選ぶ = true;
-
-    [Tooltip("選ばれた番号（1始まり）を入れるキー。空なら記録しない")]
     public string 結果出力キー;
 
     public List<SelectChoice> 選択肢 = new List<SelectChoice>
@@ -43,6 +36,30 @@ public class SelectSkill : SkillDB
         new SelectChoice(),
         new SelectChoice()
     };
+
+    public override bool CanActivate(SkillContext context)
+    {
+        // SkillDB本来の発動条件を確認
+        if (!base.CanActivate(context))
+            return false;
+
+        if (context == null || context.発動カード == null)
+            return false;
+
+        var choices = LiveChoices();
+
+        if (choices.Count == 0)
+            return false;
+
+        // 1つでも選択可能な選択肢があれば発動可能
+        for (int i = 0; i < choices.Count; i++)
+        {
+            if (ChoiceIsSelectable(choices[i], context))
+                return true;
+        }
+
+        return false;
+    }
 
     public override async Task ActivateEffect(SkillContext context)
     {
@@ -115,7 +132,6 @@ public class SelectSkill : SkillDB
         var sync = OnlineSyncManager.Instance;
         if (sync == null)
         {
-            Debug.LogWarning("[SelectSkill] OnlineSyncManagerが存在しないため、相手の選択を待ちます。");
             await new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
             return -1;
         }

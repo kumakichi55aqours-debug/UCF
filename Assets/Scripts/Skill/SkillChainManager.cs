@@ -1621,9 +1621,6 @@ public class SkillChainManager : MonoBehaviour
 
     static bool HasAcceptedSameName(SequencedSkill skill, List<SequencedSkill> accepted)
     {
-        if (!SkipsSameNameConfirmation(TriggerOf(skill)))
-            return false;
-
         foreach (var prior in accepted)
         {
             if (prior == null || !prior.WillActivate || prior.Forced)
@@ -1633,16 +1630,6 @@ public class SkillChainManager : MonoBehaviour
         }
 
         return false;
-    }
-
-    static bool SkipsSameNameConfirmation(SkillTrigger trigger)
-    {
-        return trigger == SkillTrigger.相手の技使用時
-            || trigger == SkillTrigger.他カードが墓地に送られた時
-            || trigger == SkillTrigger.他バトラー撃破時
-            || trigger == SkillTrigger.他効果誘発
-            || trigger == SkillTrigger.他カードが手札に戻った時
-            || trigger == SkillTrigger.他カードが登場した時;
     }
 
     static bool IsSameNameSkill(SequencedSkill a, SequencedSkill b)

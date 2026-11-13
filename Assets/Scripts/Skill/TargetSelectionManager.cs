@@ -23,7 +23,7 @@ public class TargetSelectionManager : MonoBehaviour
     private HashSet<CardController> limitedCandidates;
     private int requiredSelectCount = 1;
     private int minimumSelectCount = 1;
-    private TargetCountMode selectCountMode = TargetCountMode.ちょうど;
+    private CountMode selectCountMode = CountMode.ちょうど;
 
     private void Awake()
     {
@@ -105,7 +105,7 @@ public class TargetSelectionManager : MonoBehaviour
         SearchCriteria criteria,
         SkillContext context,
         int selectCount = 1,
-        TargetCountMode countMode = TargetCountMode.ちょうど,
+        CountMode countMode = CountMode.ちょうど,
         IReadOnlyList<ISkillCondition> cardState = null)
     {
         var targets = new List<CardController>();
@@ -120,6 +120,10 @@ public class TargetSelectionManager : MonoBehaviour
         Transform opponentFieldZone = CardZones.Of(CardZoneType.相手Fゾーン, treatSourceAsPlayer);
         Transform myHandZone = CardZones.Of(CardZoneType.プレイヤー手札, treatSourceAsPlayer);
         Transform opponentHandZone = CardZones.Of(CardZoneType.相手手札, treatSourceAsPlayer);
+        Transform myGraveZone = CardZones.Of(CardZoneType.プレイヤー墓地, treatSourceAsPlayer);
+        Transform opponentGraveZone = CardZones.Of(CardZoneType.相手墓地, treatSourceAsPlayer);
+        Transform myDimensionZone = CardZones.Of(CardZoneType.プレイヤー異次元, treatSourceAsPlayer);
+        Transform opponentDimensionZone = CardZones.Of(CardZoneType.相手異次元, treatSourceAsPlayer);
 
         switch (targetList)
         {
@@ -143,6 +147,14 @@ public class TargetSelectionManager : MonoBehaviour
 
             case TargetList.手札:
                 AddBySide(targets, side, myHandZone, opponentHandZone, null);
+                break;
+
+            case TargetList.墓地:
+                AddBySide(targets, side, myGraveZone, opponentGraveZone, null);
+                break;
+
+            case TargetList.異次元:
+                AddBySide(targets, side, myDimensionZone, opponentDimensionZone, null);
                 break;
 
             case TargetList.バトラー1体:
@@ -258,13 +270,13 @@ public class TargetSelectionManager : MonoBehaviour
         SearchCriteria criteria,
         SkillContext context,
         int count,
-        TargetCountMode countMode = TargetCountMode.ちょうど,
+        CountMode countMode = CountMode.ちょうど,
         string message = null,
         IReadOnlyList<ISkillCondition> cardState = null)
     {
         var empty = new List<CardController>();
         int maxCount = Mathf.Max(1, count);
-        int minCount = countMode == TargetCountMode.まで ? 1 : maxCount;
+        int minCount = countMode == CountMode.まで ? 1 : maxCount;
         if (BattleManager.Instance == null)
             return empty;
 
@@ -272,18 +284,18 @@ public class TargetSelectionManager : MonoBehaviour
         var candidates = BattleManager.Instance.ListSelectableSkillTargets(targetList, side, criteria, source, cardState);
         if (candidates == null || candidates.Count < minCount)
         {
-            Debug.Log(countMode == TargetCountMode.まで
+            Debug.Log(countMode == CountMode.まで
                 ? "[TargetSelectionManager] 対象候補がありません"
                 : $"[TargetSelectionManager] 対象が{maxCount}体に足りません");
             return empty;
         }
 
-        if (countMode == TargetCountMode.ちょうど && candidates.Count == maxCount)
+        if (countMode == CountMode.ちょうど && candidates.Count == maxCount)
         {
             await EmphasizeChosenTargets(candidates);
             return candidates;
         }
-        if (countMode == TargetCountMode.まで && candidates.Count == 1)
+        if (countMode == CountMode.まで && candidates.Count == 1)
         {
             await EmphasizeChosenTargets(candidates);
             return candidates;
@@ -292,7 +304,7 @@ public class TargetSelectionManager : MonoBehaviour
         int selectableMax = Mathf.Min(maxCount, candidates.Count);
         if (SkillContext.IsOfflineCpuResolving || IsOfflineCpuSource(source))
         {
-            var picked = PickRandomTargets(candidates, countMode == TargetCountMode.まで ? selectableMax : maxCount);
+            var picked = PickRandomTargets(candidates, countMode == CountMode.まで ? selectableMax : maxCount);
             await EmphasizeChosenTargets(picked);
             return picked;
         }
@@ -301,13 +313,13 @@ public class TargetSelectionManager : MonoBehaviour
         string prompt = message;
         if (string.IsNullOrEmpty(prompt))
         {
-            prompt = countMode == TargetCountMode.まで
+            prompt = countMode == CountMode.まで
                 ? $"バトラーを{maxCount}体まで選択してください"
                 : $"バトラーを{maxCount}体選択してください";
         }
         MessageManager.Instance?.ShowMessage(
             prompt,
-            countMode == TargetCountMode.まで ? ConfirmCurrentSelection : null);
+            countMode == CountMode.まで ? ConfirmCurrentSelection : null);
         RefreshConfirmButton();
         List<CardController> selected;
         try
@@ -362,7 +374,7 @@ public class TargetSelectionManager : MonoBehaviour
         limitedCandidates = new HashSet<CardController>(list);
         requiredSelectCount = 1;
         minimumSelectCount = 1;
-        selectCountMode = TargetCountMode.ちょうど;
+        selectCountMode = CountMode.ちょうど;
         chosenTargets.Clear();
         IsSkillTargetSelectionMode = true;
         targetSelectionTcs = new TaskCompletionSource<CardController>();
@@ -392,7 +404,7 @@ public class TargetSelectionManager : MonoBehaviour
         CardController sourceCard = null,
         IReadOnlyList<ISkillCondition> cardState = null)
     {
-        OpenSelection(list, side, criteria, sourceCard, 1, 1, TargetCountMode.ちょうど, multiple: false, cardState);
+        OpenSelection(list, side, criteria, sourceCard, 1, 1, CountMode.ちょうど, multiple: false, cardState);
     }
 
     public void ConfirmSkillTargetSelection(CardController card)
@@ -435,7 +447,7 @@ public class TargetSelectionManager : MonoBehaviour
         CardController sourceCard,
         int maxCount,
         int minCount,
-        TargetCountMode countMode,
+        CountMode countMode,
         IReadOnlyList<ISkillCondition> cardState)
     {
         OpenSelection(list, side, criteria, sourceCard, maxCount, minCount, countMode, multiple: true, cardState);
@@ -448,7 +460,7 @@ public class TargetSelectionManager : MonoBehaviour
         CardController sourceCard,
         int maxCount,
         int minCount,
-        TargetCountMode countMode,
+        CountMode countMode,
         bool multiple,
         IReadOnlyList<ISkillCondition> cardState)
     {
@@ -473,7 +485,7 @@ public class TargetSelectionManager : MonoBehaviour
 
     public void ConfirmCurrentSelection()
     {
-        if (!IsSkillTargetSelectionMode || selectCountMode != TargetCountMode.まで)
+        if (!IsSkillTargetSelectionMode || selectCountMode != CountMode.まで)
             return;
         if (chosenTargets.Count < minimumSelectCount)
             return;
@@ -518,7 +530,7 @@ public class TargetSelectionManager : MonoBehaviour
 
     void RefreshConfirmButton()
     {
-        bool canConfirm = selectCountMode == TargetCountMode.まで
+        bool canConfirm = selectCountMode == CountMode.まで
             && chosenTargets.Count >= minimumSelectCount
             && chosenTargets.Count < requiredSelectCount;
         MessageManager.Instance?.SetConfirmInteractable(canConfirm);
@@ -528,7 +540,7 @@ public class TargetSelectionManager : MonoBehaviour
     {
         requiredSelectCount = 1;
         minimumSelectCount = 1;
-        selectCountMode = TargetCountMode.ちょうど;
+        selectCountMode = CountMode.ちょうど;
         for (int i = 0; i < chosenTargets.Count; i++)
         {
             if (chosenTargets[i] != null)

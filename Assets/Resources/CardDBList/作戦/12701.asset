@@ -184,15 +184,16 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
         "\u5BFE\u8C61\u72B6\u614B":
-        - rid: 7839874268133589012
+        - rid: 7839874396099444736
         "\u52B9\u679C\u6570": 6
         "\u52B9\u679C\u6570\u30AD\u30FC": 0
-    - rid: 7839874268133589012
-      type: {class: StatusAilmentCondition, ns: , asm: Assembly-CSharp}
-      data:
-        "\u898B\u308B\u30AB\u30FC\u30C9": 0
-        "\u72B6\u614B\u7570\u5E38": 02000000
     - rid: 7839874268133589013
       type: {class: NotSentToGraveThisTurnCondition, ns: , asm: Assembly-CSharp}
       data: 
+    - rid: 7839874396099444736
+      type: {class: StatusAlimentCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u898B\u308B\u30AB\u30FC\u30C9": 0
+        "\u72B6\u614B\u7570\u5E38": 02000000

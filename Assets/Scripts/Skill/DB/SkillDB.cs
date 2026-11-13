@@ -33,10 +33,10 @@ public abstract class SkillDB
     public SearchCriteria トリガー対象条件;
     // 「墓地に送られた時」「他のカードが墓地に送られた時」「他のカードが手札に戻った時」「他のカードが登場した時」で、移動前のゾーン。空ならどこからでも
     // 「プレイヤー」はそのスキルを持つカード側、「相手」は反対側。複数指定したときはどれかと一致すればよい
-    public List<CardZoneType> どこから = new List<CardZoneType>();
+    public List<CardZoneType> 対象元ゾーン = new List<CardZoneType>();
     // 「他のバトラーが撃破した時」で、撃破したバトラーがいるゾーン。空ならどこにいても
     // 「プレイヤー」はそのスキルを持つカード側、「相手」は反対側。複数指定したときはどれかと一致すればよい
-    public List<CardZoneType> いる場所 = new List<CardZoneType>();
+    public List<CardZoneType> 対象ゾーン = new List<CardZoneType>();
     // 「自分のフェイズ開始時」「自分のフェイズ終了時」のとき、どのフェイズかを見る
     public TurnPhase 対象フェイズ = TurnPhase.ドローフェイズ;
     // トリガー対象のカードの側。プレイヤーは、このスキルを持つカード側。両方は側を見ない。
@@ -332,9 +332,8 @@ public abstract class SkillDB
             {
                 await skill.ActivateEffect(context);
             }
-            catch (SkillExecutionCancelledException ex)
+            catch (SkillExecutionCancelledException)
             {
-                Debug.Log($"[{GetType().Name}] サブスキルがキャンセルされました: {skill.スキル名} - {ex.Message}");
                 break;
             }
         }
@@ -565,10 +564,12 @@ public class SearchCriteria
 
         switch (ソースカード条件)
         {
-            case SourceCardType.Self:
+            case SourceCardType.自身:
                 return card == source;
-            case SourceCardType.ExcludeSelf:
+            case SourceCardType.同名カード以外:
                 return !(card.cardID == source.cardID && card.cardKind == source.cardKind);
+            case SourceCardType.自身以外:
+                return card != source;
             default:
                 return true;
         }
@@ -583,14 +584,14 @@ public class SearchCriteria
         if (ソースカード条件 == SourceCardType.処理したカード)
             return false;
 
-        if (ソースカード条件 == SourceCardType.Self)
+        if (ソースカード条件 == SourceCardType.自身)
         {
             if (!selfMatchesSameCard || source == null)
                 return false;
             return deck.カード種類 == source.cardKind && deck.カードID == source.cardID;
         }
 
-        if (ソースカード条件 == SourceCardType.ExcludeSelf)
+        if (ソースカード条件 == SourceCardType.同名カード以外)
         {
             if (source == null)
                 return nullSourcePassesExclude;

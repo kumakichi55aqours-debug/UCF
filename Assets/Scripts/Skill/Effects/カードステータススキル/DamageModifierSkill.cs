@@ -8,11 +8,10 @@ public class DamageModifierSkill : SkillDB
 {
     [Header("ダメージ増減スキル")]
     public int 増減値;
-    public ElementList 対象属性 = ElementList.None;
+    public List<ElementList> 対象属性 = new List<ElementList>();
     public MoveTarget 適用先 = MoveTarget.両方;
     public DamageModifierType 増減タイプ = DamageModifierType.固定値;
 
-    [Header("このカードがダメージを受けるとき、この状態も満たすときだけ増減する。空なら状態では絞らない")]
     [SerializeReference]
     public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
 
@@ -49,8 +48,14 @@ public class DamageModifierSkill : SkillDB
     /// </summary>
     public bool IsApplicable(ElementList moveElement, int moveIndex)
     {
-        if (対象属性 != ElementList.None && moveElement != 対象属性)
+        if (対象属性 != null &&
+            対象属性.Count > 0 &&
+            !対象属性.Contains(ElementList.None) &&
+            !対象属性.Contains(moveElement))
+        {
             return false;
+        }
+
         return AppliesToMove(適用先, moveIndex - 1);
     }
 

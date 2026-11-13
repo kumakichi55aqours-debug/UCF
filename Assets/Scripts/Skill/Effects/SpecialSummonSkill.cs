@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 
 [Serializable]
-[SkillDisplayName("登場")]
+[SkillDisplayName("特殊登場")]
 public class SpecialSummonSkill : SkillDB
 {
     const int BattlerZoneLimit = 5;
@@ -13,24 +13,20 @@ public class SpecialSummonSkill : SkillDB
     public List<CardZoneType> 参照ゾーンリスト = new List<CardZoneType>();
     public SearchCriteria 対象条件;
 
-    [Tooltip("選んだカードのコストを、発動した側のコストから払う。払えないカードは選択画面でグレーになり押せない。")]
     public bool 選択カードのコストを払う;
 
     public override async Task ActivateEffect(SkillContext context)
     {
-        // 複合スキルの中にある登場は、親の発動条件では見ない。ここで自分の条件を見る。
-        if (!MeetsOwnConditions(context))
-        {
-            Debug.Log("SpecialSummonSkill: 発動条件を満たしていないため登場しません。");
-            return;
-        }
-
         var cond = 対象条件;
         bool ownerIsLocal = context?.発動カード == null || context.発動カード.isMyCard;
 
         // --- 1) すべての選択候補をリストアップして整理 ---
         var existingCandidates = new List<CardController>();
         var deckCandidates = new List<DeckCard>();
+
+        existingCandidates = existingCandidates
+    .Where(c => MeetsConditionsForCandidate(context, c))
+    .ToList();
 
         foreach (var zone in 参照ゾーンリスト)
         {
@@ -43,10 +39,7 @@ public class SpecialSummonSkill : SkillDB
             }
 
             if (!IsSummonableZone(zone))
-            {
-                Debug.LogWarning($"SpecialSummonSkill: 未対応のゾーン {zone}");
                 continue;
-            }
 
             Transform zoneTransform = CardZones.Of(zone, ownerIsLocal);
             if (zoneTransform == null)
@@ -79,10 +72,7 @@ public class SpecialSummonSkill : SkillDB
 
         // --- 3) 候補がないチェック ---
         if (existingCandidates.Count == 0 && deckCandidates.Count == 0)
-        {
-            Debug.Log("SpecialSummonSkill: 対象カードが見つかりません。");
             return;
-        }
 
         bool payCost = 選択カードのコストを払う;
         int availableCost = payCost ? CurrentCost(context) : int.MaxValue;
@@ -90,16 +80,13 @@ public class SpecialSummonSkill : SkillDB
         if (cpuChooses)
         {
             existingCandidates = existingCandidates
-                .Where(c => c != null && c.cost <= availableCost)
+                .Where(c => c != null && c.GetModifiedCost() <= availableCost)
                 .ToList();
             deckCandidates = deckCandidates
                 .Where(d => d != null && d.コスト <= availableCost)
                 .ToList();
             if (existingCandidates.Count == 0 && deckCandidates.Count == 0)
-            {
-                Debug.Log("SpecialSummonSkill: 払えるコストの対象がありません。");
                 return;
-            }
         }
 
         Func<IReadOnlyList<SelectionItem>, SelectionItem, bool> cantAfford = null;
@@ -138,10 +125,7 @@ public class SpecialSummonSkill : SkillDB
             ? sel.existingCard != null && sel.existingCard.isMyCard
             : deckToPlayer;
         if (!HasBattlerRoom(selectedIsPlayer))
-        {
-            Debug.Log("SpecialSummonSkill: バトラーゾーンが埋まっているため登場しません。");
             return;
-        }
 
         CardController toSummon = null;
 
@@ -192,19 +176,13 @@ public class SpecialSummonSkill : SkillDB
 
         // --- 7) 選択されたカードが同一カード制限により場に出せないか再チェック（念のため） ---
         if (toSummon != null && UniqueCardRestrictionHelper.IsRestrictedByUniqueCardRule(toSummon))
-        {
-            Debug.LogWarning($"SpecialSummonSkill: {toSummon.cardName}は同一カード制限により場に出せません。");
             return;
-        }
 
         // --- 8) SummonRoutine で召喚処理 ---
         if (toSummon != null)
         {
-            if (payCost && !TryPaySummonCost(context, toSummon.cost))
-            {
-                Debug.Log($"SpecialSummonSkill: コストが足りないため {toSummon.cardName} は登場しません。");
+            if (payCost && !TryPaySummonCost(context, toSummon.GetModifiedCost()))
                 return;
-            }
 
             // 適切なバトラーゾーンを選択
             var targetZone = toSummon.isMyCard 
@@ -232,15 +210,17 @@ public class SpecialSummonSkill : SkillDB
         if (item == null)
             return 0;
         if (item.source == SelectionItem.SourceType.Existing)
-            return item.existingCard != null ? Mathf.Max(0, item.existingCard.cost) : 0;
+        {
+            int pay = item.existingCard.GetModifiedCost();
+            return Mathf.Max(0, pay);
+        }
         return item.deckData != null ? Mathf.Max(0, item.deckData.コスト) : 0;
     }
 
     int CurrentCost(SkillContext context)
     {
         var resources = PayerResources(context);
-        if (resources == null || resources.Cost == null)
-            return 0;
+        if (resources == null || resources.Cost == null) return 0;
         return Mathf.Max(0, resources.Cost.currentCost);
     }
 
@@ -267,7 +247,30 @@ public class SpecialSummonSkill : SkillDB
         resources.Cost.TakeCost(pay);
         bool player = context?.発動カード == null || context.発動カード.isPlayerCard;
         if (player && BattleManager.Instance.IsOnlineMode && OnlineSyncManager.Instance != null)
-            OnlineSyncManager.Instance.SyncOpponentCostConsumption(pay);
+            OnlineSyncManager.Instance.SyncOpponentCostChange(pay);
+        return true;
+    }
+
+    bool MeetsConditionsForCandidate(SkillContext context, CardController candidate)
+    {
+        if (条件 == null || 条件.Count == 0)
+            return true;
+
+        context.SetConditionTarget(candidate);
+
+        foreach (var condition in 条件)
+        {
+            if (condition == null)
+                continue;
+
+            if (!condition.IsConditionMet(context))
+            {
+                context.SetConditionTarget(null);
+                return false;
+            }
+        }
+
+        context.SetConditionTarget(null);
         return true;
     }
 

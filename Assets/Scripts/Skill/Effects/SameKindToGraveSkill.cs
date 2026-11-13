@@ -38,17 +38,31 @@ public class SameKindToGraveSkill : SkillDB
         };
 
         bool ownerIsLocal = context?.発動カード == null || context.発動カード.isMyCard;
+
         var sender = new ToGraveSkill();
+        var normalZones = new List<CardZoneType>();
+
         foreach (CardZoneType zone in 送るゾーンリスト)
         {
             if (IsRemoteDeck(zone, ownerIsLocal))
             {
-                await OnlineSyncManager.Instance.RequestOpponentDeckToOwnGrave(chosen.cardKind, chosen.cardID);
+                await OnlineSyncManager.Instance.RequestOpponentDeckToOwnGrave(
+                    chosen.cardKind,
+                    chosen.cardID);
                 continue;
             }
-            if (!HasMatch(zone, criteria, ownerIsLocal, context))
-                continue;
-            await sender.SendCardToGrave(context, criteria, zone, 99, PlayerType.プレイヤー);
+
+            normalZones.Add(zone);
+        }
+
+        if (normalZones.Count > 0)
+        {
+            await sender.SendCardToGrave(
+                context,
+                criteria,
+                normalZones,
+                99,
+                PlayerType.プレイヤー);
         }
     }
 
@@ -60,32 +74,6 @@ public class SameKindToGraveSkill : SkillDB
         if (!CardZones.IsDeck(zone))
             return false;
         return CardZones.Deck(zone, ownerIsLocal) == battle.eBattleDeck;
-    }
-
-    static bool HasMatch(CardZoneType zone, SearchCriteria criteria, bool ownerIsLocal, SkillContext context)
-    {
-        if (CardZones.IsDeck(zone))
-        {
-            var deck = CardZones.Deck(zone, ownerIsLocal);
-            if (deck == null)
-                return false;
-            for (int i = 0; i < deck.Count; i++)
-            {
-                if (SearchCriteria.AllowsDeck(criteria, deck[i], context))
-                    return true;
-            }
-            return false;
-        }
-
-        Transform cards = CardZones.Of(zone, ownerIsLocal);
-        if (cards == null)
-            return false;
-        foreach (CardController card in cards.GetComponentsInChildren<CardController>())
-        {
-            if (card != null && card.MeetsCriteria(criteria, context))
-                return true;
-        }
-        return false;
     }
 
     async Task<CardController> ChooseTemplate(SkillContext context)
@@ -103,10 +91,7 @@ public class SameKindToGraveSkill : SkillDB
         }
 
         if (candidates.Count == 0)
-        {
-            Debug.Log("SameKindToGraveSkill: 選ぶカードがありません。");
             return null;
-        }
 
         if (candidates.Count == 1 || SkillContext.IsOfflineCpuResolving)
             return candidates[Random.Range(0, candidates.Count)];

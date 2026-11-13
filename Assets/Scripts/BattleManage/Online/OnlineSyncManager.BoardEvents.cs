@@ -7,7 +7,7 @@ using UnityEngine;
 public partial class OnlineSyncManager
 {
     /// <summary>
-    /// 相手側のコストリセット処理を同期
+    /// 相手側のリソースリセット処理を同期
     /// </summary>
     public void SyncOpponentResourcesReset(int turnNumber)
     {
@@ -15,49 +15,64 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 相手側のコストリセット処理を受信
+    /// 相手側のリソースリセット処理を受信
     /// </summary>
     [PunRPC]
     private void ReceiveOpponentResourcesReset(int turnNumber)
     {
-        // 敵リソースのコストをリセット
         BattleManager.Instance.eResources.Cost.ResetCost(turnNumber);
         BattleManager.Instance.eResources.Energy.ResetEnergy(turnNumber);
         BattleManager.Instance.OnResourcesReset(false);
     }
 
     /// <summary>
-    /// 相手側のコスト消費を同期
+    /// 相手側のコスト変更を同期
     /// </summary>
-    public void SyncOpponentCostConsumption(int costAmount)
+    public void SyncOpponentCostChange(int costAmount)
     {
-        SendRPC("ReceiveOpponentCostConsumption", costAmount);
+        SendRPC("ReceiveOpponentCostChange", costAmount);
     }
 
     /// <summary>
-    /// 相手側のコスト消費を受信
+    /// 相手側のコスト変更を受信
     /// </summary>
     [PunRPC]
-    private void ReceiveOpponentCostConsumption(int costAmount)
+    private void ReceiveOpponentCostChange(int costAmount)
     {
-        // 敵リソースのコストを消費
         BattleManager.Instance.eResources.Cost.TakeCost(costAmount);
+    }
+
+    /// <summary>
+    /// 相手のエネルギー変更を同期
+    /// </summary>
+    public void SyncOpponentEnergyChange(int energyChange)
+    {
+        SendRPC("ReceiveOpponentEnergyChange", energyChange);
+    }
+
+    /// <summary>
+    /// 相手のエネルギー変更を受信
+    /// </summary>
+    [PunRPC]
+    private void ReceiveOpponentEnergyChange(int energyChange)
+    {
+        BattleManager.Instance.eResources.Energy.AddEnegry(energyChange);
     }
 
     /// <summary>
     /// 相手の手札から墓地へ送ったあと、両者で「墓地に送られた時」の窓に入る。
     /// 住所は送信者から見た墓地のカード。fromZone は送る前のゾーンで、トリガー用。
     /// </summary>
-    public void SyncSentToGraveyard(string cardKindStr, int cardID, string zoneName, int zoneIndex, int fromZone)
+    public void SyncSentToGrave(string cardKindStr, int cardID, string zoneName, int zoneIndex, int fromZone)
     {
-        SendRPC("ReceiveSentToGraveyard", cardKindStr, cardID, zoneName, zoneIndex, fromZone);
+        SendRPC("ReceiveSentToGrave", cardKindStr, cardID, zoneName, zoneIndex, fromZone);
     }
 
     /// <summary>
     /// 受信者自身の墓地にある実カードで、「墓地に送られた時」を現在のチェーンのあとへ回す。
     /// </summary>
     [PunRPC]
-    private void ReceiveSentToGraveyard(string cardKindStr, int cardID, string zoneName, int zoneIndex, int fromZone)
+    private void ReceiveSentToGrave(string cardKindStr, int cardID, string zoneName, int zoneIndex, int fromZone)
     {
         if (!IsOnlineMode)
             return;
@@ -384,31 +399,6 @@ public partial class OnlineSyncManager
             SendOpponentAnimationComplete();
         }
     }
-
-    #region エネルギー同期
-    /// <summary>
-    /// 相手のエネルギー変更を同期
-    /// </summary>
-    public void SyncOpponentEnergyChange(int energyChange)
-    {
-        SendRPC("ReceiveOpponentEnergyChange", energyChange);
-    }
-
-    /// <summary>
-    /// 相手のエネルギー変更を受信
-    /// </summary>
-    [PunRPC]
-    private void ReceiveOpponentEnergyChange(int energyChange)
-    {
-        if (IsOnlineMode)
-        {
-            // 相手のエネルギーを変更
-            BattleManager.Instance.eResources.Energy.AddEnegry(energyChange);
-        }
-    }
-
-    #endregion
-
     #region パッシブ効果同期
     /// <summary>
     /// パッシブ効果の同期

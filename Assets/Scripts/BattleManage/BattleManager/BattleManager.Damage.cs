@@ -8,19 +8,14 @@ public partial class BattleManager
 {
     public async Task ShowLabelEffect(Vector3 targetPosition, string label, Color effectColor)
     {
-        try
-        {
-            DamageEffect effect = SpawnCenteredDamageEffect();
-            if (effect == null)
-                return;
 
-            effect.PlayLabel(effect.transform.position, targetPosition, label, effectColor);
-            await Task.Delay(300);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"ShowLabelEffectでエラー: {ex.Message}");
-        }
+        DamageEffect effect = SpawnCenteredDamageEffect();
+        if (effect == null)
+            return;
+
+        effect.PlayLabel(effect.transform.position, targetPosition, label, effectColor);
+        await Task.Delay(900);
+
     }
 
     DamageEffect SpawnCenteredDamageEffect()
@@ -52,19 +47,14 @@ public partial class BattleManager
     {
         if (effectColor == default) effectColor = Color.yellow; // デフォルトは黄色（ダメージ）
 
-        try
-        {
-            DamageEffect effect = SpawnCenteredDamageEffect();
-            if (effect == null)
-                return;
 
-            effect.PlayDamageValue(effect.transform.position, targetPosition, value, effectColor);
-            await Task.Delay(300);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"ShowEffectでエラー: {ex.Message}\nStackTrace: {ex.StackTrace}");
-        }
+        DamageEffect effect = SpawnCenteredDamageEffect();
+        if (effect == null)
+            return;
+
+        effect.PlayDamageValue(effect.transform.position, targetPosition, value, effectColor);
+        await Task.Delay(600);
+
     }
 
     /// <summary>
@@ -90,14 +80,14 @@ public partial class BattleManager
     {
         if (player)
         {
-            if (pHpTitle == null)
-                pHpTitle = GameObject.Find("PHpTitle")?.transform;
-            return pHpTitle != null ? pHpTitle : pFieldZone;
+            pHpTitle = GameObject.Find("PHpTitle")?.transform;
+            return pHpTitle;
         }
-
-        if (eHpTitle == null)
+        else
+        {
             eHpTitle = GameObject.Find("EHPTitle")?.transform;
-        return eHpTitle != null ? eHpTitle : eFieldZone;
+            return eHpTitle;
+        }
     }
 
     /// <summary>
@@ -195,6 +185,7 @@ public partial class BattleManager
         return to.transform.parent == zone;
     }
 
+
     /// <summary>
     /// 「技を受ける時」を処理する。技キャンセルされたら Cancelled が true で、ダメージは与えない。
     /// </summary>
@@ -291,7 +282,6 @@ public partial class BattleManager
             int maxAllowedDamage = currentHP - 1;
             if (baseDamage > maxAllowedDamage)
             {
-                Debug.Log($"HP保護スキル発動（直接HP攻撃）: ダメージを{maxAllowedDamage}に制限（元のダメージ: {baseDamage}）");
                 return maxAllowedDamage;
             }
         }
@@ -338,7 +328,7 @@ public partial class BattleManager
                 if (!token)
                 {
                     ResourceSystem ownerHp = ownerIsLocal ? pResources?.Hp : eResources?.Hp;
-                    ownerHp?.TakeDamage(4);
+                    ownerHp?.TakeDamage(6);
                 }
                 else
                     TokenExit.VanishLocal(targetCard);

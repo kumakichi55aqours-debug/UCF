@@ -112,7 +112,9 @@ public enum ActiveTiming
     
     // 他のカードTRG
     他のカードが墓地に送られた時,
-    他のバトラーが撃破した時,
+    他バトラー技使用時,
+    他バトラー技使用後,
+    他バトラー撃破時,
     他効果誘発,
     他のカードが手札に戻った時,
     他のカードが登場した時,
@@ -150,7 +152,7 @@ public static class TargetScope
     }
 }
 
-public enum TargetCountMode
+public enum CountMode
 {
     ちょうど,
     まで,
@@ -239,6 +241,8 @@ public enum SkillTrigger
     自分のフェイズ終了時,
     // 他カードTRG
     他カードが墓地に送られた時,
+    他バトラー技使用時,
+    他バトラー技使用後,
     他バトラー撃破時,
     他効果誘発,
     他カードが手札に戻った時,
@@ -260,9 +264,10 @@ public enum DeckEditCustomZone
 public enum SourceCardType
 {
     None,                    // 条件なし
-    Self,                    // スキルを発動したカード自身（全く同じカードインスタンス）
-    ExcludeSelf,             // SourceCardと同名のカード以外すべて
-    処理したカード           // 直前の効果で処理したカード（手札に加えたカードなど）
+    自身,                    // スキルを発動したカード自身（全く同じカードインスタンス）
+    同名カード以外,             // SourceCardと同名のカード以外すべて
+    処理したカード,           // 直前の効果で処理したカード（手札に加えたカードなど）
+    自身以外
 }
 
 // 数値は保存済みの条件が参照している。並びは変えない。

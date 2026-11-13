@@ -72,6 +72,7 @@ public class CardDetailManager : MonoBehaviour
             Instance = this;
         else
             Destroy(gameObject);
+
         HideDetail();
 
         if (nameText != null)

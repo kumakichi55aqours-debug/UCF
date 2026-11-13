@@ -5,6 +5,7 @@ public class SkillContext
 {
     public CardController 発動カード { get; private set; } // 発動元（攻撃側）
     public CardController 対象カード { get; private set; }   // 攻撃対象
+    public CardController 条件対象カード { get; private set; } // スキル内の対象カード
     public Transform TargetZone { get; private set; }
 
     public bool RestrictTargetsToContextCard { get; set; }
@@ -169,6 +170,12 @@ public class SkillContext
         copy.Attacker = Attacker;
         copy.移した攻撃対象 = 移した攻撃対象;
         return copy;
+    }
+
+    // スキル内の対象カードを取得
+    public void SetConditionTarget(CardController card)
+    {
+        条件対象カード = card;
     }
 
     static readonly Stack<CardController> resolvingSources = new Stack<CardController>();

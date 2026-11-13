@@ -12,7 +12,6 @@ public class ResourceModifierSkill : SkillDB
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
 
-    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
     [SerializeReference]
     public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
 
@@ -73,21 +72,12 @@ public class ResourceModifierSkill : SkillDB
                     bool apply1 = AppliesToMoveElement(適用先, 対象属性, battler.moveElement1, 0);
                     bool apply2 = AppliesToMoveElement(適用先, 対象属性, battler.moveElement2, 1);
 
-                    if (apply1)
-                    {
-                        card.bonusEnergy1 += 効果数;
-                        Debug.Log($"[ResourceModifierSkill] {card.cardName} Move1 bonus: {card.bonusEnergy1}");
-                    }
-                    if (apply2)
-                    {
-                        card.bonusEnergy2 += 効果数;
-                        Debug.Log($"[ResourceModifierSkill] {card.cardName} Move2 bonus: {card.bonusEnergy2}");
-                    }
+                    if (apply1) card.bonusEnergy1 += 効果数;
+                    if (apply2) card.bonusEnergy2 += 効果数;
 
                     card.RecalculateModifiedPowers();
                     card.UpdateDisplay();
 
-                    Debug.Log($"{card.cardName} に対して Move1?{apply1} Move2?{apply2} のエネルギーコスト {効果数} を適用");
                     break;
                 }
 
@@ -96,7 +86,6 @@ public class ResourceModifierSkill : SkillDB
                     var costView = card.GetComponent<BattleCardView>();
                     if (costView == null || !costView.IsBack)
                         card.UpdateDisplay();
-                    Debug.Log($"{card.cardName} のコスト補正が {効果数} 変動しました。支払いコスト: {card.GetModifiedCost()}");
                     break;
 
                 case ResourceType.HP:
@@ -107,7 +96,6 @@ public class ResourceModifierSkill : SkillDB
                         card.curHp = 0;
                     card.UpdateDisplay();
                     int delta = card.curHp - before;
-                    Debug.Log($"{card.cardName} のHPが {delta} 変動しました。現在のHP: {card.curHp}");
                     if (!broadcastHp || delta == 0)
                         break;
 

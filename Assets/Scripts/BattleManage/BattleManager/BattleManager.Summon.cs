@@ -14,7 +14,7 @@ public partial class BattleManager
         {
             int pay = card.GetModifiedCost();
             pResources.Cost.TakeCost(pay);
-            if (IsOnlineMode) OnlineSyncManager.Instance.SyncOpponentCostConsumption(pay);
+            if (IsOnlineMode) OnlineSyncManager.Instance.SyncOpponentCostChange(pay);
         }
         
         // 召喚元の決定（デフォルトは手札）
@@ -105,7 +105,7 @@ public partial class BattleManager
         if (playerCard && IsOnlineMode && OnlineSyncManager.Instance != null)
         {
             if (pay > 0)
-                OnlineSyncManager.Instance.SyncOpponentCostConsumption(pay);
+                OnlineSyncManager.Instance.SyncOpponentCostChange(pay);
             OnlineSyncManager.Instance.SyncAppearTacticsDuringChain(card.cardKind.ToString(), card.cardID, handIndex);
         }
 
@@ -182,84 +182,76 @@ public partial class BattleManager
     /// </summary>
     public async Task SummonRoutine(CardController card, Transform targetZone, bool playVoice = true, SummonSource? summonSource = null, bool openUseChain = true, bool specialSummon = false)
     {
-        try
+        bool ownerIsPlayer = card.isPlayerCard;
+        CardZoneType fromLocation = summonSource.HasValue
+            ? CardController.ZoneFromSummonSource(summonSource.Value, ownerIsPlayer)
+            : CardZoneType.None;
+        if (fromLocation == CardZoneType.None)
+            fromLocation = CardController.ZoneTypeFromTransform(card.transform.parent);
+
+        RectTransform fromZone;
+        if (summonSource.HasValue)
         {
-            bool ownerIsPlayer = card.isPlayerCard;
-            CardZoneType fromLocation = summonSource.HasValue
-                ? CardController.ZoneFromSummonSource(summonSource.Value, ownerIsPlayer)
-                : CardZoneType.None;
-            if (fromLocation == CardZoneType.None)
-                fromLocation = CardController.ZoneTypeFromTransform(card.transform.parent);
-
-            RectTransform fromZone;
-            if (summonSource.HasValue)
-            {
-                // 指定された召喚元を使用
-                fromZone = GetSummonSourceZone(summonSource.Value, ownerIsPlayer);
-                if (fromZone != null) card.transform.position = fromZone.position;
-            }
-            else
-            {
-                // 手札からの召喚を前提（従来の動作）
-                fromZone = card.transform.parent as RectTransform;
-            }
-            
-            // 召喚先のゾーン指定
-            RectTransform targetSlot = targetZone as RectTransform;
-
-            // 相手手札のバトラーと作戦は裏面のまま飛んでいる。出す前に表面にする。
-            if (card.cardKind == CardKind.バトラー || card.cardKind == CardKind.作戦)
-            {
-                var face = card.GetComponent<BattleCardView>();
-                if (face != null && face.IsBack)
-                    card.UpdateDisplay();
-            }
-
-            // 召喚ボイス再生
-            if (playVoice && card.model is BattlerModel battler && battler.summonVoice != null)
-                AudioManager.Instance.PlaySE(battler.summonVoice, 1f);
-
-            // バトラーは移動と同時にカットインを出す。登場時スキルは両方が終わってから。
-            Task summonCutIn = card.cardKind == CardKind.バトラー
-                ? CardAnimationManager.Instance.PlayBattlerSummonCutIn(card)
-                : Task.CompletedTask;
-
-            // アニメ再生
-            await CardAnimationManager.Instance.AnimateSummon(fromZone, targetSlot, card);
-            await summonCutIn;
-            if (card == null || card.transform == null)
-                return;
-
-            // 移動後のUI更新
-            card.GetComponent<BattleCardView>().UpdateCanUseMovePanel();
-
-            // ゾーンに着いてから、登場時スキルより先に永続効果を付け直す
-            PersistentEffectManager.Instance?.RecalculateImmediately();
-
-            if (card.cardKind == CardKind.作戦)
-            {
-                // チェーン中の手札発動は、その作戦自身のカード使用時を開かない。
-                // 他のカードの登場反応だけは、着地後に回す。
-                if (openUseChain)
-                    EventBus.Publish(new UseCardFromHandEvent(card, fromLocation, specialSummon));
-                else
-                    EventBus.Publish(new SkillTriggerEvent(SkillTrigger.他カードが登場した時, card, card, null, fromLocation)
-                    {
-                        SpecialSummon = specialSummon
-                    });
-            }
-            // 召喚完了後にhasUsedMoveを明示的にfalseにリセット
-            else
-            {
-                await Task.Delay(400);
-                EventBus.Publish(new SummonCompletedEvent(card, specialSummon, fromLocation));
-                if (card != null && card.cardKind == CardKind.バトラー)
-                    card.hasUsedMove = false;
-            }
+            // 指定された召喚元を使用
+            fromZone = GetSummonSourceZone(summonSource.Value, ownerIsPlayer);
+            if (fromZone != null) card.transform.position = fromZone.position;
         }
-        catch (Exception ex)
+        else
         {
-            Debug.LogError($"SummonRoutine でエラー: {ex.Message}");
+            // 手札からの召喚を前提（従来の動作）
+            fromZone = card.transform.parent as RectTransform;
+        }
+
+        // 召喚先のゾーン指定
+        RectTransform targetSlot = targetZone as RectTransform;
+
+        // 相手手札のバトラーと作戦は裏面のまま飛んでいる。出す前に表面にする。
+        if (card.cardKind == CardKind.バトラー || card.cardKind == CardKind.作戦)
+        {
+            var face = card.GetComponent<BattleCardView>();
+            if (face != null && face.IsBack)
+                card.UpdateDisplay();
+        }
+
+        // 召喚ボイス再生
+        if (playVoice && card.model is BattlerModel battler && battler.summonVoice != null)
+            AudioManager.Instance.PlaySE(battler.summonVoice, 1f);
+
+        // バトラーは移動と同時にカットインを出す。登場時スキルは両方が終わってから。
+        Task summonCutIn = card.cardKind == CardKind.バトラー
+            ? CardAnimationManager.Instance.PlayBattlerSummonCutIn(card)
+            : Task.CompletedTask;
+
+        // アニメ再生
+        await CardAnimationManager.Instance.AnimateSummon(fromZone, targetSlot, card);
+        await summonCutIn;
+
+        if (card == null || card.transform == null)
+            return;
+
+        // ゾーンに着いてから、登場時スキルより先に永続効果を付け直す
+        PersistentEffectManager.Instance?.RecalculateImmediately();
+
+        if (card.cardKind == CardKind.バトラー)
+        {
+            await Task.Delay(350);
+            EventBus.Publish(new SummonCompletedEvent(card, specialSummon, fromLocation));
+            if (card != null && card.cardKind == CardKind.バトラー)
+                card.hasUsedMove = false;
+
+            card.GetComponent<BattleCardView>().UpdateCanUseMovePanel();
+        }
+        else if (card.cardKind == CardKind.作戦)
+        {
+            // チェーン中の手札発動は、その作戦自身のカード使用時を開かない。
+            // 他のカードの登場反応だけは、着地後に回す。
+            if (openUseChain)
+                EventBus.Publish(new UseCardFromHandEvent(card, fromLocation, specialSummon));
+            else
+                EventBus.Publish(new SkillTriggerEvent(SkillTrigger.他カードが登場した時, card, card, null, fromLocation)
+                {
+                    SpecialSummon = specialSummon
+                });
         }
     }
 

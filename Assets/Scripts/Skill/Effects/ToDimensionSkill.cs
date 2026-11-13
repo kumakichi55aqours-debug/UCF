@@ -17,6 +17,9 @@ public class ToDimensionSkill : SkillDB
     [SerializeField] public PlayerType 選択プレイヤー;
     [SerializeField] public bool ランダム = false;
 
+    [SerializeReference]
+    public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
+
     public override async Task ActivateEffect(SkillContext context)
     {
         if (context != null && context.TryConsumeSelection(out var selected))
@@ -36,10 +39,7 @@ public class ToDimensionSkill : SkillDB
         var sourceZone = CardZones.Of(zone, ownerIsLocal);
         var dimensionZone = DimensionFor(zone, ownerIsLocal);
         if (dimensionZone == null)
-        {
-            Debug.LogError($"[ToDimensionSkill] 異次元ゾーンがありません zone={zone}");
             return;
-        }
 
         if (CardZones.IsDeck(zone))
             await SendFromDeck(context, criteria, zone, ownerIsLocal, dimensionZone, count, selector);
@@ -128,7 +128,13 @@ public class ToDimensionSkill : SkillDB
     {
         var all = sourceZone.GetComponentsInChildren<CardController>().ToList();
         var crit = criteria ?? new SearchCriteria();
-        var filtered = all.Where(c => c.MeetsCriteria(crit, context)).ToList();
+
+        var filtered = all
+            .Where(c =>
+                c.MeetsCriteria(crit, context) &&
+                ConditionsMet(対象状態, c))
+            .ToList();
+
         if (filtered.Count == 0)
             return;
 
@@ -150,6 +156,21 @@ public class ToDimensionSkill : SkillDB
         var playerDeck = new List<DeckCard>();
         var enemyDeck = new List<DeckCard>();
         var existingByZone = new Dictionary<Transform, List<CardController>>();
+
+        if (selections == null)
+            return;
+
+        selections = selections
+            .Where(s =>
+                s != null &&
+                (s.source == SelectionItem.SourceType.Deck ||
+                 (s.existingCard != null &&
+                  ConditionsMet(対象状態, s.existingCard))))
+            .ToList();
+
+        if (selections.Count == 0)
+            return;
+
         foreach (var sel in selections)
         {
             if (sel == null)
@@ -607,6 +628,16 @@ public class ToDimensionSkill : SkillDB
                 hand.RemoveAt(i);
                 return;
             }
+        }
+    }
+
+    protected override void CopyPolymorphicFieldsTo(SkillDB clone)
+    {
+        if (clone is ToDimensionSkill dimension)
+        {
+            dimension.対象状態 = 対象状態 != null
+                ? new List<ISkillCondition>(対象状態)
+                : new List<ISkillCondition>();
         }
     }
 }

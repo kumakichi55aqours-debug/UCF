@@ -27,8 +27,8 @@ public class SkillDBDrawer : PropertyDrawer
         "強制発動",
         "条件",
         "トリガー対象条件",
-        "どこから",
-        "いる場所",
+        "対象元ゾーン",
+        "対象ゾーン",
         "対象フェイズ",
         "発動側",
         "対象側"
@@ -263,9 +263,9 @@ public class SkillDBDrawer : PropertyDrawer
         }
 
         if (RequiresFromLocation(timing))
-            LayoutLabeledProperty(prop, "どこから", "■ どこから（空ならどこからでも）", ref cursor);
+            LayoutLabeledProperty(prop, "対象元ゾーン", "■ どこから（空ならどこからでも）", ref cursor);
         if (RequiresDefeaterZone(timing))
-            LayoutLabeledProperty(prop, "いる場所", "■ いる場所（撃破したバトラーのゾーン）", ref cursor);
+            LayoutLabeledProperty(prop, "対象ゾーン", "■ いる場所（撃破したバトラーのゾーン）", ref cursor);
     }
 
     static void LayoutLabeledProperty(SerializedProperty prop, string fieldName, string caption, ref Cursor cursor)
@@ -500,11 +500,11 @@ public class SkillDBDrawer : PropertyDrawer
                 ? new List<ISkillCondition>(previous.条件)
                 : new List<ISkillCondition>();
             next.トリガー対象条件 = previous.トリガー対象条件;
-            next.どこから = previous.どこから != null
-                ? new List<CardZoneType>(previous.どこから)
+            next.対象元ゾーン = previous.対象元ゾーン != null
+                ? new List<CardZoneType>(previous.対象元ゾーン)
                 : new List<CardZoneType>();
-            next.いる場所 = previous.いる場所 != null
-                ? new List<CardZoneType>(previous.いる場所)
+            next.対象ゾーン = previous.対象ゾーン != null
+                ? new List<CardZoneType>(previous.対象ゾーン)
                 : new List<CardZoneType>();
             next.対象フェイズ = previous.対象フェイズ;
             next.発動側 = previous.発動側;
@@ -596,7 +596,7 @@ public class SkillDBDrawer : PropertyDrawer
             ActiveTiming.技撃破時 => "■ トリガー対象条件（どのカードを倒した時か）",
             ActiveTiming.技1撃破時 => "■ トリガー対象条件（どのカードを倒した時か）",
             ActiveTiming.技2撃破時 => "■ トリガー対象条件（どのカードを倒した時か）",
-            ActiveTiming.他のバトラーが撃破した時 => "■ トリガー対象条件（どのバトラーが撃破した時か）",
+            ActiveTiming.他バトラー撃破時 => "■ トリガー対象条件（どのバトラーが撃破した時か）",
             ActiveTiming.他効果誘発 => "■ トリガー対象条件（どのカードの効果の発動に対してか）",
             ActiveTiming.他のカードが登場した時 => "■ トリガー対象条件（どのカードが登場した時か）",
             _ => null
@@ -646,7 +646,9 @@ public class SkillDBDrawer : PropertyDrawer
 
     static bool RequiresDefeaterZone(ActiveTiming timing)
     {
-        return timing == ActiveTiming.他のバトラーが撃破した時;
+        return timing == ActiveTiming.他バトラー技使用時 ||
+               timing == ActiveTiming.他バトラー技使用後 ||
+               timing == ActiveTiming.他バトラー撃破時;
     }
 
     struct MoveTimingGroup

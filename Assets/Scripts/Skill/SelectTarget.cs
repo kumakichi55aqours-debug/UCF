@@ -10,11 +10,11 @@ using UnityEngine;
 public class SelectTarget
 {
     public int 選択数 = 1;
-    public TargetCountMode 選択方式 = TargetCountMode.ちょうど;
+    public CountMode 選択方式 = CountMode.ちょうど;
 
     public int Count => Mathf.Max(1, 選択数);
 
-    public int MinimumCount => 選択方式 == TargetCountMode.まで ? 1 : Count;
+    public int MinimumCount => 選択方式 == CountMode.まで ? 1 : Count;
 
     public static SelectTarget Copy(SelectTarget source)
     {

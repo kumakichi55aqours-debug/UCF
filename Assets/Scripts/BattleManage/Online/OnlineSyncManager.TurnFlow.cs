@@ -1,12 +1,13 @@
+using System;
 using System.Threading.Tasks;
 using Photon.Pun;
 using UnityEngine;
 
 public partial class OnlineSyncManager
 {
-    bool phaseAdvanceInProgress;
+    bool phaseChanging;
     bool ownTurnRunning;
-    // 相手がエンドフェイズの盤面処理を終えた通知。時間では待たない。
+    // 相手がエンドフェイズの盤面処理を終えた通知
     SyncState peerEndPhaseApplied = new SyncState();
     // 相手から届いたフェイズ処理を、届いた順に1つずつ実行する
     Task opponentPhaseChain = Task.CompletedTask;
@@ -16,14 +17,14 @@ public partial class OnlineSyncManager
     {
         if (!IsOnlineMode) return true;
         if (PresentationBlocking) return false;
-        if (phaseAdvanceInProgress) return false;
+        if (phaseChanging) return false;
 
         return IsMyTurn;
     }
 
     /// <summary>
-    /// 自分の手番を、ドローからエンドフェイズまで進める。ホストとクライアントで同じ手順。
-    /// エンドフェイズに着くまでは、フェイズ操作を待って1つずつ進める。
+    /// 自分の手番を、ドローからエンドフェイズまで進める。ホストとクライアントで同じ手順
+    /// エンドフェイズに着くまでは、フェイズ操作を待って1つずつ進める
     /// </summary>
     async Task RunOwnTurn()
     {
@@ -54,7 +55,7 @@ public partial class OnlineSyncManager
     /// </summary>
     async Task StartOwnTurnPhases()
     {
-        phaseAdvanceInProgress = true;
+        phaseChanging = true;
         try
         {
             await PhaseManager.Instance.ApplyPhaseAsync(TurnPhase.ドローフェイズ);
@@ -62,21 +63,20 @@ public partial class OnlineSyncManager
             await BattleManager.Instance.ExecuteDrawPhase();
 
             await PhaseManager.Instance.ApplyPhaseAsync(TurnPhase.メインフェイズ);
-            NotifyPhaseToOpponent(TurnPhase.メインフェイズ);
+            SyncPhaseToOpponent(TurnPhase.メインフェイズ);
         }
         finally
         {
-            phaseAdvanceInProgress = false;
+            phaseChanging = false;
         }
     }
 
     // 自分のターンで1フェイズ進め、相手へ知らせる
     async Task HandlePhaseAdvance()
     {
-        if (phaseAdvanceInProgress || !IsMyTurn)
-            return;
+        if (phaseChanging || !IsMyTurn) return;
 
-        phaseAdvanceInProgress = true;
+        phaseChanging = true;
         try
         {
             await PhaseManager.Instance.NextPhase();
@@ -84,11 +84,11 @@ public partial class OnlineSyncManager
         }
         finally
         {
-            phaseAdvanceInProgress = false;
+            phaseChanging = false;
         }
     }
 
-    void NotifyPhaseToOpponent(TurnPhase phase)
+    void SyncPhaseToOpponent(TurnPhase phase)
     {
         SendRPC("ReceiveOpponentPhase", (int)phase);
     }
@@ -101,7 +101,7 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 相手の手番開始。こちらもドローフェイズに切り替え、相手のドローを表示する。
+    /// 相手の手番開始。こちらもドローフェイズに切り替え、相手のドローを表示する
     /// </summary>
     [PunRPC]
     private void BeginOpponentTurn()
@@ -118,26 +118,19 @@ public partial class OnlineSyncManager
         BattleManager.Instance.ResetCurrentTurnUsedMoves();
     }
 
-    void EnqueueOpponentPhase(System.Func<Task> work)
+    void EnqueueOpponentPhase(Func<Task> work)
     {
         opponentPhaseChain = RunAfter(opponentPhaseChain, work);
     }
 
-    static async Task RunAfter(Task previous, System.Func<Task> work)
+    static async Task RunAfter(Task previous, Func<Task> work)
     {
         await previous;
-        try
-        {
-            await work();
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"相手から届いたフェイズの実行でエラー: {ex}");
-        }
+        await work();
     }
 
     /// <summary>
-    /// フェイズを相手へ知らせる。エンドフェイズは、相手の盤面処理が終わるまで返す。
+    /// フェイズを相手へ知らせる。エンドフェイズは、相手の盤面処理が終わるまで返す
     /// </summary>
     async Task NotifyPhaseResolved(TurnPhase phase)
     {
@@ -145,15 +138,15 @@ public partial class OnlineSyncManager
         if (endPhase)
             peerEndPhaseApplied.Reset();
 
-        NotifyPhaseToOpponent(phase);
+        SyncPhaseToOpponent(phase);
 
         if (endPhase)
             await peerEndPhaseApplied.WaitForCompletion();
     }
 
     /// <summary>
-    /// 相手から知らされたフェイズを、この盤面でも最後まで実行する。
-    /// エンドフェイズは失敗しても完了を返し、送り主のターン進行を止めない。
+    /// 相手から知らされたフェイズを、この盤面でも最後まで実行する
+    /// エンドフェイズは失敗しても完了を返し、送り主のターン進行を止めない
     /// </summary>
     async Task ApplyReceivedPhase(TurnPhase phase)
     {

@@ -23,7 +23,7 @@ public partial class BattleManager : MonoBehaviour
     public Transform pDimensionZone;
     public ResourceGroup pResources;
     [SerializeField] private TextMeshProUGUI pDeckCountText;
-    [SerializeField] private Transform pHpTitle;
+    [HideInInspector] private Transform pHpTitle;
 
     [Header("エネミー")]
     public Transform eBattlerZone;
@@ -35,18 +35,18 @@ public partial class BattleManager : MonoBehaviour
     public Transform eDimensionZone;
     public ResourceGroup eResources;
     [SerializeField] private TextMeshProUGUI eDeckCountText;
-    [SerializeField] private Transform eHpTitle;
+    [HideInInspector] private Transform eHpTitle;
 
     public List<DeckCard> pBattleDeck = new List<DeckCard>();
     public List<DeckCard> eBattleDeck = new List<DeckCard>();
     public List<DeckCard> enemyHand = new List<DeckCard>();
-    public int eDeckCount = 0; // オンライン時の相手デッキ枚数
+    [HideInInspector] public int eDeckCount = 0; // オンライン時の相手デッキ枚数
     private string deckFilePath;
     private string enemyDeckFilePath;
 
-    public int curTurn = 1;
-    public int curPTurn = 0;
-    public int curETurn = 0;
+    [HideInInspector] public int curTurn = 1;
+    [HideInInspector] public int curPTurn = 0;
+    [HideInInspector] public int curETurn = 0;
 
     /// <summary>
     /// オンラインではホスト、オフラインではプレイヤーが先攻なら true。

@@ -9,7 +9,7 @@ using UnityEngine;
 /// 種類を並べたときは、そのいずれかが付いていれば成立する。
 /// </summary>
 [Serializable]
-public class StatusAilmentCondition : ISkillCondition
+public class StatusAlimentCondition : ISkillCondition
 {
     [Tooltip("発動条件では、この役割のカードを見る。既定は発動カード。")]
     [SerializeField] private ContextCardRole 見るカード = ContextCardRole.発動カード;

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -79,6 +78,14 @@ public class CardSelectionUI : MonoBehaviour
             var ctrl = go.GetComponent<CardController>();
             ctrl.Init(card.cardKind, card.cardID);
             ctrl.model = card.model;
+            // 元カードの補正後コストをプレビューに引き継ぐ
+            int modifiedCost = card.GetModifiedCost();
+            ctrl.SetModifiedCostOverride(modifiedCost);
+
+            ctrl.battleCardview?.ShowSelectionCost(
+                card.cost,
+                modifiedCost
+            );
 
             // ゾーンラベルを表示する処理
             var labelRoot = go.transform.Find("ZoneLabel")?.gameObject;
@@ -470,14 +477,15 @@ public class CardSelectionUI : MonoBehaviour
     private string GetZoneName(Transform parent)
     {
         var bm = BattleManager.Instance;
-        if (parent == bm.pBattlerZone || bm.pTacticsZone || bm.pFieldZone) return "自ゾーン";
-        else if (parent == bm.eBattlerZone || bm.eTacticsZone || bm.eFieldZone) return "敵ゾーン";
-        else if (parent == bm.pHandZone) return "手札";
+        if (parent == bm.pHandZone) return "手札";
         else if (parent == bm.pGraveZone) return "墓地";
         else if (parent == bm.pDimensionZone) return "異次元";
         else if (parent == bm.eHandZone) return "敵手札";
         else if (parent == bm.eGraveZone) return "敵墓地";
         else if (parent == bm.eDimensionZone) return "敵異次元";
+        else if (parent == bm.pBattlerZone || bm.pTacticsZone || bm.pFieldZone) return "自ゾーン";
+        else if (parent == bm.eBattlerZone || bm.eTacticsZone || bm.eFieldZone) return "敵ゾーン";
+       
         else return "";
     }
 

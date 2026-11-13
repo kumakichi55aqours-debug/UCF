@@ -177,12 +177,29 @@ public class BattleCardView : MonoBehaviour
 
     void ShowCost(int printedCost)
     {
+        int shown = cc != null
+            ? cc.GetModifiedCost()
+            : Mathf.Max(0, printedCost);
+
+        UpdateCostText(printedCost, shown);
+    }
+
+    // カード選択画面用：元カードの補正済みコストを表示する
+    public void ShowSelectionCost(int printedCost, int modifiedCost)
+    {
+        UpdateCostText(printedCost, Mathf.Max(0, modifiedCost));
+    }
+
+    void UpdateCostText(int printedCost, int shownCost)
+    {
         if (costText == null)
             return;
 
-        int shown = cc != null ? cc.GetModifiedCost() : Mathf.Max(0, printedCost);
-        costText.text = (printedCost <= 0 && shown <= 0) ? "-" : shown.ToString();
-        costText.color = CostTextColor(printedCost, shown);
+        costText.text = (printedCost <= 0 && shownCost <= 0)
+            ? "-"
+            : shownCost.ToString();
+
+        costText.color = CostTextColor(printedCost, shownCost);
     }
 
     Color CostTextColor(int printedCost, int shownCost)
@@ -345,20 +362,19 @@ public class BattleCardView : MonoBehaviour
         };
     }
 
-    /// <summary>
-    /// 使用可能な技のパネル表示更新（Battler 用のみ対応）
-    /// </summary>
+    // 使用可能な技のパネル表示更新（Battler 用のみ対応）
     public void UpdateCanUseMovePanel()
     {
         var battle = BattleManager.Instance;
-        bool onPlayerSide = battle != null && transform.parent == battle.pBattlerZone;
-        bool onEnemySide = battle != null && transform.parent == battle.eBattlerZone;
+        if (battle == null) return;
+
+        bool onPlayerSide = transform.parent == battle.pBattlerZone;
+        bool onEnemySide = transform.parent == battle.eBattlerZone;
         bool currentTurnSide = onPlayerSide ? battle.IsMyTurn : onEnemySide && !battle.IsMyTurn;
         bool show = cc != null
             && cc.cardKind == CardKind.バトラー
             && !cc.hasUsedMove
             && !cc.IsActionBlocked
-            && battle != null
             && battle.curTurn != 1
             && currentTurnSide;
 

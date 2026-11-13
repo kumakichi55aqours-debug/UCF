@@ -30,6 +30,11 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     public int cost;
     public List<CardCategoryList> category;
 
+    [System.NonSerialized]
+    private bool hasModifiedCostOverride;
+    [System.NonSerialized]
+    private int modifiedCostOverride;
+
     // バトラー&フィールド共通
     public int curHp;
 
@@ -1096,7 +1101,24 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     {
         if (hitRate <= 0 || hitRate >= 100)
             return true;
-        return UnityEngine.Random.Range(0, 100) < hitRate;
+        return Random.Range(0, 100) < hitRate;
+    }
+
+    /// <summary>
+    /// 表示・判定用の補正後コストを一時的に設定する
+    /// </summary>
+    public void SetModifiedCostOverride(int value)
+    {
+        modifiedCostOverride = Mathf.Max(0, value);
+        hasModifiedCostOverride = true;
+    }
+
+    /// <summary>
+    /// 一時的なコスト上書きを解除する
+    /// </summary>
+    public void ClearModifiedCostOverride()
+    {
+        hasModifiedCostOverride = false;
     }
 
     /// <summary>
@@ -1104,9 +1126,14 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     /// </summary>
     public int GetModifiedCost()
     {
+        // 一時的な上書きがある場合はそちらを優先
+        if (hasModifiedCostOverride)
+            return modifiedCostOverride;
+
         int adjustment = 0;
         if (BattleManager.Instance != null)
             adjustment = BattleManager.Instance.GetPlayCostAdjustment(isPlayerCard, cardKind);
+
         return Mathf.Max(0, cost + bonusCost + adjustment);
     }
 

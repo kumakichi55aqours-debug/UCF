@@ -96,7 +96,7 @@ public partial class CardAnimationManager
             if (effect != null)
                 duration = effect.Play(card.cardKind);
 
-            await Task.Delay(Mathf.CeilToInt(Mathf.Max(0.05f, duration) * 950f));
+            await Task.Delay(Mathf.CeilToInt(Mathf.Max(0.05f, duration) * 900f));
         }
         catch (System.Exception ex)
         {
@@ -271,7 +271,7 @@ public partial class CardAnimationManager
             cg.alpha = 1f;
 
             Sequence seq = DOTween.Sequence();
-            seq.Append(arrow.DORotate(new Vector3(0f, 0f, angle), 0.25f, RotateMode.Fast).SetEase(Ease.OutQuad));
+            seq.Append(arrow.DORotate(new Vector3(0f, 0f, angle), 0.2f, RotateMode.Fast).SetEase(Ease.OutQuad));
             seq.AppendInterval(0.15f);
             seq.Append(arrow.DOMove(toPos, duration).SetEase(Ease.InQuad));
             seq.Join(cg.DOFade(0f, 0.18f).SetDelay(duration));

@@ -215,7 +215,7 @@ public partial class BattleManager
     /// <summary>
     /// 複数対象の技では、追加1回につき同じ一覧をもう一度殴る。途中で場を離れたカードは飛ばす。
     /// </summary>
-    async Task PlayExtraHitsOnEach(CardController attacker, int moveIndex, System.Collections.Generic.IReadOnlyList<CardController> targets)
+    async Task PlayExtraHitsOnEach(CardController attacker, int moveIndex, IReadOnlyList<CardController> targets)
     {
         try
         {
@@ -231,7 +231,6 @@ public partial class BattleManager
                         continue;
 
                     await StrikeAgain(attacker, target, moveIndex);
-                    await Task.Delay(250);
                 }
             }
         }
@@ -270,7 +269,7 @@ public partial class BattleManager
                 else
                     await ShowDamageEffectToPlayerHP(finalDamage, effectColor);
 
-                await Task.Delay(400);
+                await Task.Delay(800);
                 hp.LoseHp(finalDamage);
             }
         }
@@ -287,7 +286,6 @@ public partial class BattleManager
             await CardAnimationManager.Instance.PlayMoveImpact(attacker.transform, target.transform, target);
 
         await ShowDamageEffectToCard(target, damage, attacker.GetDamageEffectColor(moveIndex, damage));
-        await Task.Delay(400);
         target.curHp -= damage;
         target.UpdateDisplay();
     }
@@ -415,7 +413,6 @@ public partial class BattleManager
             if (picked.Count < needed)
                 return MovePlan.対象なし;
 
-            Debug.Log($"[混乱] {attacker.cardName} の対象: {string.Join(", ", picked.ConvertAll(card => card.cardName))}");
             if (select.Count <= 1)
             {
                 targets.Add(picked[0]);
@@ -434,8 +431,8 @@ public partial class BattleManager
             if (legal.Count < select.MinimumCount)
                 return MovePlan.対象なし;
 
-            bool auto = (select.選択方式 == TargetCountMode.ちょうど && legal.Count == select.Count)
-                || (select.選択方式 == TargetCountMode.まで && legal.Count == 1);
+            bool auto = (select.選択方式 == CountMode.ちょうど && legal.Count == select.Count)
+                || (select.選択方式 == CountMode.まで && legal.Count == 1);
             if (!auto)
                 return MovePlan.複数を選ぶ;
 
@@ -751,7 +748,7 @@ public partial class BattleManager
             Color effectColor = attacker.GetDamageEffectColor(moveIndex, finalDamage);
             await ShowDamageEffectToCard(enemyCard, finalDamage, effectColor);
 
-            await Task.Delay(800);
+            await Task.Delay(600);
 
             // ── ステップ5: HPにダメージを適用 ──
             enemyCard.curHp -= finalDamage;
@@ -841,11 +838,11 @@ public partial class BattleManager
             }
 
             // 各ターゲット間で少し待機
-            await Task.Delay(300);
+            await Task.Delay(200);
         }
 
         await PlayExtraHitsOnEach(attacker, moveIndex, hitBattlers);
-        await Task.Delay(800);
+        await Task.Delay(600);
         ClearTargetHighlights();
 
         MarkAttackerMoveFinished(attacker, setHasUsedMove: true);
@@ -988,9 +985,7 @@ public partial class BattleManager
             return;
         }
 
-        Debug.Log($"[BattleManager] スキル処理開始を待機: Trigger={trigger}, Source={sourceCard.cardName}");
         await SkillChainManager.Instance.ProcessChainForCollectedSkills(collectedSkills);
-        Debug.Log($"[BattleManager] スキル処理完了: Trigger={trigger}, Source={sourceCard.cardName}");
     }
 
     /// <summary>
@@ -1040,18 +1035,13 @@ public partial class BattleManager
                 || collectedSkills.NonTPForcedSkills.Count > 0
                 || collectedSkills.NonTPOptionalSkills.Count > 0;
             if (!hasSkills)
-            {
-                Debug.Log($"[BattleManager] オフライン時、「相手の技使用時」スキルがないため待機をスキップ");
                 return;
-            }
         }
 
         if (SkillChainManager.Instance == null)
             return;
 
-        Debug.Log($"[BattleManager] スキル処理開始を待機: Trigger={SkillTrigger.相手の技使用時}, Source={attacker.cardName}");
         await SkillChainManager.Instance.ProcessChainForCollectedSkills(collectedSkills);
-        Debug.Log($"[BattleManager] スキル処理完了: Trigger={SkillTrigger.相手の技使用時}, Source={attacker.cardName}");
     }
 
     /// <summary>

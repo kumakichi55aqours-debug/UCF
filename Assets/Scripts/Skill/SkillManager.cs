@@ -354,7 +354,7 @@ public class SkillManager : MonoBehaviour
                 // 「どこから」の条件チェック（未指定ならどこからでも収集。複数指定はいずれかと一致）
                 if (timing == ActiveTiming.墓地に送られた時)
                 {
-                    if (!CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard))
+                    if (!CardController.MatchesFromZone(skill.対象元ゾーン, fromLocation, card.isMyCard))
                         continue;
                 }
                 
@@ -399,7 +399,19 @@ public class SkillManager : MonoBehaviour
             CollectOtherCardAppearedSkills(sourceCard, isMyTurn, collectedSkills, skillsSet, fromLocation, specialSummon);
         }
 
-        // 「撃破時」トリガーの場合、「他のバトラーが撃破した時」スキルもチェック
+        // 「技使用時」トリガーの場合、「他バトラー技使用時」スキルもチェック
+        if ((trigger == SkillTrigger.技使用時 || trigger == SkillTrigger.技1使用時 || trigger == SkillTrigger.技2使用時) && sourceCard != null)
+        {
+            CollectOtherBattlerMovingSkills(sourceCard, isMyTurn, collectedSkills, skillsSet);
+        }
+        
+        // 「技使用後」トリガーの場合、「他バトラー技使用後」スキルもチェック
+        if ((trigger == SkillTrigger.技使用後 || trigger == SkillTrigger.技1使用後 || trigger == SkillTrigger.技2使用後) && sourceCard != null)
+        {
+            CollectOtherBattlerMovedSkills(sourceCard, isMyTurn, collectedSkills, skillsSet);
+        }
+
+        // 「撃破時」トリガーの場合、「他バトラー撃破時」スキルもチェック
         if ((trigger == SkillTrigger.技撃破時 || trigger == SkillTrigger.技1撃破時 || trigger == SkillTrigger.技2撃破時) && sourceCard != null)
         {
             CollectOtherBattlerDefeatSkills(sourceCard, isMyTurn, collectedSkills, skillsSet);
@@ -457,7 +469,7 @@ public class SkillManager : MonoBehaviour
             collectedSkills,
             skillsSet,
             (card, skill) =>
-                CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard)
+                CardController.MatchesFromZone(skill.対象元ゾーン, fromLocation, card.isMyCard)
                 && skill.MatchesActivationOwner(card, cardSentToGrave)
                 && MatchesTriggerTarget(skill, cardSentToGrave));
     }
@@ -483,7 +495,7 @@ public class SkillManager : MonoBehaviour
             skillsSet,
             (card, skill) =>
                 skill.MatchesAppearKind(specialSummon)
-                && CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard)
+                && CardController.MatchesFromZone(skill.対象元ゾーン, fromLocation, card.isMyCard)
                 && skill.MatchesActivationOwner(card, appearedCard)
                 && MatchesTriggerTarget(skill, appearedCard));
     }
@@ -507,8 +519,60 @@ public class SkillManager : MonoBehaviour
             collectedSkills,
             skillsSet,
             (card, skill) =>
-                CardController.MatchesFromZone(skill.どこから, fromLocation, card.isMyCard)
+                CardController.MatchesFromZone(skill.対象元ゾーン, fromLocation, card.isMyCard)
                 && skill.MatchesActivationOwner(card, returnedCardIsMyCard));
+    }
+
+    /// <summary>
+    /// 「他のバトラーが技使用時」スキルを収集
+    /// </summary>
+    private static void CollectOtherBattlerMovingSkills(
+        CardController battlerWhoMoveUse,
+        bool isMyTurn,
+        CollectedSkills collectedSkills,
+        HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet)
+    {
+        // 技使用するバトラーがいるゾーン。スキル所持カードから見て「いる場所」と照らす
+        var defeaterZone = CardController.ZoneTypeFromTransform(
+            battlerWhoMoveUse != null ? battlerWhoMoveUse.transform.parent : null);
+
+        CollectOtherTriggerSkills(
+            SkillTrigger.他バトラー技使用時,
+            battlerWhoMoveUse,
+            battlerWhoMoveUse,
+            isMyTurn,
+            collectedSkills,
+            skillsSet,
+            (card, skill) =>
+                CardController.MatchesFromZone(skill.対象ゾーン, defeaterZone, card.isMyCard)
+                && skill.MatchesActivationOwner(card, battlerWhoMoveUse)
+                && MatchesTriggerTarget(skill, battlerWhoMoveUse));
+    }
+
+    /// <summary>
+    /// 「他のバトラーが技使用後」スキルを収集
+    /// </summary>
+    private static void CollectOtherBattlerMovedSkills(
+        CardController battlerWhoMoveUsed,
+        bool isMyTurn,
+        CollectedSkills collectedSkills,
+        HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet)
+    {
+        // 技使用したバトラーがいるゾーン。スキル所持カードから見て「いる場所」と照らす
+        var defeaterZone = CardController.ZoneTypeFromTransform(
+            battlerWhoMoveUsed != null ? battlerWhoMoveUsed.transform.parent : null);
+
+        CollectOtherTriggerSkills(
+            SkillTrigger.他バトラー技使用後,
+            battlerWhoMoveUsed,
+            battlerWhoMoveUsed,
+            isMyTurn,
+            collectedSkills,
+            skillsSet,
+            (card, skill) =>
+                CardController.MatchesFromZone(skill.対象ゾーン, defeaterZone, card.isMyCard)
+                && skill.MatchesActivationOwner(card, battlerWhoMoveUsed)
+                && MatchesTriggerTarget(skill, battlerWhoMoveUsed));
     }
 
     /// <summary>
@@ -532,7 +596,7 @@ public class SkillManager : MonoBehaviour
             collectedSkills,
             skillsSet,
             (card, skill) =>
-                CardController.MatchesFromZone(skill.いる場所, defeaterZone, card.isMyCard)
+                CardController.MatchesFromZone(skill.対象ゾーン, defeaterZone, card.isMyCard)
                 && skill.MatchesActivationOwner(card, battlerWhoDefeated)
                 && MatchesTriggerTarget(skill, battlerWhoDefeated));
     }
@@ -620,7 +684,9 @@ public class SkillManager : MonoBehaviour
             case SkillTrigger.他カードが墓地に送られた時: return ActiveTiming.他のカードが墓地に送られた時;
             case SkillTrigger.他カードが登場した時: return ActiveTiming.他のカードが登場した時;
             case SkillTrigger.他カードが手札に戻った時: return ActiveTiming.他のカードが手札に戻った時;
-            case SkillTrigger.他バトラー撃破時: return ActiveTiming.他のバトラーが撃破した時;
+            case SkillTrigger.他バトラー技使用時: return ActiveTiming.他バトラー技使用時;
+            case SkillTrigger.他バトラー技使用後: return ActiveTiming.他バトラー技使用時;
+            case SkillTrigger.他バトラー撃破時: return ActiveTiming.他バトラー撃破時;
             case SkillTrigger.他効果誘発: return ActiveTiming.他効果誘発;
             default: return ActiveTiming.None;
         }
@@ -927,7 +993,7 @@ public class SkillManager : MonoBehaviour
             case ActiveTiming.相手のフェイズ終了時:
             case ActiveTiming.相手の技使用時:
             case ActiveTiming.他のカードが墓地に送られた時:
-            case ActiveTiming.他のバトラーが撃破した時:
+            case ActiveTiming.他バトラー撃破時:
             case ActiveTiming.他効果誘発:
             case ActiveTiming.他のカードが手札に戻った時:
             case ActiveTiming.他のカードが登場した時:

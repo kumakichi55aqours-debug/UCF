@@ -278,8 +278,9 @@ public class OpponentSelectUI : MonoBehaviour
         text.alignment = TextAlignmentOptions.Center;
         text.enableWordWrapping = true;
         text.enableAutoSizing = true;
-        text.fontSizeMin = 18f;
-        text.fontSizeMax = 26f;
+        text.fontSizeMin = 20f;
+        text.fontSizeMax = 25f;
+        text.lineSpacing = -72f;
         text.raycastTarget = false;
     }
 

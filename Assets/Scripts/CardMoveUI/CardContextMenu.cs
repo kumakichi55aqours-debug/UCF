@@ -220,7 +220,7 @@ public class CardContextMenu : MonoBehaviour
         if (PhaseManager.Instance.CurrentPhase == TurnPhase.バトルフェイズ)
         {
             // 1ターン目以外 && 技未使用 && 気絶中は技を宣言できない
-            if (!card.hasUsedMove && !card.IsActionBlocked && BattleManager.Instance.curTurn != 1)
+            if (!card.hasUsedMove && !card.IsActionBlocked && BattleManager.Instance.curTurn != 1 && card.cardKind == CardKind.バトラー)
                 useMoveButton.gameObject.SetActive(true);
             
             // 起動効果スキル確認

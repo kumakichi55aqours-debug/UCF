@@ -20,7 +20,6 @@ public class GrantSkillSyncManager : MonoBehaviourPunCallbacks
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            Debug.Log("[GrantSkillSyncManager] インスタンスを初期化しました");
         }
         else
         {

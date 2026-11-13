@@ -102,7 +102,7 @@ public class MessageManager : MonoBehaviour
         label.text = "決定";
         label.fontSize = 24;
         label.alignment = TextAlignmentOptions.Center;
-        label.color = new Color(0.12f, 0.12f, 0.12f, 1f);
+        label.color = new Color(1f, 1f, 1f, 1f);
         label.raycastTarget = false;
     }
 

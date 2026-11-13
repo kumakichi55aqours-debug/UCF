@@ -11,12 +11,19 @@ public class EnemyActionManager : MonoBehaviour
 {
     public static EnemyActionManager Instance { get; private set; }
 
+    BattleManager battle;
+
     private void Awake()
     {
         if (Instance == null)
             Instance = this;
         else
+        {
             Destroy(gameObject);
+            return;
+        }
+
+        battle = BattleManager.Instance;
     }
 
     /// <summary>
@@ -24,9 +31,10 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     public async Task ExecuteEnemyMainPhase()
     {
+        if (battle == null) return;
+
         await Task.Delay(300);
 
-        Debug.Log("エネミー メインフェイズ処理（自動）");
         await EnemyUseFieldCardAsync();
         await EnemyUseTacticsAsync();
         await EnemySummonCardAsync();
@@ -39,9 +47,9 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     public async Task ExecuteEnemyBattlePhase()
     {
-        await Task.Delay(300);
+        if (battle == null) return;
 
-        Debug.Log("エネミー バトルフェイズ処理（自動）");
+        await Task.Delay(300);
 
         while (true)
         {
@@ -63,7 +71,7 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     int ModifiedHandCost(DeckCard deck)
     {
-        if (deck == null)
+        if (deck == null || battle == null)
             return 0;
 
         CardController match = FindEnemyHandCard(deck);
@@ -71,7 +79,6 @@ public class EnemyActionManager : MonoBehaviour
             return match.GetModifiedCost();
 
         int printed = Mathf.Max(0, deck.コスト);
-        var battle = BattleManager.Instance;
         if (battle == null)
             return printed;
         return Mathf.Max(0, printed + battle.GetPlayCostAdjustment(false, deck.カード種類));
@@ -83,42 +90,31 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     async Task EnemyUseFieldCardAsync()
     {
-        try
-        {
-            var battle = BattleManager.Instance;
-            if (battle?.eFieldZone == null || battle.eFieldZone.childCount > 0)
-                return;
+        if (battle == null || battle?.eFieldZone == null || battle.eFieldZone.childCount > 0)
+            return;
 
-            PersistentEffectManager.Instance?.RecalculateImmediately();
+        PersistentEffectManager.Instance?.RecalculateImmediately();
 
-            List<DeckCard> fieldCards = battle.enemyHand.FindAll(CanPlayFieldFromHand);
-            if (fieldCards.Count == 0)
-                return;
+        List<DeckCard> fieldCards = battle.enemyHand.FindAll(CanPlayFieldFromHand);
+        if (fieldCards.Count == 0)
+            return;
 
-            var chosen = fieldCards[UnityEngine.Random.Range(0, fieldCards.Count)];
-            CardController card = EnsureEnemyHandCard(chosen);
-            if (card == null)
-            {
-                Debug.LogError("EnemyUseFieldCardAsync: カードが見つかりませんでした");
-                return;
-            }
+        var chosen = fieldCards[UnityEngine.Random.Range(0, fieldCards.Count)];
+        CardController card = EnsureEnemyHandCard(chosen);
+        if (card == null)
+            return;
 
-            if (CannotNormalSummonSkill.Blocks(card) || UniqueCardRestrictionHelper.IsRestrictedByUniqueCardRule(card))
-                return;
+        if (CannotNormalSummonSkill.Blocks(card) || UniqueCardRestrictionHelper.IsRestrictedByUniqueCardRule(card))
+            return;
 
-            int pay = card.GetModifiedCost();
-            if (battle.eResources.Cost.currentCost < pay)
-                return;
+        int pay = card.GetModifiedCost();
+        if (battle.eResources.Cost.currentCost < pay)
+            return;
 
-            battle.eResources.Cost.TakeCost(pay);
-            battle.enemyHand.Remove(chosen);
-            await PlayFromEnemyHand(card, battle.eFieldZone);
-            await WaitWhileSkillsResolve();
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"EnemyUseFieldCardAsync でエラー: {ex.Message}");
-        }
+        battle.eResources.Cost.TakeCost(pay);
+        battle.enemyHand.Remove(chosen);
+        await PlayFromEnemyHand(card, battle.eFieldZone);
+        await WaitWhileSkillsResolve();
     }
 
     bool CanPlayFieldFromHand(DeckCard deck)
@@ -127,7 +123,7 @@ public class EnemyActionManager : MonoBehaviour
             return false;
         if (UniqueCardRestrictionHelper.IsDeckCardRestrictedByUniqueCardRule(deck, false))
             return false;
-        if (BattleManager.Instance.eResources.Cost.currentCost < ModifiedHandCost(deck))
+        if (battle.eResources.Cost.currentCost < ModifiedHandCost(deck))
             return false;
 
         CardController card = FindEnemyHandCard(deck);
@@ -139,54 +135,41 @@ public class EnemyActionManager : MonoBehaviour
     /// コスト0は他の手札より高くなくても使う。
     /// コスト1以上は、手札の支払いコストが最も高いときだけ使う。同コストのバトラーがいればバトラーを優先して使わない。
     /// </summary>
-    async Task EnemyUseTacticsAsync(System.Func<CardController, bool> include = null)
+    async Task EnemyUseTacticsAsync(Func<CardController, bool> include = null)
     {
-        try
+        if (battle == null) return;
+
+        while (true)
         {
-            var battle = BattleManager.Instance;
-            if (battle == null)
+            PersistentEffectManager.Instance?.RecalculateImmediately();
+
+            DeckCard chosen = ChooseEnemyTactics(battle, include);
+            if (chosen == null)
                 return;
 
-            while (true)
-            {
-                PersistentEffectManager.Instance?.RecalculateImmediately();
+            CardController card = EnsureEnemyHandCard(chosen);
+            if (card == null)
+                return;
 
-                DeckCard chosen = ChooseEnemyTactics(battle, include);
-                if (chosen == null)
-                    return;
+            int pay = card.GetModifiedCost();
+            if (battle.eResources.Cost.currentCost < pay)
+                return;
 
-                CardController card = EnsureEnemyHandCard(chosen);
-                if (card == null)
-                {
-                    Debug.LogError("EnemyUseTacticsAsync: カードが見つかりませんでした");
-                    return;
-                }
+            battle.eResources.Cost.TakeCost(pay);
+            battle.enemyHand.Remove(chosen);
 
-                int pay = card.GetModifiedCost();
-                if (battle.eResources.Cost.currentCost < pay)
-                    return;
-
-                battle.eResources.Cost.TakeCost(pay);
-                battle.enemyHand.Remove(chosen);
-
-                Debug.Log($"エネミー 作戦カード使用: {card.cardName} コスト{pay}");
-                await PlayFromEnemyHand(card, battle.eTacticsZone);
-                await WaitForPlayedTactics(card);
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"EnemyUseTacticsAsync でエラー: {ex.Message}");
+            await PlayFromEnemyHand(card, battle.eTacticsZone);
+            await WaitForPlayedTactics(card);
         }
     }
 
     /// <summary>
     /// 今の手札から、CPUが使う作戦を1枚選ぶ。無ければ null。
     /// </summary>
-    DeckCard ChooseEnemyTactics(BattleManager battle, System.Func<CardController, bool> include = null)
+    DeckCard ChooseEnemyTactics(BattleManager battle, Func<CardController, bool> include = null)
     {
         var hand = battle?.enemyHand;
-        if (hand == null || hand.Count == 0)
+        if (battle == null || hand == null || hand.Count == 0)
             return null;
 
         var playable = new List<DeckCard>();
@@ -208,6 +191,8 @@ public class EnemyActionManager : MonoBehaviour
         if (playable.Count == 0)
             return null;
 
+        int availableCost = battle.eResources.Cost.currentCost;
+
         int highest = int.MinValue;
         bool butlerAtHighest = false;
         foreach (var deck in hand)
@@ -216,6 +201,10 @@ public class EnemyActionManager : MonoBehaviour
                 continue;
 
             int cost = ModifiedHandCost(deck);
+
+            if (cost > availableCost) 
+                continue;
+
             if (cost > highest)
             {
                 highest = cost;
@@ -249,12 +238,11 @@ public class EnemyActionManager : MonoBehaviour
     {
         if (deck == null || deck.カード種類 != CardKind.作戦)
             return false;
-        if (BattleManager.Instance != null && !BattleManager.Instance.TacticsZoneHasRoom(false))
+        if (battle != null && !battle.TacticsZoneHasRoom(false))
             return false;
         if (UniqueCardRestrictionHelper.IsDeckCardRestrictedByUniqueCardRule(deck, false))
             return false;
 
-        var battle = BattleManager.Instance;
         if (battle == null || battle.eResources == null || battle.eResources.Cost == null)
             return false;
         if (battle.eResources.Cost.currentCost < ModifiedHandCost(deck))
@@ -275,13 +263,13 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     bool AppearanceCanResolve(CardController card)
     {
-        if (card == null || card.skills == null)
+        if (battle == null || card == null || card.skills == null)
             return false;
 
         Transform parent = card.transform.parent;
         int sibling = card.transform.GetSiblingIndex();
-        Transform hold = BattleManager.Instance != null && BattleManager.Instance.mainCanvas != null
-            ? BattleManager.Instance.mainCanvas.transform
+        Transform hold = battle.mainCanvas != null
+            ? battle.mainCanvas.transform
             : null;
         card.transform.SetParent(hold, true);
         try
@@ -321,7 +309,7 @@ public class EnemyActionManager : MonoBehaviour
         return true;
     }
 
-    static bool EffectCanResolve(SkillDB skill, CardController source, SkillContext ctx)
+    bool EffectCanResolve(SkillDB skill, CardController source, SkillContext ctx)
     {
         if (skill == null)
             return false;
@@ -373,7 +361,7 @@ public class EnemyActionManager : MonoBehaviour
         return skill.条件 != null && skill.条件.Count > 0;
     }
 
-    static bool HasSelectedTargets(SkillDB skill, CardController source)
+    bool HasSelectedTargets(SkillDB skill, CardController source)
     {
         TargetList target = skill.GetEffectTarget();
         if (target != TargetList.バトラー1体
@@ -382,9 +370,7 @@ public class EnemyActionManager : MonoBehaviour
             && target != TargetList.手札)
             return true;
 
-        var battle = BattleManager.Instance;
-        if (battle == null)
-            return false;
+        if (battle == null) return false;
 
         PlayerType side = PlayerType.プレイヤー;
         if (skill is GrantSkill grant)
@@ -473,9 +459,10 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     async Task WaitForPlayedTactics(CardController card)
     {
+        if (battle == null) return;
+
         await WaitWhileSkillsResolve();
 
-        var battle = BattleManager.Instance;
         Transform tactics = battle != null ? battle.eTacticsZone : null;
         Transform grave = battle != null ? battle.eGraveZone : null;
         for (int i = 0; i < 80; i++)
@@ -497,6 +484,8 @@ public class EnemyActionManager : MonoBehaviour
 
     async Task WaitWhileSkillsResolve()
     {
+        if (battle == null) return;
+
         var chain = SkillChainManager.Instance;
         if (chain == null)
             return;
@@ -508,10 +497,10 @@ public class EnemyActionManager : MonoBehaviour
 
     CardController FindEnemyHandCard(DeckCard deck)
     {
-        if (deck == null || BattleManager.Instance?.eHandZone == null)
+        if (deck == null || battle.eHandZone == null)
             return null;
 
-        return BattleManager.Instance.eHandZone.GetComponentsInChildren<CardController>()
+        return battle.eHandZone.GetComponentsInChildren<CardController>()
             .FirstOrDefault(card => card != null && card.cardKind == deck.カード種類 && card.cardID == deck.カードID);
     }
 
@@ -524,7 +513,6 @@ public class EnemyActionManager : MonoBehaviour
         if (card != null)
             return card;
 
-        var battle = BattleManager.Instance;
         card = battle.CreateCard(deck.カード種類, deck.カードID, battle.eHandZone);
         card.GetComponent<BattleCardView>()?.ShowCardBack();
         return card;
@@ -532,7 +520,7 @@ public class EnemyActionManager : MonoBehaviour
 
     async Task PlayFromEnemyHand(CardController card, Transform zone)
     {
-        await BattleManager.Instance.SummonRoutine(card, zone, playVoice: true, SummonSource.手札);
+        await battle.SummonRoutine(card, zone, playVoice: true, SummonSource.手札);
         if (card != null && card.transform != null)
             card.UpdateDisplay();
         await Task.Delay(100);
@@ -543,42 +531,33 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     async Task EnemySummonCardAsync()
     {
-        try
+        if (battle == null) return;
+
+        while (battle.eBattlerZone.GetComponentsInChildren<CardController>().Length < 5)
         {
-            var battle = BattleManager.Instance;
-            while (battle.eBattlerZone.GetComponentsInChildren<CardController>().Length < 5)
-            {
-                PersistentEffectManager.Instance?.RecalculateImmediately();
+            PersistentEffectManager.Instance?.RecalculateImmediately();
 
-                int available = battle.eResources.Cost.currentCost;
-                var affordable = battle.enemyHand
-                    .Where(card => card != null && card.カード種類 == CardKind.バトラー && !CannotNormalSummonSkill.Blocks(card))
-                    .Select(card => (card, cost: ModifiedHandCost(card)))
-                    .Where(entry => entry.cost <= available)
-                    .ToList();
-                if (affordable.Count == 0)
-                    return;
+            int available = battle.eResources.Cost.currentCost;
+            var affordable = battle.enemyHand
+                .Where(card => card != null && card.カード種類 == CardKind.バトラー && !CannotNormalSummonSkill.Blocks(card))
+                .Select(card => (card, cost: ModifiedHandCost(card)))
+                .Where(entry => entry.cost <= available)
+                .ToList();
+            if (affordable.Count == 0)
+                return;
 
-                int highestCost = affordable.Max(entry => entry.cost);
-                var candidates = affordable.Where(entry => entry.cost == highestCost).Select(entry => entry.card).ToList();
-                var chosen = candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            int highestCost = affordable.Max(entry => entry.cost);
+            var candidates = affordable.Where(entry => entry.cost == highestCost).Select(entry => entry.card).ToList();
+            var chosen = candidates[UnityEngine.Random.Range(0, candidates.Count)];
 
-                battle.eResources.Cost.TakeCost(highestCost);
-                battle.enemyHand.Remove(chosen);
+            battle.eResources.Cost.TakeCost(highestCost);
+            battle.enemyHand.Remove(chosen);
 
-                CardController card = EnsureEnemyHandCard(chosen);
-                if (card == null)
-                {
-                    Debug.LogError("EnemySummonCardAsync: カードが見つかりませんでした");
-                    return;
-                }
+            CardController card = EnsureEnemyHandCard(chosen);
+            if (card == null)
+                return;
 
-                await PlayFromEnemyHand(card, battle.eBattlerZone);
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"EnemySummonCardAsync でエラー: {ex.Message}");
+            await PlayFromEnemyHand(card, battle.eBattlerZone);
         }
     }
 
@@ -587,8 +566,7 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     CardController SelectBestEnemyAttacker()
     {
-        var battle = BattleManager.Instance;
-        if (battle.pResources.Hp.currentHp == 0)
+        if (battle == null || battle.pResources.Hp.currentHp == 0 || battle.curTurn == 1)
             return null;
 
         var best = new List<CardController>();
@@ -627,7 +605,6 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     int ChooseEnemyMoveIndex(CardController card)
     {
-        var battle = BattleManager.Instance;
         if (card == null || battle == null)
             return -1;
 
@@ -652,10 +629,11 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     async Task EnemyUseMove(CardController enemyCard)
     {
+        if (battle == null) return;
+
         if (enemyCard == null || enemyCard.IsActionBlocked || enemyCard.cardKind != CardKind.バトラー)
             return;
 
-        var battle = BattleManager.Instance;
         int moveIndex = ChooseEnemyMoveIndex(enemyCard);
         if (moveIndex < 0)
             return;
@@ -744,30 +722,31 @@ public class EnemyActionManager : MonoBehaviour
     {
         var select = MoveTargetEvasion.MoveSelect(enemyCard, moveIndex);
         var legal = MoveTargetEvasion.ListLegalTargets(enemyCard, moveIndex);
-        int pickCount = select.選択方式 == TargetCountMode.まで
+        int pickCount = select.選択方式 == CountMode.まで
             ? Mathf.Min(select.Count, legal.Count)
             : select.Count;
         var picked = PickRandomTargets(legal, pickCount);
         if (picked.Count < select.MinimumCount)
         {
-            BattleManager.Instance.ClearPendingMoveHit();
+            battle.ClearPendingMoveHit();
             return;
         }
 
         await ShowCpuTargetCandidates(legal);
-        await BattleManager.Instance.ResolveSelectedMoveTargets(enemyCard, moveIndex, picked, payEnergy: true);
+        await battle.ResolveSelectedMoveTargets(enemyCard, moveIndex, picked, payEnergy: true);
     }
 
     void PayEnemyMoveEnergy(CardController card, int moveIndex)
     {
         int energyCost = card.GetMoveEnergyCost(moveIndex);
         if (energyCost > 0)
-            BattleManager.Instance.eResources.Energy.TakeEnergy(energyCost);
+            battle.eResources.Energy.TakeEnergy(energyCost);
     }
 
     async Task AttackPlayerHp(CardController enemyCard, int moveIndex)
     {
-        var battle = BattleManager.Instance;
+        if (battle == null) return;
+
         PayEnemyMoveEnergy(enemyCard, moveIndex);
         if (!await OpenMoveUseWindow(enemyCard, moveIndex))
             return;
@@ -806,7 +785,7 @@ public class EnemyActionManager : MonoBehaviour
     /// </summary>
     async Task<bool> OpenMoveUseWindow(CardController attacker, int moveIndex)
     {
-        bool cancelled = await BattleManager.Instance.FinishMoveDeclaration(attacker, moveIndex, null);
+        bool cancelled = await battle.FinishMoveDeclaration(attacker, moveIndex, null);
         return !cancelled;
     }
 
@@ -820,17 +799,17 @@ public class EnemyActionManager : MonoBehaviour
     /// 候補を全部 TargetPanel にして少し見せる。
     /// そのあと解決側が選んだカードだけを残し、ダメージ表示のあとまで点灯したままにする。
     /// </summary>
-    static async Task ShowCpuTargetCandidates(IEnumerable<CardController> candidates)
+     async Task ShowCpuTargetCandidates(IEnumerable<CardController> candidates)
     {
-        if (BattleManager.Instance == null || candidates == null)
+        if (battle == null || candidates == null)
             return;
 
         var list = candidates.Where(card => card != null).Distinct().ToList();
         if (list.Count == 0)
             return;
 
-        BattleManager.Instance.ShowSpecificTargetHighlights(list);
-        await Task.Delay(150);
+        battle.ShowSpecificTargetHighlights(list);
+        await Task.Delay(200);
     }
 
     static List<CardController> PickRandomTargets(List<CardController> candidates, int count)

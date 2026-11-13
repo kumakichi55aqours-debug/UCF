@@ -1,8 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
-[System.Serializable]
+[Serializable]
 [SkillDisplayName("(〇付与)パワー")]
 public class PowerModifierSkill : SkillDB
 {

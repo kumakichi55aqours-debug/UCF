@@ -11,12 +11,10 @@ public class DamageSkill : SkillDB
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 対象条件;
 
-    [Header("候補を集めるときに1体ずつ見る。対象条件とは別")]
     [SerializeReference]
     public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
 
     public int 効果数 = 1;
-    [Tooltip("なしなら効果数を使う。引数があるときは、コンテキストのその値だけを使う。無ければ 0。")]
     public SkillArg 効果数キー = SkillArg.なし;
 
     public override TargetList GetEffectTarget() => 効果対象;
@@ -79,7 +77,7 @@ public class DamageSkill : SkillDB
             }
         }
 
-        await Task.Delay(800);
+        await Task.Delay(1000);
 
         foreach (var card in toDamage)
         {
@@ -130,6 +128,8 @@ public class DamageSkill : SkillDB
             OnlineSyncManager.Instance.SyncDirectHpDamage(damageToMyHp, damageToEnemyHp);
             await OnlineSyncManager.Instance.WaitForOpponentAnimation();
         }
+
+        await Task.Delay(1000);
     }
 
     static async Task DamagePlayerHp(ResourceSystem hp, Transform effectAnchor, int amount)
@@ -140,7 +140,6 @@ public class DamageSkill : SkillDB
         hp.TakeDamage(amount);
         if (effectAnchor != null)
             await BattleManager.Instance.ShowEffect(effectAnchor.position, amount, Color.yellow);
-        await Task.Delay(800);
     }
 
     protected override void CopyPolymorphicFieldsTo(SkillDB clone)
