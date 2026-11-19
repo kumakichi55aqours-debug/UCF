@@ -12,47 +12,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be536d0412968f14db8325162c4a2aaf, type: 3}
   m_Name: 12301
   m_EditorClassIdentifier: 
-  cardName: "\u30B6\u30E9\u30D6\u661F\u4EBA"
-  cardKind: 1
-  cardId: 12301
-  rarity: 0
-  artwork: {fileID: 21300000, guid: 5533106c1f742ab40aacebdfcb0319c6, type: 3}
-  cost: 1
-  category: 0100000003000000
-  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u5B87\u5B99\u4EBA/\u521D\u4EE3\u30DE\u30F3\u5B87\u5B99\u4EBA\nACT
+  "\u30AB\u30FC\u30C9\u540D": "\u30B6\u30E9\u30D6\u661F\u4EBA"
+  "\u5206\u985E": 1
+  ID: 12301
+  "\u30EC\u30A2\u5EA6": 0
+  "\u753B\u50CF": {fileID: 21300000, guid: 5533106c1f742ab40aacebdfcb0319c6, type: 3}
+  "\u30B3\u30B9\u30C8": 1
+  "\u30AB\u30C6\u30B4\u30EA": 0100000003000000
+  "\u30C6\u30AD\u30B9\u30C8": "\u30AB\u30C6\u30B4\u30EA \u5B87\u5B99\u4EBA/\u521D\u4EE3\nACT
     \u3053\u306E\u30AB\u30FC\u30C9\u3092\u5893\u5730\u3078\u9001\u308A\u3001\u300E\u306B\u305B\u30A6\u30EB\u30C8\u30E9\u30DE\u30F3\u300F\u30C8\u30FC\u30AF\u30F31\u4F53\u3092\u751F\u6210\u3059\u308B\u3002\nPAS
-    \u300C\u6DF7\u4E71\u300D\u306E\u30D0\u30C8\u30E9\u30FC\u306B\u6280\u3067\u4E0E\u3048\u308B\u30C0\u30E1\u30FC\u30B8\u3092++2\u3059\u308B\u3002"
-  skills:
+    \u300C\u6DF7\u4E71\u300D\u306E\u30D0\u30C8\u30E9\u30FC\u3078\u306E\u6280\u3067\u4E0E\u3048\u308B\u30C0\u30E1\u30FC\u30B8\u3092++2\u3059\u308B\u3002"
+  "\u30B9\u30AD\u30EB":
   - rid: 7839874442076356608
   - rid: 7839874444826247191
   - rid: 7839874444826247193
-  type: 3
+  "\u30BF\u30A4\u30D7": 3
   hp: 4
   "\u5F97\u610F\u5C5E\u6027": 9
   "\u5C5E\u6027\u8EFD\u6E1B\u5024": 1
-  "\u5F31\u70B9\u5C5E\u6027": 8
+  "\u5F31\u70B9\u5C5E\u6027": 2
   "\u5C5E\u6027\u5897\u52A0\u5024": 2
-  moveName1: "\u30AD\u30C3\u30AF"
-  energy1: 0
-  power1: 2
-  moveElement1: 1
-  target1: 1
+  "\u6280\u540D1": "\u30AD\u30C3\u30AF"
+  "\u5C5E\u60271": 1
+  EN1: 0
+  PW1: 2
+  "\u5BFE\u8C611": 1
   "\u5BFE\u8C61\u50741": 1
   "\u5BFE\u8C61\u9078\u629E1":
     "\u9078\u629E\u6570": 1
     "\u9078\u629E\u65B9\u5F0F": 0
-  description1: 
-  moveName2: "\u7834\u58CA\u602A\u97F3\u6CE2"
-  energy2: 1
-  power2: 4
-  moveElement2: 9
-  target2: 1
+  "\u52B9\u679C1": 
+  "\u6280\u540D2": "\u7834\u58CA\u602A\u97F3\u6CE2"
+  "\u5C5E\u60272": 9
+  EN2: 1
+  PW2: 4
+  "\u5BFE\u8C612": 1
   "\u5BFE\u8C61\u50742": 1
   "\u5BFE\u8C61\u9078\u629E2":
     "\u9078\u629E\u6570": 1
     "\u9078\u629E\u65B9\u5F0F": 0
-  description2: "4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u5BFE\u8C61\u30D0\u30C8\u30E9\u30FC\u3092\u300C\u6DF7\u4E71\u300D\u306B\u3059\u308B\u3002"
-  summonVoice: {fileID: 8300000, guid: 8411c696fd8029a4cac33a94aa0f0a0b, type: 3}
+  "\u52B9\u679C2": "4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u5BFE\u8C61\u30D0\u30C8\u30E9\u30FC\u3092\u300C\u6DF7\u4E71\u300D\u306B\u3059\u308B\u3002"
+  "\u30DC\u30A4\u30B9": {fileID: 8300000, guid: 8411c696fd8029a4cac33a94aa0f0a0b, type: 3}
   references:
     version: 2
     RefIds:
@@ -70,6 +70,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -95,6 +96,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -105,7 +107,9 @@ MonoBehaviour:
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u53C2\u7167\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 1
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
         "\u53C2\u7167\u5834\u6240": 02000000
         "\u9078\u629E\u6570": 1
         "\u9078\u629E\u6570\u306E\u6271\u3044": 0
@@ -129,6 +133,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -153,6 +158,7 @@ MonoBehaviour:
         - rid: 7839874444826247192
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -163,6 +169,7 @@ MonoBehaviour:
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u72B6\u614B": []
         "\u8FFD\u52A0\u30C0\u30E1\u30FC\u30B8\u91CF": 2
@@ -186,6 +193,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -198,6 +206,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 0
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": 4
@@ -217,6 +226,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 

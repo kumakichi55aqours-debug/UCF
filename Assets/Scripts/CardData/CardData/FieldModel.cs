@@ -7,17 +7,17 @@ public class FieldModel : CardDBBase
     public void Init(int cardID)
     {
         FieldDB cardDB = Resources.Load<FieldDB>("CardDBList/フィールド/" + cardID);
-        cardKind = cardDB.cardKind;
-        cardId = cardDB.cardId;
-        cardName = cardDB.cardName;
-        rarity = cardDB.rarity;
-        artwork = cardDB.artwork;
+        分類 = cardDB.分類;
+        ID = cardDB.ID;
+        カード名 = cardDB.カード名;
+        レア度 = cardDB.レア度;
+        画像 = cardDB.画像;
         maxHp = cardDB.hp;
-        cost = cardDB.cost;
-        category = cardDB.category;
+        コスト = cardDB.コスト;
+        カテゴリ = cardDB.カテゴリ;
 
-        skills = cardDB.skills;
-        skillDescription = cardDB.skillDescription;
+        スキル = cardDB.スキル;
+        テキスト = cardDB.テキスト;
     }
 }
 

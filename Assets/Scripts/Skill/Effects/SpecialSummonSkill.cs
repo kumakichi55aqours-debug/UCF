@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -13,7 +14,8 @@ public class SpecialSummonSkill : SkillDB
     public List<CardZoneType> 参照ゾーンリスト = new List<CardZoneType>();
     public SearchCriteria 対象条件;
 
-    public bool 選択カードのコストを払う;
+    [Tooltip("支払うコストの計算式。空欄ならコストを払わない。例: card.cost / card.cost - 1")]
+    public string 支払うコスト式;
 
     public override async Task ActivateEffect(SkillContext context)
     {
@@ -25,8 +27,8 @@ public class SpecialSummonSkill : SkillDB
         var deckCandidates = new List<DeckCard>();
 
         existingCandidates = existingCandidates
-    .Where(c => MeetsConditionsForCandidate(context, c))
-    .ToList();
+            .Where(c => MeetsConditionsForCandidate(context, c))
+            .ToList();
 
         foreach (var zone in 参照ゾーンリスト)
         {
@@ -74,17 +76,19 @@ public class SpecialSummonSkill : SkillDB
         if (existingCandidates.Count == 0 && deckCandidates.Count == 0)
             return;
 
-        bool payCost = 選択カードのコストを払う;
+        bool payCost = !string.IsNullOrWhiteSpace(支払うコスト式);
         int availableCost = payCost ? CurrentCost(context) : int.MaxValue;
         bool cpuChooses = payCost && SkillContext.IsOfflineCpuResolving;
+
         if (cpuChooses)
         {
             existingCandidates = existingCandidates
-                .Where(c => c != null && c.GetModifiedCost() <= availableCost)
+                .Where(c => c != null && GetSummonCost(c) <= availableCost)
                 .ToList();
             deckCandidates = deckCandidates
-                .Where(d => d != null && d.コスト <= availableCost)
+                .Where(d => d != null && GetSummonCost(d) <= availableCost)
                 .ToList();
+
             if (existingCandidates.Count == 0 && deckCandidates.Count == 0)
                 return;
         }
@@ -181,14 +185,18 @@ public class SpecialSummonSkill : SkillDB
         // --- 8) SummonRoutine で召喚処理 ---
         if (toSummon != null)
         {
-            if (payCost && !TryPaySummonCost(context, toSummon.GetModifiedCost()))
-                return;
+            if (payCost)
+            {
+                int summonCost = PaymentOf(sel);
+                if (!TryPaySummonCost(context, summonCost))
+                    return;
+            }
 
             // 適切なバトラーゾーンを選択
-            var targetZone = toSummon.isMyCard 
-                ? BattleManager.Instance.pBattlerZone 
+            var targetZone = toSummon.isMyCard
+                ? BattleManager.Instance.pBattlerZone
                 : BattleManager.Instance.eBattlerZone;
-            
+
             await BattleManager.Instance.SummonCard(toSummon, targetZone, playVoice: true, deductCost: false, summonSource: summonSource, specialSummon: true);
             context?.SetProcessedCards(new[] { toSummon });
         }
@@ -205,16 +213,62 @@ public class SpecialSummonSkill : SkillDB
         return zone != null && zone.childCount < BattlerZoneLimit;
     }
 
-    static int PaymentOf(SelectionItem item)
+    int PaymentOf(SelectionItem item)
     {
         if (item == null)
             return 0;
+
         if (item.source == SelectionItem.SourceType.Existing)
+            return GetSummonCost(item.existingCard);
+
+        return GetSummonCost(item.deckData);
+    }
+
+    int GetSummonCost(CardController card)
+    {
+        int baseCost = card != null ? Mathf.Max(0, card.GetModifiedCost()) : 0;
+        return CalculateCost(baseCost);
+    }
+
+    int GetSummonCost(DeckCard card)
+    {
+        int baseCost = card != null ? Mathf.Max(0, card.コスト) : 0;
+        return CalculateCost(baseCost);
+    }
+
+    int CalculateCost(int cardCost)
+    {
+        // 空欄ならコストを支払わない
+        if (string.IsNullOrWhiteSpace(支払うコスト式))
+            return 0;
+
+        string expression = 支払うコスト式
+            .Trim()
+            .Replace("card.cost", cardCost.ToString());
+
+        // 数字だけ
+        if (int.TryParse(expression, out int fixedCost))
+            return Mathf.Max(0, fixedCost);
+
+        // 「+ 数字」「- 数字」を処理
+        var match = Regex.Match(
+            expression,
+            @"^(\d+)\s*([+-])\s*(\d+)$");
+
+        if (match.Success)
         {
-            int pay = item.existingCard.GetModifiedCost();
-            return Mathf.Max(0, pay);
+            int left = int.Parse(match.Groups[1].Value);
+            int right = int.Parse(match.Groups[3].Value);
+
+            int result = match.Groups[2].Value == "+"
+                ? left + right
+                : left - right;
+
+            return Mathf.Max(0, result);
         }
-        return item.deckData != null ? Mathf.Max(0, item.deckData.コスト) : 0;
+
+        Debug.LogWarning($"特殊登場のコスト式を解析できません: {支払うコスト式}");
+        return 0;
     }
 
     int CurrentCost(SkillContext context)

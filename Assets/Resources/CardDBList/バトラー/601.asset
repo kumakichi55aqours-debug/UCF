@@ -12,48 +12,48 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be536d0412968f14db8325162c4a2aaf, type: 3}
   m_Name: 601
   m_EditorClassIdentifier: 
-  cardName: "\u30DA\u30AE\u30E9"
-  cardKind: 1
-  cardId: 601
-  rarity: 0
-  artwork: {fileID: 21300000, guid: 84b16f4cae7637c4585096c7d5aa853f, type: 3}
-  cost: 1
-  category: 000000001f000000
-  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u602A\u7363/\u30A6\u30EB\u30C8\u30E9Q\nACT1
+  "\u30AB\u30FC\u30C9\u540D": "\u30DA\u30AE\u30E9"
+  "\u5206\u985E": 1
+  ID: 601
+  "\u30EC\u30A2\u5EA6": 0
+  "\u753B\u50CF": {fileID: 21300000, guid: 84b16f4cae7637c4585096c7d5aa853f, type: 3}
+  "\u30B3\u30B9\u30C8": 1
+  "\u30AB\u30C6\u30B4\u30EA": 000000001f000000
+  "\u30C6\u30AD\u30B9\u30C8": "\u30AB\u30C6\u30B4\u30EA \u602A\u7363/\u30A6\u30EB\u30C8\u30E9Q\nACT1
     \u81EA\u5206B\u30BE\u30FC\u30F3\u306B\u300C\u30A6\u30EB\u30C8\u30E9Q\u300D\u30D0\u30C8\u30E9\u30FC\u304C\u3044\u308B\u6642\u306B\u767A\u52D5\u3067\u304D\u308B\u3002\u3053\u306E\u30AB\u30FC\u30C9\u3092\u624B\u672D\u304B\u3089\u7279\u6B8A\u767B\u5834\u3055\u305B\u308B\u3002\nACT2
     B\u30BE\u30FC\u30F3\u306E\u300C\u51CD\u7D50\u300D\u306E\u30D0\u30C8\u30E9\u30FC1\u4F53\u3092\u624B\u672D\u306B\u623B\u3059\u3002"
-  skills:
+  "\u30B9\u30AD\u30EB":
   - rid: 7839874396099444749
   - rid: 7839874396099444757
   - rid: 7839874396099444761
   - rid: 7839874396099444873
-  type: 1
+  "\u30BF\u30A4\u30D7": 1
   hp: 6
   "\u5F97\u610F\u5C5E\u6027": 7
   "\u5C5E\u6027\u8EFD\u6E1B\u5024": 2
   "\u5F31\u70B9\u5C5E\u6027": 6
   "\u5C5E\u6027\u5897\u52A0\u5024": 2
-  moveName1: "\u51B7\u51CD\u5149\u7DDA"
-  energy1: 0
-  power1: 3
-  moveElement1: 7
-  target1: 1
+  "\u6280\u540D1": "\u51B7\u51CD\u5149\u7DDA"
+  "\u5C5E\u60271": 7
+  EN1: 0
+  PW1: 3
+  "\u5BFE\u8C611": 1
   "\u5BFE\u8C61\u50741": 1
   "\u5BFE\u8C61\u9078\u629E1":
     "\u9078\u629E\u6570": 1
     "\u9078\u629E\u65B9\u5F0F": 0
-  description1: "4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u5BFE\u8C61\u30D0\u30C8\u30E9\u30FC\u3092\u300C\u51CD\u7D50\u300D\u306B\u3059\u308B\u3002"
-  moveName2: "\u51B7\u51CD\u5149\u7DDA(\u5F37\u5316)"
-  energy2: 1
-  power2: 3
-  moveElement2: 7
-  target2: 4
+  "\u52B9\u679C1": "4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u5BFE\u8C61\u30D0\u30C8\u30E9\u30FC\u3092\u300C\u51CD\u7D50\u300D\u306B\u3059\u308B\u3002"
+  "\u6280\u540D2": "\u51B7\u51CD\u5149\u7DDA(\u5F37\u5316)"
+  "\u5C5E\u60272": 7
+  EN2: 1
+  PW2: 3
+  "\u5BFE\u8C612": 4
   "\u5BFE\u8C61\u50742": 1
   "\u5BFE\u8C61\u9078\u629E2":
     "\u9078\u629E\u6570": 1
     "\u9078\u629E\u65B9\u5F0F": 0
-  description2: "\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u5168\u54E1\u3092\u5BFE\u8C61\u306B\u3059\u308B\u3002\u3053\u306E\u6280\u3067\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u3092\u5012\u3057\u305F\u6642\u3001\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u5168\u54E1\u3092\u300C\u51CD\u7D50\u300D\u306B\u3059\u308B\u3002"
-  summonVoice: {fileID: 8300000, guid: 5862e4a72a40aca4c954a757056c1a6e, type: 3}
+  "\u52B9\u679C2": "\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u5168\u54E1\u3092\u5BFE\u8C61\u306B\u3059\u308B\u3002\u3053\u306E\u6280\u3067\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u3092\u5012\u3057\u305F\u6642\u3001\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u5168\u54E1\u3092\u300C\u51CD\u7D50\u300D\u306B\u3059\u308B\u3002"
+  "\u30DC\u30A4\u30B9": {fileID: 8300000, guid: c1a4186bfa1cdf54c8c2f8bb4f3b9486, type: 3}
   references:
     version: 2
     RefIds:
@@ -72,6 +72,7 @@ MonoBehaviour:
         - rid: 7839874396099444750
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -83,14 +84,16 @@ MonoBehaviour:
         "\u53C2\u7167\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 01000000
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 1
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
-        "\u9078\u629E\u30AB\u30FC\u30C9\u306E\u30B3\u30B9\u30C8\u3092\u6255\u3046": 0
+        "\u652F\u6255\u3046\u30B3\u30B9\u30C8\u5F0F": 
     - rid: 7839874396099444750
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:
         "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 02000000
         searchCriteria:
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
             "\u30AB\u30FC\u30C9ID": 0
@@ -108,9 +111,10 @@ MonoBehaviour:
     - rid: 7839874396099444755
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 08000000
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 0200000008000000
         searchCriteria:
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
             "\u30AB\u30FC\u30C9ID": 0
@@ -146,6 +150,7 @@ MonoBehaviour:
         - rid: 7839874396099444755
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -158,6 +163,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 2
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u72B6\u614B":
         - rid: 7839874396099444760
@@ -172,7 +178,7 @@ MonoBehaviour:
         "\u30B9\u30AD\u30EB\u540D": "\u62801\u52B9\u679C"
         "\u30BF\u30A4\u30DF\u30F3\u30B0": 9
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
-        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u4E0A\u9650\u56DE\u6570": 255
         "\u5F37\u5236\u767A\u52D5": 1
         "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
         "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
@@ -180,6 +186,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -192,6 +199,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 0
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": 4
@@ -211,6 +219,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -226,14 +235,16 @@ MonoBehaviour:
         "\u30B9\u30AD\u30EB\u540D": "\u62802\u52B9\u679C"
         "\u30BF\u30A4\u30DF\u30F3\u30B0": 13
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
-        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u4E0A\u9650\u56DE\u6570": 255
         "\u5F37\u5236\u767A\u52D5": 1
         "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
         "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
+        "\u6761\u4EF6":
+        - rid: 7839874509070925835
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -246,6 +257,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 1
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": -1
@@ -265,6 +277,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -274,3 +287,32 @@ MonoBehaviour:
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u72B6\u614B\u7570\u5E38": 4
+    - rid: 7839874509070925835
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 08000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
+        "\u30AB\u30FC\u30C9\u72B6\u614B":
+        - rid: 7839874509070925836
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
+    - rid: 7839874509070925836
+      type: {class: HpCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u898B\u308B\u30AB\u30FC\u30C9": 0
+        "\u95BE\u5024\u30BF\u30A4\u30D7": 2
+        "\u57FA\u6E96HP": 1
+        "\u57FA\u6E96HP\u6BD4\u7387": 0.5

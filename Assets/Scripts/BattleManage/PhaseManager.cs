@@ -35,6 +35,13 @@ public class PhaseManager : MonoBehaviour
     const int PhaseTransitionDelayMs = 150;
     const int TurnTransitionDelayMs = 1000;
 
+    public bool IsLeavingBattle { get; private set; }
+
+    public void StopBattleProcessing()
+    {
+        IsLeavingBattle = true;
+    }
+
     // フェイズ画像のクリックで指定された行き先。届くまで1フェイズずつ進める。
     TurnPhase? requestedPhase;
     // 自分の手番で、フェイズ進行の操作を待っている間だけ入る
@@ -145,6 +152,8 @@ public class PhaseManager : MonoBehaviour
     /// </summary>
     public async Task ExecuteOfflinePhases()
     {
+        if (IsLeavingBattle) return;
+
         // オフライン時は先攻側が奇数ターン
         bool isPlayerTurn = BattleManager.Instance.IsActiveSideTurn;
         string currentPlayer = isPlayerTurn ? "プレイヤー" : "エネミー";
@@ -187,7 +196,12 @@ public class PhaseManager : MonoBehaviour
     /// </summary>
     private async Task ExecutePhase(TurnPhase phase, string playerType, System.Func<Task> phaseAction, bool isOnlineMode = false)
     {
+        if (!isOnlineMode && IsLeavingBattle) return;
+
         await ApplyPhaseAsync(phase);
+
+        if (!isOnlineMode && IsLeavingBattle) return;
+
         await phaseAction();
     }
 

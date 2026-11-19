@@ -3,17 +3,12 @@ using System.Threading.Tasks;
 using System.Linq;
 using UnityEngine;
 
-public enum GraveHpValue
-{
-    現在HP,
-    最大HP,
-}
-
 [System.Serializable]
 [SkillDisplayName("墓地へ")]
 public class ToGraveSkill : SkillDB
 {
     [SerializeField] public SearchCriteria 参照条件;
+    [SerializeField] public int 処理カード番号 = 0;
     [SerializeField] public List<CardZoneType> 参照場所 = new List<CardZoneType>();
     [SerializeField] public int 選択数 = 1;
     [SerializeField] public CountMode 選択数の扱い = CountMode.ちょうど;
@@ -52,110 +47,34 @@ public class ToGraveSkill : SkillDB
         }
     }
 
-    public async Task SendCardToGrave(SkillContext context,SearchCriteria criteria,List<CardZoneType> zones,int count,PlayerType selector)
+    public async Task SendCardToGrave(SkillContext context, SearchCriteria criteria, List<CardZoneType> zones, int count, PlayerType selector)
     {
-        if (zones == null || zones.Count == 0)
+        var selections = await SkillSelectionHelper.CollectAndSelectAsync(
+            context,
+            criteria,
+            zones,
+            count,
+            selector,
+            選択数の扱い,
+            ランダム,
+            全選択,
+            c => ConditionsMet(対象状態, c));
+
+        if (selections == null || selections.Count == 0)
             return;
-
-        if (!全選択 && count <= 0)
-            return;
-
-        var existingCandidates = new List<CardController>();
-        var deckCandidates = new List<DeckCard>();
-
-        bool ownerIsLocal = context?.発動カード == null
-            || context.発動カード.isMyCard;
-
-        foreach (var zone in zones)
-        {
-            if (CardZones.IsDeck(zone))
-            {
-                var deck = CardZones.Deck(zone, ownerIsLocal);
-
-                if (deck != null)
-                {
-                    deckCandidates.AddRange(
-                        deck.Where(d => SearchCriteria.AllowsDeck(criteria, d, context)));
-                }
-
-                continue;
-            }
-
-            var zoneTransform = CardZones.Of(zone, ownerIsLocal);
-
-            if (zoneTransform == null)
-                continue;
-
-            existingCandidates.AddRange(
-            zoneTransform.GetComponentsInChildren<CardController>()
-                .Where(c =>
-                (context != null
-                    ? c.MeetsCriteria(criteria, context)
-                    : c.MeetsCriteria(criteria))
-                && ConditionsMet(対象状態, c))
-                );
-        }
-
-        int totalCandidates = existingCandidates.Count + deckCandidates.Count;
-
-        if (totalCandidates == 0)
-            return;
-
-        bool upTo = 選択数の扱い == CountMode.まで;
-        bool chooseCount = upTo && totalCandidates > 1;
-
-        List<SelectionItem> selections;
-        if (全選択)
-        {
-            selections = SelectionItem.FromCandidates(
-                existingCandidates,
-                deckCandidates);
-        }
-        else if (ランダム)
-        {
-            selections = SelectionItem.FromCandidates(
-                    existingCandidates, deckCandidates)
-                .OrderBy(_ => Random.value)
-                .Take(Mathf.Min(count, totalCandidates))
-                .ToList();
-        }
-        else if (totalCandidates <= count && !chooseCount)
-        {
-            selections = SelectionItem.FromCandidates(
-                existingCandidates, deckCandidates);
-        }
-        else if (ChooserIsLocal(selector, ownerIsLocal))
-        {
-            selections = await CardSelectionUI.Instance.ShowAsync(
-                existingCandidates,
-                deckCandidates,
-                count,
-                rejectSameKind: false,
-                letCpuChoose: false,
-                allowFewer: upTo);
-
-            if (selections == null || selections.Count == 0)
-                return;
-        }
-        else
-        {
-            var pool = SelectionItem.FromCandidates(
-                existingCandidates, deckCandidates);
-
-            selections = await ChooseRemote(
-                pool, count, context, ownerIsLocal, upTo);
-
-            if (selections == null || selections.Count == 0)
-                return;
-        }
 
         await SendPassedSelectionToGrave(context, selections);
     }
 
     async Task SendPassedSelectionToGrave(SkillContext context, List<SelectionItem> selections)
     {
+        var processed = new List<CardController>();
+
         if (selections == null)
+        {
+            context?.SetProcessedCards(処理カード番号, processed);
             return;
+        }
 
         selections = selections
             .Where(s =>
@@ -166,12 +85,8 @@ public class ToGraveSkill : SkillDB
             .ToList();
 
         if (selections.Count == 0)
-            return;
-
-        var processed = new List<CardController>();
-        if (selections == null || selections.Count == 0)
         {
-            context?.SetProcessedCards(processed);
+            context?.SetProcessedCards(処理カード番号, processed);
             return;
         }
 
@@ -234,7 +149,7 @@ public class ToGraveSkill : SkillDB
             processed.AddRange(await MoveExistingCardsToGrave(context, cards, pair.Key, grave, zoneType));
         }
 
-        context?.SetProcessedCards(processed);
+        context?.SetProcessedCards(処理カード番号,processed);
         battle.UpdateDeckUI();
         if (playerDeck.Count > 0 || enemyDeck.Count > 0)
             await Task.Delay(400);
@@ -484,13 +399,13 @@ public class ToGraveSkill : SkillDB
             BattleManager.Instance.UpdateEnemyHandUI();
             BattleManager.Instance.UpdateEnemyGraveyardUI();
             processed = ResolveArrivedCards(BattleManager.Instance.eGraveZone, discardedMirror);
-            context?.SetProcessedCards(processed);
+            context?.SetProcessedCards(処理カード番号,processed);
             ScheduleOpponentHandGraveTriggers(discardedMirror, processed);
         }
         else
         {
             processed = toSend;
-            context?.SetProcessedCards(processed);
+            context?.SetProcessedCards(処理カード番号,processed);
         }
 
         // アニメーション完了後に同期（オンライン時）
@@ -623,6 +538,7 @@ public class ToGraveSkill : SkillDB
         card.ClearInvalidElements();
         card.RemoveAllPassiveEffects();
         card.ClearStatusAilments();
+        card.ResetMoveChanges();
         card.ResetMoveElements();
         card.RecalculateModifiedPowers();
     }
@@ -657,92 +573,6 @@ public class ToGraveSkill : SkillDB
         context.SetArg(出力キー, pendingHpOutput);
     }
 
-    bool ShouldAskRemote(PlayerType selector, bool ownerIsLocal, SkillContext context)
-    {
-        if (ランダム || ChooserIsLocal(selector, ownerIsLocal))
-            return false;
-
-        var battle = BattleManager.Instance;
-        return ownerIsLocal
-            && battle != null
-            && battle.IsOnlineMode
-            && context?.発動カード != null
-            && OnlineSyncManager.Instance != null;
-    }
-
-    static bool ChooserIsLocal(PlayerType selectBy, bool ownerIsLocal)
-    {
-        bool chooserIsOwner = selectBy != PlayerType.相手;
-        return chooserIsOwner ? ownerIsLocal : !ownerIsLocal;
-    }
-
-    async Task<List<SelectionItem>> ChooseRemote(
-    List<SelectionItem> pool,
-    int count,
-    SkillContext context,
-    bool ownerIsLocal,
-    bool upTo)
-    {
-        if (pool == null || pool.Count == 0)
-            return null;
-
-        int take = Mathf.Min(count, pool.Count);
-
-        bool online = BattleManager.Instance != null
-            && BattleManager.Instance.IsOnlineMode
-            && ownerIsLocal
-            && context?.発動カード != null
-            && OnlineSyncManager.Instance != null;
-
-        if (!online)
-        {
-            return pool.OrderBy(_ => Random.value)
-                .Take(take)
-                .ToList();
-        }
-
-        var kinds = new int[pool.Count];
-        var ids = new int[pool.Count];
-
-        for (int i = 0; i < pool.Count; i++)
-        {
-            if (pool[i] != null &&
-                pool[i].TryGetIdentity(out CardKind kind, out int id))
-            {
-                kinds[i] = (int)kind;
-                ids[i] = id;
-            }
-        }
-
-        int[] picked =
-            await OnlineSyncManager.Instance.RequestOpponentCardPick(
-                context.発動カード,
-                kinds,
-                ids,
-                take,
-                upTo);
-
-        return TakeByIndices(pool, picked, take);
-    }
-
-    static List<T> TakeByIndices<T>(List<T> pool, int[] indices, int count)
-    {
-        var picked = new List<T>();
-        if (pool == null || indices == null)
-            return picked;
-
-        var used = new HashSet<int>();
-        for (int i = 0; i < indices.Length && picked.Count < count; i++)
-        {
-            int index = indices[i];
-            if (index < 0 || index >= pool.Count || !used.Add(index))
-                continue;
-            picked.Add(pool[index]);
-        }
-
-        return picked;
-    }
-
     static void RemoveOneEnemyHandCard(CardController card)
     {
         var hand = BattleManager.Instance?.enemyHand;
@@ -759,6 +589,13 @@ public class ToGraveSkill : SkillDB
             }
         }
     }
+
+    public enum GraveHpValue
+    {
+        現在HP,
+        最大HP,
+    }
+
 
     protected override void CopyPolymorphicFieldsTo(SkillDB clone)
     {

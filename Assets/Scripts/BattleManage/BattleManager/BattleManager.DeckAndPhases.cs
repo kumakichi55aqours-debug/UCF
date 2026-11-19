@@ -311,14 +311,7 @@ public partial class BattleManager
             if (card == null || skill == null)
                 continue;
 
-            try
-            {
-                await skill.ResolveExpired(card);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[BattleManager] 付与解除時スキルでエラー: {card.cardName} {ex.Message}");
-            }
+            await skill.ResolveExpired(card);
         }
 
         await RetireEnhancementsIfSpentPending();

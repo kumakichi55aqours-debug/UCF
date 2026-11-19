@@ -46,6 +46,7 @@ public partial class CardAnimationManager
             {
                 SetCardParent(card, toZone);
                 card.ResetBasePower();
+                card.ResetMoveChanges();
                 card.ResetMoveElements();
 
                 await Task.Delay(200);
@@ -79,6 +80,7 @@ public partial class CardAnimationManager
             {
                 SetCardParent(card, toZone);
                 card.ResetBasePower();
+                card.ResetMoveChanges();
                 card.ResetMoveElements();
             }
         }

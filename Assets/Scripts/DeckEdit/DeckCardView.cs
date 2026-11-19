@@ -40,9 +40,9 @@ public class DeckCardView : MonoBehaviour
         // 表示内容の更新
         if (model is BattlerModel battler)
         {
-            nameText.text = battler.cardName;
-            artworkImage.sprite = battler.artwork;
-            costText.text = (battler.cost == 0) ? "-" : battler.cost.ToString();
+            nameText.text = battler.カード名;
+            artworkImage.sprite = battler.画像;
+            costText.text = (battler.コスト == 0) ? "-" : battler.コスト.ToString();
             onlyBattler.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : battler.maxHp.ToString();
             hpText.transform.parent.gameObject.SetActive(true);
@@ -56,9 +56,9 @@ public class DeckCardView : MonoBehaviour
         }
         else if (model is TacticsModel tactics)
         {
-            nameText.text = tactics.cardName;
-            artworkImage.sprite = tactics.artwork;
-            costText.text = (tactics.cost == 0) ? "-" : tactics.cost.ToString();
+            nameText.text = tactics.カード名;
+            artworkImage.sprite = tactics.画像;
+            costText.text = (tactics.コスト == 0) ? "-" : tactics.コスト.ToString();
             onlyTactics.SetActive(true);
             onlyBattler.SetActive(false);
             onlyField.SetActive(false);
@@ -68,9 +68,9 @@ public class DeckCardView : MonoBehaviour
         }
         else if (model is FieldModel field)
         {
-            nameText.text = field.cardName;
-            artworkImage.sprite = field.artwork;
-            costText.text = (field.cost == 0) ? "-" : field.cost.ToString();
+            nameText.text = field.カード名;
+            artworkImage.sprite = field.画像;
+            costText.text = (field.コスト == 0) ? "-" : field.コスト.ToString();
             onlyField.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : field.maxHp.ToString();
             hpText.transform.parent.gameObject.SetActive(true);

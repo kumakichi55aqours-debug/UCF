@@ -232,19 +232,29 @@ public partial class BattleManager
         // ゾーンに着いてから、登場時スキルより先に永続効果を付け直す
         PersistentEffectManager.Instance?.RecalculateImmediately();
 
-        if (card.cardKind == CardKind.バトラー)
+        if (card.cardKind != CardKind.作戦)
         {
-            await Task.Delay(350);
+            // バトラーなど、作戦以外
+            await Task.Delay(250);
             EventBus.Publish(new SummonCompletedEvent(card, specialSummon, fromLocation));
-            if (card != null && card.cardKind == CardKind.バトラー)
-                card.hasUsedMove = false;
 
-            card.GetComponent<BattleCardView>().UpdateCanUseMovePanel();
+            if (card != null && card.cardKind == CardKind.バトラー)
+            {
+                card.hasUsedMove = false;
+                card.GetComponent<BattleCardView>().UpdateCanUseMovePanel();
+            }
         }
-        else if (card.cardKind == CardKind.作戦)
+        else if (card.type == CardTypeList.強化)
         {
-            // チェーン中の手札発動は、その作戦自身のカード使用時を開かない。
-            // 他のカードの登場反応だけは、着地後に回す。
+            if (openUseChain)
+                EventBus.Publish(new UseCardFromHandEvent(card, fromLocation, specialSummon));
+            // 強化作戦
+            await Task.Delay(250);
+            EventBus.Publish(new SummonCompletedEvent(card, specialSummon, fromLocation));
+        }
+        else
+        {
+            // 強化以外の作戦
             if (openUseChain)
                 EventBus.Publish(new UseCardFromHandEvent(card, fromLocation, specialSummon));
             else
@@ -273,11 +283,7 @@ public partial class BattleManager
     /// </summary>
     public async Task UseTactics(CardController card)
     {
-        if (!TacticsZoneHasRoom(true))
-        {
-            MessageManager.Instance?.ShowMessage("作戦ゾーンはいっぱいです");
-            return;
-        }
+        if (!TacticsZoneHasRoom(true)) return;
 
         await SummonCard(card, pTacticsZone, false, true);
     }

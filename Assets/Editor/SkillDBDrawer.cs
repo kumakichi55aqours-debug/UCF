@@ -190,6 +190,31 @@ public class SkillDBDrawer : PropertyDrawer
             if (it.propertyPath == path || HiddenFields.Contains(it.name) || MovedFields.Contains(it.name))
                 continue;
 
+            if (it.name == "減算値")
+            {
+                SerializedProperty typeProp = prop.FindPropertyRelative("無効化タイプ");
+                if (typeProp != null &&
+                    typeProp.enumValueIndex == (int)DamageNullificationType.完全無効化)
+                    continue;
+            }
+
+            if (ShouldSkipDamageCountField(prop, it))
+                continue;
+
+            // HP・コストの場合、対象属性と適用先は使用しないため非表示
+            if (prop.managedReferenceValue is ResourceModifierSkill)
+            {
+                SerializedProperty resourceType = prop.FindPropertyRelative("リソースタイプ");
+
+                if (resourceType != null &&
+                    (resourceType.enumValueIndex == (int)ResourceType.HP ||
+                     resourceType.enumValueIndex == (int)ResourceType.コスト))
+                {
+                    if (it.name == "対象属性" || it.name == "適用先")
+                        continue;
+                }
+            }
+
             if (!drewHeader)
             {
                 cursor.Text("■ パラメータ");
@@ -360,7 +385,7 @@ public class SkillDBDrawer : PropertyDrawer
 
     static bool IsExpanded(SerializedProperty prop)
     {
-        return SessionState.GetBool(FoldKey(prop), true);
+        return SessionState.GetBool(FoldKey(prop), false);
     }
 
     static void SetExpanded(SerializedProperty prop, bool expanded)
@@ -782,5 +807,42 @@ public class SkillDBDrawer : PropertyDrawer
 
         normalExclude.boolValue = !newNormal;
         specialExclude.boolValue = !newSpecial;
+    }
+
+    static bool ShouldSkipDamageCountField(
+    SerializedProperty skillProp,
+    SerializedProperty field)
+    {
+        if (!(skillProp.managedReferenceValue is DamageSkill))
+            return false;
+
+        SerializedProperty keyProp =
+            skillProp.FindPropertyRelative("効果数キー");
+
+        bool isNone = keyProp != null &&
+            keyProp.enumValueIndex >= 0 &&
+            keyProp.enumValueIndex < keyProp.enumNames.Length &&
+            keyProp.enumNames[keyProp.enumValueIndex] == nameof(SkillArg.なし);
+
+        // 枚数カウント以外なら、枚数参照用の項目を非表示
+        bool isCountMode = keyProp != null &&
+            keyProp.enumValueIndex >= 0 &&
+            keyProp.enumValueIndex < keyProp.enumNames.Length &&
+            keyProp.enumNames[keyProp.enumValueIndex] == nameof(SkillArg.枚数カウント);
+
+        if (field.name == "効果数")
+        {
+            return !isNone && !isCountMode;
+        }
+
+        if (!isCountMode)
+        {
+            return field.name == "枚数参照場所"
+                || field.name == "枚数参照条件"
+                || field.name == "枚数参照状態"
+                || field.name == "枚数参照で自分を除く";
+        }
+
+        return false;
     }
 }

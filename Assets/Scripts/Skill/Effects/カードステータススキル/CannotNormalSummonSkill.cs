@@ -34,6 +34,6 @@ public class CannotNormalSummonSkill : SkillDB
             return false;
 
         var db = BattlerAssets.Load(deckCard.カードID, out _);
-        return db?.skills != null && db.skills.Any(s => s is CannotNormalSummonSkill);
+        return db?.スキル != null && db.スキル.Any(s => s is CannotNormalSummonSkill);
     }
 }

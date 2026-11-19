@@ -32,13 +32,13 @@ public class DeckCard
                 {
                     if (カードタイプ == CardTypeList.None)
                     {
-                        カードタイプ = battlerDb.type;
+                        カードタイプ = battlerDb.タイプ;
                     }
 
                     if (カテゴリ == null || カテゴリ.Count == 0)
                     {
-                        カテゴリ = battlerDb.category != null
-                            ? new List<CardCategoryList>(battlerDb.category)
+                        カテゴリ = battlerDb.カテゴリ != null
+                            ? new List<CardCategoryList>(battlerDb.カテゴリ)
                             : new List<CardCategoryList>();
                     }
                 }
@@ -78,13 +78,13 @@ public class DeckCard
         switch (カード種類)
         {
             case CardKind.バトラー:
-                name = BattlerAssets.Load(カードID, out _)?.cardName;
+                name = BattlerAssets.Load(カードID, out _)?.カード名;
                 break;
             case CardKind.作戦:
-                name = Resources.Load<TacticsDB>("CardDBList/作戦/" + カードID)?.cardName;
+                name = Resources.Load<TacticsDB>("CardDBList/作戦/" + カードID)?.カード名;
                 break;
             case CardKind.フィールド:
-                name = Resources.Load<FieldDB>("CardDBList/フィールド/" + カードID)?.cardName;
+                name = Resources.Load<FieldDB>("CardDBList/フィールド/" + カードID)?.カード名;
                 break;
         }
 

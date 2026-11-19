@@ -1,32 +1,41 @@
+
+using System.Threading.Tasks;
 using UnityEngine;
 using DG.Tweening;
 using TMPro;
 
 public class DamageEffect : MonoBehaviour
 {
-    // DamageEffect プレハブに含まれる TextMeshProUGUI（ダメージ数値表示用）
     [SerializeField] private TextMeshProUGUI damageText;
 
     private Sequence currentSequence;
 
-    private void PlayEffect(Sequence sequence)
+    private Task PlayEffect(Sequence sequence)
     {
-        // 前回のアニメーションが残っていた場合は停止
         currentSequence?.Kill();
 
         currentSequence = sequence;
 
-        // アニメーション終了時にオブジェクトを削除
+        var tcs = new TaskCompletionSource<bool>();
+
         currentSequence.OnComplete(() =>
         {
             currentSequence = null;
             Destroy(gameObject);
+            tcs.TrySetResult(true);
         });
+
+        currentSequence.OnKill(() =>
+        {
+            currentSequence = null;
+            tcs.TrySetResult(true);
+        });
+
+        return tcs.Task;
     }
 
-    public void PlayDamageValue(Vector3 startPosition, Vector3 targetPosition, int damage, Color effectColor)
+    public Task PlayDamageValue(Vector3 startPosition, Vector3 targetPosition, int damage, Color effectColor)
     {
-        // 初期設定
         transform.position = startPosition;
         transform.localScale = Vector3.one;
 
@@ -36,15 +45,15 @@ public class DamageEffect : MonoBehaviour
 
         Sequence seq = DOTween.Sequence();
 
-        seq.AppendInterval(0.3f);
+        seq.AppendInterval(0.6f);
         seq.Append(transform.DOMove(targetPosition, 0.4f));
-        seq.Join(transform.DOScale(0.5f, 0.5f));
+        seq.Join(transform.DOScale(0.2f, 0.3f));
         seq.Join(damageText.DOFade(0f, 0.5f));
 
-        PlayEffect(seq);
+        return PlayEffect(seq);
     }
 
-    public void PlayLabel(Vector3 startPosition, Vector3 targetPosition, string label, Color effectColor)
+    public Task PlayLabel(Vector3 startPosition, Vector3 targetPosition, string label, Color effectColor)
     {
         transform.position = startPosition;
         transform.localScale = Vector3.one;
@@ -60,7 +69,7 @@ public class DamageEffect : MonoBehaviour
         seq.Join(transform.DOScale(0.5f, 0.5f));
         seq.Join(damageText.DOFade(0f, 0.5f));
 
-        PlayEffect(seq);
+        return PlayEffect(seq);
     }
 
     public void PlayGameResultEffect(Vector3 position, string message, Color messageColor)
@@ -78,9 +87,7 @@ public class DamageEffect : MonoBehaviour
         var rectTransform = damageText.GetComponent<RectTransform>();
 
         if (rectTransform != null)
-        {
             rectTransform.sizeDelta = new Vector2(400f, 100f);
-        }
 
         Sequence seq = DOTween.Sequence();
 

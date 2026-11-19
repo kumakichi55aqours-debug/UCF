@@ -12,6 +12,7 @@ public enum ZoneCountUnit
     異なるタイプ,
     異なるカード,
     異なるカテゴリの組,
+    異なるコスト,
 }
 
 [Serializable]
@@ -125,10 +126,16 @@ public class CardExistsCondition : ISkillCondition
             case ZoneCountUnit.異なるタイプ:
                 CardTypeList type = ResolveType(card);
                 return type == CardTypeList.None ? null : ((int)type).ToString();
+
             case ZoneCountUnit.異なるカード:
                 return ((int)card.cardKind) + ":" + card.cardID;
+
             case ZoneCountUnit.異なるカテゴリの組:
                 return CategoryKey(card.category);
+
+            case ZoneCountUnit.異なるコスト:
+                return card.cost.ToString();
+
             default:
                 return null;
         }
@@ -141,12 +148,19 @@ public class CardExistsCondition : ISkillCondition
             case ZoneCountUnit.異なるタイプ:
                 CardTypeList type = ResolveType(deck);
                 return type == CardTypeList.None ? null : ((int)type).ToString();
+
             case ZoneCountUnit.異なるカード:
                 return ((int)deck.カード種類) + ":" + deck.カードID;
+
             case ZoneCountUnit.異なるカテゴリの組:
                 if (deck.カテゴリ == null || deck.カテゴリ.Count == 0)
                     deck.PopulateDerivedData();
                 return CategoryKey(deck.カテゴリ);
+
+            case ZoneCountUnit.異なるコスト:
+                deck.PopulateDerivedData();
+                return deck.コスト.ToString();
+
             default:
                 return null;
         }

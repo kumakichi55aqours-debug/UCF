@@ -12,23 +12,27 @@ public class AllPowerSkill : SkillDB
 
     public override Task ActivateEffect(SkillContext context)
     {
-        if (context?.発動カード == null)
-        {
-            return Task.CompletedTask;
-        }
-
+        var card = context?.発動カード;
         var battle = BattleManager.Instance;
-        bool isPlayer = context.発動カード.isPlayerCard;
+
+        if (card == null || battle == null)
+            return Task.CompletedTask;
+
+        bool isPlayer = card.isPlayerCard;
         int duration = Mathf.Max(1, 持続ターン数);
 
-        if (対象プレイヤー != PlayerType.プレイヤー)
-            battle.SchedulePowerBonusInternal(isPlayer, 効果数, duration, battle.curTurn, context.発動カード.cardName, true);
-        if (対象プレイヤー != PlayerType.相手)
-            battle.SchedulePowerBonusInternal(!isPlayer, 効果数, duration, battle.curTurn, context.発動カード.cardName, true);
-        if (対象プレイヤー != PlayerType.両方)
+        if (対象プレイヤー == PlayerType.プレイヤー ||
+            対象プレイヤー == PlayerType.両方)
         {
-            battle.SchedulePowerBonusInternal(isPlayer, 効果数, duration, battle.curTurn, context.発動カード.cardName, true);
-            battle.SchedulePowerBonusInternal(!isPlayer, 効果数, duration, battle.curTurn, context.発動カード.cardName, true);
+            battle.SchedulePowerBonusInternal(
+                isPlayer, 効果数, duration, battle.curTurn, card.cardName, true);
+        }
+
+        if (対象プレイヤー == PlayerType.相手 ||
+            対象プレイヤー == PlayerType.両方)
+        {
+            battle.SchedulePowerBonusInternal(
+                !isPlayer, 効果数, duration, battle.curTurn, card.cardName, true);
         }
 
         return Task.CompletedTask;

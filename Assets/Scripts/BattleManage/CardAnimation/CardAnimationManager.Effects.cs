@@ -15,7 +15,7 @@ public partial class CardAnimationManager
         if (!IsCardValid(card) || card.cardKind != CardKind.バトラー)
             return;
 
-        Sprite artwork = (card.model as CardDBBase)?.artwork;
+        Sprite artwork = (card.model as CardDBBase)?.画像;
         await PlayCutIn("CutIn", artwork, card.cardName);
     }
 
@@ -36,7 +36,7 @@ public partial class CardAnimationManager
 
         string moveName = moveIndex == 0 ? battler.moveName1 : battler.moveName2;
         string text = $"{card.cardName}の\n{moveName}！";
-        await PlayCutIn("CutIn", battler.artwork, text);
+        await PlayCutIn("CutIn", battler.画像, text);
     }
 
     async Task PlayCutIn(string resourceName, Sprite artwork, string text)

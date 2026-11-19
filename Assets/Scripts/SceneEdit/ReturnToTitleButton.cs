@@ -36,8 +36,13 @@ public class ReturnToTitleButton : MonoBehaviourPunCallbacks
     public void ToTitle()
     {
         if (isLeaving) return;
-        if (BattleManager.Instance != null && CardContextMenu.Instance.IsProcessing()) return;
-            isLeaving = true;
+        if (BattleManager.Instance != null &&
+            CardContextMenu.Instance.IsProcessing()) return;
+
+        isLeaving = true;
+
+        PhaseManager.Instance?.StopBattleProcessing();
+
         StartCoroutine(LeaveAfterFade());
     }
 

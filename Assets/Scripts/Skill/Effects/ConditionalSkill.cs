@@ -10,12 +10,8 @@ using UnityEngine;
 [SkillDisplayName("条件付き")]
 public class ConditionalSkill : SkillDB
 {
-    [Tooltip("条件を満たしたあと、使うかどうかをプレイヤーが選ぶ")]
     public bool 任意;
-
-    [Tooltip("任意のとき、オフラインのCPUは追加効果を使う")]
     public bool オフライン時は使用する = true;
-
     public string 確認メッセージ;
 
     [SerializeReference]

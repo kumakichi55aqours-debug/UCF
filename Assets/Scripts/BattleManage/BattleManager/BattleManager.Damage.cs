@@ -8,14 +8,16 @@ public partial class BattleManager
 {
     public async Task ShowLabelEffect(Vector3 targetPosition, string label, Color effectColor)
     {
-
         DamageEffect effect = SpawnCenteredDamageEffect();
         if (effect == null)
             return;
 
-        effect.PlayLabel(effect.transform.position, targetPosition, label, effectColor);
-        await Task.Delay(900);
-
+        await effect.PlayLabel(
+            effect.transform.position,
+            targetPosition,
+            label,
+            effectColor
+        );
     }
 
     DamageEffect SpawnCenteredDamageEffect()
@@ -45,16 +47,19 @@ public partial class BattleManager
     /// </summary>
     public async Task ShowEffect(Vector3 targetPosition, int value, Color effectColor = default)
     {
-        if (effectColor == default) effectColor = Color.yellow; // デフォルトは黄色（ダメージ）
-
+        if (effectColor == default)
+            effectColor = Color.yellow;
 
         DamageEffect effect = SpawnCenteredDamageEffect();
         if (effect == null)
             return;
 
-        effect.PlayDamageValue(effect.transform.position, targetPosition, value, effectColor);
-        await Task.Delay(600);
-
+        await effect.PlayDamageValue(
+            effect.transform.position,
+            targetPosition,
+            value,
+            effectColor
+        );
     }
 
     /// <summary>
@@ -328,7 +333,7 @@ public partial class BattleManager
                 if (!token)
                 {
                     ResourceSystem ownerHp = ownerIsLocal ? pResources?.Hp : eResources?.Hp;
-                    ownerHp?.TakeDamage(6);
+                    ownerHp?.TakeDamage(5);
                 }
                 else
                     TokenExit.VanishLocal(targetCard);

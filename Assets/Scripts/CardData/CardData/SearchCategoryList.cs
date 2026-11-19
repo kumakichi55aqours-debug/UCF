@@ -74,6 +74,7 @@ public enum CardCategoryList
     [CardCategory("その他", "ゆうがた")] 夕方 = 106,
     [CardCategory("種類", "ちょうじゅう")] 超獣 = 107,
     [CardCategory("その他", "だいかいじゅう")] 大怪獣 = 108,
+    [CardCategory("その他", "ぞくせいへんか")] 属性変化 = 109,
 }
 public enum ElementList
 {
@@ -265,9 +266,11 @@ public enum SourceCardType
 {
     None,                    // 条件なし
     自身,                    // スキルを発動したカード自身（全く同じカードインスタンス）
-    同名カード以外,             // SourceCardと同名のカード以外すべて
-    処理したカード,           // 直前の効果で処理したカード（手札に加えたカードなど）
-    自身以外
+    自身以外,
+    同名カード以外,          // SourceCardと同名のカード以外すべて
+    処理したカード,          // 直前の効果で処理したカード（手札に加えたカードなど）
+    処理したカード以外,
+    処理したカードと同名以外
 }
 
 // 数値は保存済みの条件が参照している。並びは変えない。
@@ -302,21 +305,7 @@ public class CardTypeSprite
 }
 
 [Serializable]
-public class StrongElementSprite
-{
-    public ElementList element;
-    public Sprite sprite;
-}
-
-[Serializable]
-public class WeakElementSprite
-{
-    public ElementList element;
-    public Sprite sprite;
-}
-
-[Serializable]
-public class MoveElementSprite
+public class ElementSprite
 {
     public ElementList element;
     public Sprite sprite;

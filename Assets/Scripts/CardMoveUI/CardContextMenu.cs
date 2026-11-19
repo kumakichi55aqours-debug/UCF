@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -31,19 +30,12 @@ public class CardContextMenu : MonoBehaviour
     [SerializeField] private TextMeshProUGUI move2ButtonText;
 
     private CardController currentCard;
-    private bool isUsingSkill;
     // 墓地の山を開いたときの「スキルを使用」は、その場で発動せず一覧を出す
     private bool skillButtonListsGrave;
 
-    /// <summary>
-    /// 処理中かどうかをチェック（召喚演出、技の処理、スキルの処理中など）
-    /// </summary>
+    // 処理中かチェック（召喚演出、技の処理、スキルの処理中など）
     public bool IsProcessing()
     {
-        // スキル使用中は処理中止
-        if (isUsingSkill)
-            return true;
-
         // チェーン上の効果処理中（確認、効果、そのアニメーション完了まで）
         if (SkillChainManager.Instance != null && SkillChainManager.Instance.IsResolvingSkills)
             return true;
@@ -142,11 +134,9 @@ public class CardContextMenu : MonoBehaviour
     // 手札ボタン表示
     public void ShowHandOptions(CardController card, Vector3 worldPos)
     {
-        if (PhaseManager.Instance == null)
-            return;
+        if (PhaseManager.Instance == null) return;
         TurnPhase phase = PhaseManager.Instance.CurrentPhase;
-        if (phase != TurnPhase.メインフェイズ && phase != TurnPhase.バトルフェイズ)
-            return;
+        if (phase != TurnPhase.メインフェイズ && phase != TurnPhase.バトルフェイズ) return;
         if (!OnlineSyncManager.Instance.CanPlayerOperateCards()) return;
         if (IsProcessing()) return;
 
@@ -252,28 +242,46 @@ public class CardContextMenu : MonoBehaviour
     /// </summary>
     public bool HandlePileClick(CardController card, Vector3 worldPos)
     {
-        if (IsProcessing())
-            return true;
         if (card == null || BattleManager.Instance == null)
             return true;
 
-        Transform parent = card.transform.parent;
         var battle = BattleManager.Instance;
+        Transform parent = card.transform.parent;
+
         bool ownGrave = parent == battle.pGraveZone;
         bool ownDimension = parent == battle.pDimensionZone;
+
+        bool opponentGrave = parent == battle.eGraveZone;
+        bool opponentDimension = parent == battle.eDimensionZone;
+
+        // 墓地・異次元以外なら通常のクリック処理に任せる
+        if (!ownGrave && !ownDimension && !opponentGrave && !opponentDimension)
+            return false;
+
+        // スキル使用は自分のメインフェイズかつ自分の墓地・異次元のみ
         bool canUseSkill = CanOperateOwnGraveSkills() && (
             (ownGrave && CollectActivatableGraveCards().Count > 0)
-            || (ownDimension && HasCanUseSkill(card, ActiveTiming.起動効果, ActiveLocation.異次元)));
+            || (ownDimension && HasCanUseSkill(
+                card,
+                ActiveTiming.起動効果,
+                ActiveLocation.異次元))
+        );
+
+        // スキルを使えない場合は、呼び出し側に一覧表示を任せる
         if (!canUseSkill)
             return false;
 
         currentCard = card;
+
         DismissTransientWindows();
         HideAllButtons();
+
         checkGraveButton.gameObject.SetActive(true);
         SetPileButtonLabel(ownGrave ? "墓地を確認" : "異次元を確認");
+
         skillButtonListsGrave = ownGrave;
         useSkillButton.gameObject.SetActive(true);
+
         LayoutAndShow(worldPos);
         return true;
     }
@@ -321,12 +329,10 @@ public class CardContextMenu : MonoBehaviour
                 // 技1ボタンの状態を設定
                 move1Button.gameObject.SetActive(true);
                 move1Button.interactable = move1Available;
-                UpdateMoveButtonText(move1ButtonText, battler.moveName1, move1Cost, move1Available);
 
                 // 技2ボタンの状態を設定
                 move2Button.gameObject.SetActive(true);
                 move2Button.interactable = move2Available;
-                UpdateMoveButtonText(move2ButtonText, battler.moveName2, move2Cost, move2Available);
             }
         }
     }
@@ -474,16 +480,7 @@ public class CardContextMenu : MonoBehaviour
     {
         Hide();
         if (currentCard == null) return;
-
-        isUsingSkill = true;
-        try
-        {
-            await currentCard.UseZoneActivatedSkill();
-        }
-        finally
-        {
-            isUsingSkill = false;
-        }
+        await currentCard.UseZoneActivatedSkill();
     }
 
     // 技発動処理
@@ -491,15 +488,6 @@ public class CardContextMenu : MonoBehaviour
     {
         Hide();
         await BattleManager.Instance.UseMoveAsync(currentCard, moveId);
-    }
-
-    // 技ボタンのテキストを更新
-    private void UpdateMoveButtonText(TextMeshProUGUI buttonText, string moveName, int energyCost, bool isAvailable)
-    {
-        if (buttonText == null) return;
-
-        buttonText.text = $"{moveName} (エネルギー: {energyCost})";
-        buttonText.color = isAvailable ? Color.white : Color.gray;
     }
 
     private void OnShowGrantedSkills()
@@ -512,6 +500,8 @@ public class CardContextMenu : MonoBehaviour
 
     private async void OnUseZoneSkill()
     {
+        if (IsProcessing()) return;
+
         if (skillButtonListsGrave)
         {
             List<CardController> cards = CollectActivatableGraveCards();
@@ -524,15 +514,7 @@ public class CardContextMenu : MonoBehaviour
         Hide();
         if (currentCard == null) return;
 
-        isUsingSkill = true;
-        try
-        {
-            await currentCard.UseZoneActivatedSkill();
-        }
-        finally
-        {
-            isUsingSkill = false;
-        }
+        await currentCard.UseZoneActivatedSkill();
     }
 
     void OnCheckGrave()

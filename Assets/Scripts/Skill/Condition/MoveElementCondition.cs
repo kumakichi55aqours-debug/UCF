@@ -10,11 +10,8 @@ using UnityEngine;
 [Serializable]
 public class MoveElementCondition : ISkillCondition
 {
-    [Tooltip("発動条件では、この役割のカードを見る。既定は発動カード。")]
     [SerializeField] private ContextCardRole 見るカード = ContextCardRole.発動カード;
-    [Tooltip("この技の属性を見る。両方のときは、どちらかが指定属性なら成立する。")]
     [SerializeField] private MoveTarget 見る技 = MoveTarget.両方;
-    [Tooltip("この属性が技にあれば成立する。None のときは属性を問わない。")]
     [SerializeField] private ElementList 対象属性 = ElementList.None;
 
     public MoveElementCondition()

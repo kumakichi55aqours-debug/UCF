@@ -12,18 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a233ef3a7a131ad4e8d55a23cdc88cbe, type: 3}
   m_Name: 40001
   m_EditorClassIdentifier: 
-  cardName: "\u30BF\u30C3\u30AF\u30A2\u30ED\u30FC1\u53F7"
-  cardKind: 2
-  cardId: 40001
-  rarity: 0
-  artwork: {fileID: 21300000, guid: baf6f4293736a9645925e06d342b276f, type: 3}
-  cost: 0
-  category: 6400000007000000
-  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u9632\u885B\u968A/TAC\nACT 4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u76F8\u624BB\u30BE\u30FC\u30F3\u306E\u30D0\u30C8\u30E9\u30FC1\u4F53\u306E\u6280\u306E\u30D1\u30EF\u30FC\u3092--2\u3059\u308B\u3002\nTRG
-    \u76F8\u624B\u300C\u8D85\u7363\u300D\u30D0\u30C8\u30E9\u30FC\u306E\u52B9\u679C\u304C\u767A\u52D5\u3057\u305F\u6642\u306B\u767A\u52D5\u3067\u304D\u308B\u3002\u5893\u5730\u306E\u3053\u306E\u30AB\u30FC\u30C9\u3092\u7570\u6B21\u5143\u3078\u9001\u308A\u3001\u81EA\u5206\u306E\u624B\u672D\u304B\u3089\u300C\u30A8\u30FC\u30B9\u300D\u30D0\u30C8\u30E9\u30FC1\u4F53\u3092\u7279\u6B8A\u767B\u5834\u3055\u305B\u308B\u3002"
-  skills:
+  "\u30AB\u30FC\u30C9\u540D": "\u30BF\u30C3\u30AF\u30A2\u30ED\u30FC1\u53F7"
+  "\u5206\u985E": 2
+  ID: 40001
+  "\u30EC\u30A2\u5EA6": 0
+  "\u753B\u50CF": {fileID: 21300000, guid: baf6f4293736a9645925e06d342b276f, type: 3}
+  "\u30B3\u30B9\u30C8": 0
+  "\u30AB\u30C6\u30B4\u30EA": 6400000007000000
+  "\u30C6\u30AD\u30B9\u30C8": "\u30AB\u30C6\u30B4\u30EA \u9632\u885B\u968A/\u30A8\u30FC\u30B9\nACT1
+    4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u76F8\u624BB\u30BE\u30FC\u30F3\u306E\u30D0\u30C8\u30E9\u30FC1\u4F53\u306E\u6280\u306E\u30D1\u30EF\u30FC\u3092--3\u3057\u3001\u6280\u3067\u53D7\u3051\u308B\u30C0\u30E1\u30FC\u30B8\u3092++1\u3059\u308B\u3002\nACT2
+    \u5893\u5730\u306E\u3053\u306E\u30AB\u30FC\u30C9\u3092\u7570\u6B21\u5143\u3078\u9001\u308A\u3001\u81EA\u5206\u306E\u30C7\u30C3\u30AD\u304B\u3089\u300C\u30A8\u30FC\u30B9\u300D\u30D0\u30C8\u30E9\u30FC1\u4F53\u3092\u7570\u6B21\u5143\u3078\u9001\u308B\u3002\n\u3053\u306E\u52B9\u679C\u306F\u3001\u3053\u306E\u30AB\u30FC\u30C9\u304C\u5893\u5730\u3078\u9001\u3089\u308C\u305F\u30BF\u30FC\u30F3\u306B\u306F\u767A\u52D5\u3067\u304D\u306A\u3044\u3002"
+  "\u30B9\u30AD\u30EB":
   - rid: 7839874444826247199
-  - rid: 7839874268133589128
+  - rid: 7839874492062760991
   type: 7
   references:
     version: 2
@@ -34,6 +35,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 08000000
         searchCriteria:
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
             "\u30AB\u30FC\u30C9ID": 0
@@ -48,127 +50,6 @@ MonoBehaviour:
         "\u6570\u3048\u65B9": 0
         "\u57FA\u6E96\u679A\u6570": 1
         "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
-    - rid: 7839874268133589128
-      type: {class: CompositeSkill, ns: , asm: Assembly-CSharp}
-      data:
-        "\u30B9\u30AD\u30EB\u540D": TRG
-        "\u30BF\u30A4\u30DF\u30F3\u30B0": 26
-        "\u5834\u6240\u30EA\u30B9\u30C8": 05000000
-        "\u4E0A\u9650\u56DE\u6570": 1
-        "\u5F37\u5236\u767A\u52D5": 0
-        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
-        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
-        "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6":
-        - rid: 7839874268133589132
-        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u30D5\u30A3\u30EB\u30BF":
-          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
-            "\u30AB\u30FC\u30C9ID": 0
-            "\u30B3\u30B9\u30C8": -1
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
-            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
-            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 6b000000
-            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
-            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
-        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
-        "\u767A\u52D5\u5074": 1
-        "\u5BFE\u8C61\u9078\u629E":
-          "\u9078\u629E\u6570": 1
-          "\u9078\u629E\u65B9\u5F0F": 0
-        subSkills:
-        - rid: 7839874268133589129
-        - rid: 7839874444826247198
-    - rid: 7839874268133589129
-      type: {class: ToDimensionSkill, ns: , asm: Assembly-CSharp}
-      data:
-        "\u30B9\u30AD\u30EB\u540D": 
-        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
-        "\u5834\u6240\u30EA\u30B9\u30C8": 
-        "\u4E0A\u9650\u56DE\u6570": 1
-        "\u5F37\u5236\u767A\u52D5": 0
-        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
-        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
-        "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
-        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u30D5\u30A3\u30EB\u30BF": []
-        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
-        "\u767A\u52D5\u5074": 2
-        "\u5BFE\u8C61\u9078\u629E":
-          "\u9078\u629E\u6570": 1
-          "\u9078\u629E\u65B9\u5F0F": 0
-        "\u53C2\u7167\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 1
-          "\u30D5\u30A3\u30EB\u30BF": []
-        "\u53C2\u7167\u5143": 5
-        "\u9078\u629E\u6570": 1
-        "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
-        "\u30E9\u30F3\u30C0\u30E0": 0
-        "\u5BFE\u8C61\u72B6\u614B": []
-    - rid: 7839874268133589132
-      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
-      data:
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 01000000
-        searchCriteria:
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u30D5\u30A3\u30EB\u30BF":
-          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
-            "\u30AB\u30FC\u30C9ID": 0
-            "\u30B3\u30B9\u30C8": -1
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
-            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
-            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0200000007000000
-            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
-            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
-        "\u30AB\u30FC\u30C9\u72B6\u614B": []
-        "\u6570\u3048\u65B9": 0
-        "\u57FA\u6E96\u679A\u6570": 1
-        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
-    - rid: 7839874444826247198
-      type: {class: SpecialSummonSkill, ns: , asm: Assembly-CSharp}
-      data:
-        "\u30B9\u30AD\u30EB\u540D": 
-        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
-        "\u5834\u6240\u30EA\u30B9\u30C8": 
-        "\u4E0A\u9650\u56DE\u6570": 1
-        "\u5F37\u5236\u767A\u52D5": 0
-        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
-        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
-        "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
-        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u30D5\u30A3\u30EB\u30BF": []
-        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
-        "\u767A\u52D5\u5074": 2
-        "\u5BFE\u8C61\u9078\u629E":
-          "\u9078\u629E\u6570": 1
-          "\u9078\u629E\u65B9\u5F0F": 0
-        "\u53C2\u7167\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 01000000
-        "\u5BFE\u8C61\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u30D5\u30A3\u30EB\u30BF":
-          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
-            "\u30AB\u30FC\u30C9ID": 0
-            "\u30B3\u30B9\u30C8": -1
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
-            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
-            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0200000007000000
-            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
-            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
-        "\u9078\u629E\u30AB\u30FC\u30C9\u306E\u30B3\u30B9\u30C8\u3092\u6255\u3046": 0
     - rid: 7839874444826247199
       type: {class: GrantSkill, ns: , asm: Assembly-CSharp}
       data:
@@ -184,6 +65,7 @@ MonoBehaviour:
         - rid: 3123607344477634584
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -196,12 +78,39 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 1
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": 4
         "\u4ED8\u4E0E\u30B9\u30AD\u30EB":
-          rid: 7839874444826247202
-    - rid: 7839874444826247202
+          rid: 7839874492062760981
+    - rid: 7839874492062760981
+      type: {class: CompositeSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": 
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
+        "\u5834\u6240\u30EA\u30B9\u30C8": 
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6": []
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        subSkills:
+        - rid: 7839874492062760983
+        - rid: 7839874492062760988
+    - rid: 7839874492062760983
       type: {class: PowerModifierSkill, ns: , asm: Assembly-CSharp}
       data:
         "\u30B9\u30AD\u30EB\u540D": 
@@ -215,6 +124,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -227,8 +137,168 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 0
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5C5E\u6027": 
         "\u9069\u7528\u5148": 2
-        "\u52B9\u679C\u6570": -2
+        "\u52B9\u679C\u6570": -3
+        "\u5BFE\u8C61\u72B6\u614B": []
+    - rid: 7839874492062760988
+      type: {class: DamageModifierSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": 
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
+        "\u5834\u6240\u30EA\u30B9\u30C8": 
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6": []
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u5897\u6E1B\u5024": 1
+        "\u5BFE\u8C61\u5C5E\u6027": 
+        "\u9069\u7528\u5148": 2
+        "\u5897\u6E1B\u30BF\u30A4\u30D7": 0
+        "\u5BFE\u8C61\u72B6\u614B": []
+    - rid: 7839874492062760991
+      type: {class: CompositeSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": ACT2
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 2
+        "\u5834\u6240\u30EA\u30B9\u30C8": 05000000
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6":
+        - rid: 7839874492062760995
+        - rid: 7839874492062760997
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        subSkills:
+        - rid: 7839874492062760992
+        - rid: 7839874509070925890
+    - rid: 7839874492062760992
+      type: {class: ToDimensionSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": 
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
+        "\u5834\u6240\u30EA\u30B9\u30C8": 
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6": []
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u53C2\u7167\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 1
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
+        "\u53C2\u7167\u5143": 05000000
+        "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u6570\u306E\u6271": 0
+        "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
+        "\u30E9\u30F3\u30C0\u30E0": 0
+        "\u5168\u9078\u629E": 0
+        "\u5BFE\u8C61\u72B6\u614B": []
+    - rid: 7839874492062760995
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 06000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0200000007000000
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
+    - rid: 7839874492062760997
+      type: {class: NotSentToGraveThisTurnCondition, ns: , asm: Assembly-CSharp}
+      data: 
+    - rid: 7839874509070925890
+      type: {class: ToDimensionSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": 
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
+        "\u5834\u6240\u30EA\u30B9\u30C8": 
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6": []
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u53C2\u7167\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0200000007000000
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
+        "\u53C2\u7167\u5143": 06000000
+        "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u6570\u306E\u6271": 0
+        "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
+        "\u30E9\u30F3\u30C0\u30E0": 0
+        "\u5168\u9078\u629E": 0
         "\u5BFE\u8C61\u72B6\u614B": []

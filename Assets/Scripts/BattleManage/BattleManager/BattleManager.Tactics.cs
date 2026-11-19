@@ -328,6 +328,28 @@ public partial class BattleManager
         }
     }
 
+    /// <summary>
+    /// 指定した強化作戦が現在付与されているカードをすべて取得する。
+    /// </summary>
+    public List<CardController> GetEnhancementHosts(CardController source)
+    {
+        var hosts = new List<CardController>();
+
+        if (source == null)
+            return hosts;
+
+        foreach (CardController card in EnumerateBoardCards())
+        {
+            if (card == null)
+                continue;
+
+            if (EnhancementSourcesOf(card).Contains(source))
+                hosts.Add(card);
+        }
+
+        return hosts;
+    }
+
     IEnumerable<CardController> EnumerateZoneCards()
     {
         Transform[] zones =

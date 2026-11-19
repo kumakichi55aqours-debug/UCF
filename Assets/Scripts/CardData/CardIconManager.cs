@@ -7,7 +7,7 @@ public class CardIconManager : MonoBehaviour
     public static CardIconManager Instance { get; private set; }
 
     [SerializeField] private List<CardTypeSprite> cardTypeSprites;
-    [SerializeField] private List<WeakElementSprite> elementSprites;
+    [SerializeField] private List<ElementSprite> elementSprites;
     [Header("作戦/フィールド")]
     [SerializeField] private Sprite tacticsSprite;
     [SerializeField] private Sprite fieldSprite;

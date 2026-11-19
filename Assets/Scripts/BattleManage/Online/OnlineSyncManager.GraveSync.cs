@@ -1,6 +1,7 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Photon.Pun;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
@@ -211,6 +212,7 @@ public partial class OnlineSyncManager
         card.RemoveAllPassiveEffects();
         card.ClearStatusAilments(BattleManager.Instance != null && BattleManager.Instance.IsStunResolvePending(card));
         card.ResetBonuses();
+        card.ResetMoveChanges();
         card.ResetMoveElements();
         card.RecalculateModifiedPowers();
     }
@@ -354,6 +356,51 @@ public partial class OnlineSyncManager
         catch (System.Exception ex)
         {
             Debug.LogError($"[OnlineSyncManager] 自分のデッキからの墓地送りでエラー: {ex.Message}");
+        }
+        finally
+        {
+            EndOperationBlock();
+            SendRPC("ReceiveOpponentOwnHandFinished");
+        }
+    }
+
+    // 相手に上からデッキ枚数墓地送る同期
+    public Task RequestOpponentTopDeckToGrave(int count)
+    {
+        if (!IsOnlineMode || count <= 0)
+            return Task.CompletedTask;
+
+        return AwaitOpponentOwnMove(
+            () => SendRPC("ReceiveOpponentTopDeckToGrave", count));
+    }
+
+    [PunRPC]
+    void ReceiveOpponentTopDeckToGrave(int count)
+    {
+        _ = ResolveOpponentTopDeckToGrave(count);
+    }
+
+    async Task ResolveOpponentTopDeckToGrave(int count)
+    {
+        BeginOperationBlock();
+        try
+        {
+            var battle = BattleManager.Instance;
+            var deck = battle != null ? battle.pBattleDeck : null;
+
+            if (deck == null || count <= 0)
+                return;
+
+            var topCards = deck
+                .Take(Mathf.Min(count, deck.Count))
+                .ToList();
+
+            await ToGraveSkill.SendOwnDeckCardsToGrave(topCards);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError(
+                $"[OnlineSyncManager] デッキ上部の墓地送りでエラー: {ex.Message}");
         }
         finally
         {

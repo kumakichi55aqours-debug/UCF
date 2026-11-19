@@ -18,8 +18,22 @@ public class SearchCriteriaDrawer : PropertyDrawer
 
     static float Layout(SerializedProperty property, GUIContent label, float x, float y, float width, bool draw)
     {
+        // 「対象条件」の場合、効果対象が「自分」なら表示しない。
+        if (property.name == "対象条件")
+        {
+            SerializedProperty target = FindSibling(property, "効果対象");
+
+            if (target != null &&
+                target.propertyType == SerializedPropertyType.Enum &&
+                target.enumNames[target.enumValueIndex] == nameof(TargetList.自分))
+            {
+                return 0f;
+            }
+        }
+
         SerializedProperty source = property.FindPropertyRelative("ソースカード条件");
         SerializedProperty filters = property.FindPropertyRelative("フィルタ");
+        SerializedProperty processedNumbers = property.FindPropertyRelative("処理カード番号");
         float spacing = EditorGUIUtility.standardVerticalSpacing;
         float line = EditorGUIUtility.singleLineHeight;
 
@@ -31,7 +45,19 @@ public class SearchCriteriaDrawer : PropertyDrawer
         y += line + spacing;
 
         if (source != null && !HidesSourceCardCondition(property))
+        {
             y = PlaceProperty(source, null, x, y, width, spacing, draw);
+
+            // 処理したカードを指定している場合だけ、番号リストを表示する。
+            if (processedNumbers != null && IsProcessedCardSource(source))
+            {
+                var numbersLabel = new GUIContent(
+                    "処理カード番号",
+                    "参照する処理カードの番号。複数指定した場合はいずれかの番号に含まれるカードが対象。空欄なら直前に処理したカードを参照。");
+
+                y = PlaceProperty(processedNumbers, numbersLabel, x, y, width, spacing, draw);
+            }
+        }
 
         if (filters != null)
         {
@@ -94,6 +120,24 @@ public class SearchCriteriaDrawer : PropertyDrawer
             return false;
 
         return names[index] == nameof(TargetList.自分);
+    }
+
+    static bool IsProcessedCardSource(SerializedProperty source)
+    {
+        if (source == null || source.propertyType != SerializedPropertyType.Enum)
+            return false;
+
+        int index = source.enumValueIndex;
+        string[] names = source.enumNames;
+
+        if (index < 0 || index >= names.Length)
+            return false;
+
+        string name = names[index];
+
+        return name == nameof(SourceCardType.処理したカード)
+            || name == nameof(SourceCardType.処理したカード以外)
+            || name == nameof(SourceCardType.処理したカードと同名以外);
     }
 
     static SerializedProperty FindSibling(SerializedProperty property, string siblingName)

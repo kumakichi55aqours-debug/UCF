@@ -188,7 +188,7 @@ public partial class BattleManager
 
     public class PlayCostBuffState
     {
-        public CardKind Kind;
+        public SearchCriteria Criteria;
         public int Amount;
         public int StartTurn;
         public int EndTurn;
@@ -200,14 +200,21 @@ public partial class BattleManager
 
     // カードを出すときに足すコスト。種類が None のバフはすべてのカードに足す。
     // 付与したターンから数えて、持続ターン数のあいだ有効。
-    public void SchedulePlayCostBuff(bool forPlayer, CardKind kind, int amount, int durationTurns, int startTurn, string sourceCardName, bool syncOnline)
+    public void SchedulePlayCostBuff(
+    bool forPlayer,
+    SearchCriteria criteria,
+    int amount,
+    int durationTurns,
+    int startTurn,
+    string sourceCardName,
+    bool syncOnline)
     {
         if (amount == 0 || durationTurns < 1) return;
 
         var list = forPlayer ? pPlayCostBuffs : ePlayCostBuffs;
         list.Add(new PlayCostBuffState
         {
-            Kind = kind,
+            Criteria = criteria,
             Amount = amount,
             StartTurn = startTurn,
             EndTurn = startTurn + durationTurns - 1,
@@ -218,25 +225,65 @@ public partial class BattleManager
         PowerBonusUI.Instance?.UpdateUI();
 
         if (syncOnline && IsOnlineMode && OnlineSyncManager.Instance != null)
-            OnlineSyncManager.Instance.SyncSchedulePlayCostBuff(forPlayer, (int)kind, amount, durationTurns, startTurn, sourceCardName);
+            OnlineSyncManager.Instance.SyncSchedulePlayCostBuff(
+                forPlayer, criteria, amount, durationTurns, startTurn, sourceCardName);
     }
 
-    public int GetPlayCostAdjustment(bool forPlayer, CardKind kind)
+    public int GetPlayCostAdjustment(bool forPlayer, CardController card)
     {
+        if (card == null)
+            return 0;
+
         var list = forPlayer ? pPlayCostBuffs : ePlayCostBuffs;
         int sum = 0;
+
         for (int i = 0; i < list.Count; i++)
         {
             var state = list[i];
+
             if (curTurn < state.StartTurn || curTurn > state.EndTurn)
                 continue;
-            if (state.Kind != CardKind.None && state.Kind != kind)
+
+            if (state.Criteria != null &&
+                !card.MeetsCriteria(state.Criteria, null))
                 continue;
+
             sum += state.Amount;
         }
 
         return sum;
     }
+
+    public int GetPlayCostAdjustment(bool forPlayer, DeckCard deckCard)
+    {
+        if (deckCard == null)
+            return 0;
+
+        var list = forPlayer ? pPlayCostBuffs : ePlayCostBuffs;
+        int sum = 0;
+
+        for (int i = 0; i < list.Count; i++)
+        {
+            var state = list[i];
+
+            if (curTurn < state.StartTurn || curTurn > state.EndTurn)
+                continue;
+
+            if (state.Criteria != null &&
+                !state.Criteria.MatchesDeck(
+                    deckCard,
+                    null,
+                    checkSource: true,
+                    selfMatchesSameCard: false,
+                    nullSourcePassesExclude: true))
+                continue;
+
+            sum += state.Amount;
+        }
+
+        return sum;
+    }
+
 
     bool ExpirePlayCostBuffs()
     {

@@ -417,6 +417,7 @@ public class CardSearchFilter
 public class SearchCriteria
 {
     public SourceCardType ソースカード条件 = SourceCardType.None;
+    public List<int> 処理カード番号 = new List<int>();
     public List<CardSearchFilter> フィルタ = new List<CardSearchFilter>();
 
     public bool IsEmpty()
@@ -434,6 +435,9 @@ public class SearchCriteria
         var copy = new SearchCriteria
         {
             ソースカード条件 = ソースカード条件,
+            処理カード番号 = 処理カード番号 != null
+        ? new List<int>(処理カード番号)
+        : new List<int>(),
             フィルタ = new List<CardSearchFilter>()
         };
 
@@ -464,14 +468,15 @@ public class SearchCriteria
     }
 
     public bool MatchesCard(
-        CardController card,
-        CardController source,
-        bool checkSource,
-        bool partialName = false,
-        IReadOnlyList<CardController> processedCards = null)
+    CardController card,
+    CardController source,
+    bool checkSource,
+    bool partialName = false,
+    IReadOnlyList<CardController> processedCards = null,
+    SkillContext context = null)
     {
         if (card == null) return false;
-        if (checkSource && !PassesCardSource(card, source, processedCards))
+        if (checkSource && !PassesCardSource(card, source, processedCards, context))
             return false;
         return PassesFilters(filter => FilterMatchesCard(card, filter, partialName));
     }
@@ -480,20 +485,24 @@ public class SearchCriteria
     {
         if (criteria == null)
             return true;
-        return criteria.MatchesDeck(deck, context != null ? context.発動カード : null, checkSource: context != null);
+        return criteria.MatchesDeck(deck,context?.発動カード,checkSource: context != null,context: context);
     }
 
     public bool MatchesDeck(
-        DeckCard deck,
-        CardController source,
-        bool checkSource,
-        bool partialName = false,
-        bool selfMatchesSameCard = true,
-        bool nullSourcePassesExclude = false)
+    DeckCard deck,
+    CardController source,
+    bool checkSource,
+    bool partialName = false,
+    bool selfMatchesSameCard = true,
+    bool nullSourcePassesExclude = false,
+    SkillContext context = null)
     {
         if (deck == null) return false;
-        if (checkSource && !PassesDeckSource(deck, source, selfMatchesSameCard, nullSourcePassesExclude))
+
+        if (checkSource && !PassesDeckSource(
+            deck, source, selfMatchesSameCard, nullSourcePassesExclude, context))
             return false;
+
         return PassesFilters(filter => FilterMatchesDeck(deck, filter, partialName));
     }
 
@@ -551,13 +560,61 @@ public class SearchCriteria
         return true;
     }
 
-    bool PassesCardSource(CardController card, CardController source, IReadOnlyList<CardController> processedCards)
+    bool PassesCardSource(
+    CardController card,
+    CardController source,
+    IReadOnlyList<CardController> processedCards,
+    SkillContext context)
     {
         if (ソースカード条件 == SourceCardType.None)
             return true;
 
-        if (ソースカード条件 == SourceCardType.処理したカード)
-            return processedCards != null && processedCards.Contains(card);
+        if (ソースカード条件 == SourceCardType.処理したカード ||
+            ソースカード条件 == SourceCardType.処理したカード以外 ||
+            ソースカード条件 == SourceCardType.処理したカードと同名以外)
+        {
+            bool contains = false;
+            bool containsSameName = false;
+
+            // 番号が未指定の場合はデフォルトの0を参照する。
+            var numbers = 処理カード番号 != null && 処理カード番号.Count > 0
+                ? 処理カード番号
+                : new List<int> { 0 };
+
+            if (context != null)
+            {
+                foreach (var number in numbers)
+                {
+                    var cards = context.GetProcessedCards(number);
+
+                    if (cards == null)
+                        continue;
+
+                    if (cards.Contains(card))
+                        contains = true;
+
+                    if (cards.Any(c =>
+                        c != null &&
+                        c.cardID == card.cardID &&
+                        c.cardKind == card.cardKind))
+                    {
+                        containsSameName = true;
+                    }
+                }
+            }
+
+            switch (ソースカード条件)
+            {
+                case SourceCardType.処理したカード:
+                    return contains;
+
+                case SourceCardType.処理したカード以外:
+                    return !contains;
+
+                case SourceCardType.処理したカードと同名以外:
+                    return !containsSameName;
+            }
+        }
 
         if (source == null)
             return false;
@@ -566,36 +623,78 @@ public class SearchCriteria
         {
             case SourceCardType.自身:
                 return card == source;
+
             case SourceCardType.同名カード以外:
-                return !(card.cardID == source.cardID && card.cardKind == source.cardKind);
+                return !(card.cardID == source.cardID &&
+                         card.cardKind == source.cardKind);
+
             case SourceCardType.自身以外:
                 return card != source;
+
             default:
                 return true;
         }
     }
 
-    bool PassesDeckSource(DeckCard deck, CardController source, bool selfMatchesSameCard, bool nullSourcePassesExclude)
+    bool PassesDeckSource(
+    DeckCard deck,
+    CardController source,
+    bool selfMatchesSameCard,
+    bool nullSourcePassesExclude,
+    SkillContext context)
     {
         if (ソースカード条件 == SourceCardType.None)
             return true;
 
-        // デッキ上の同名カードは、直前に処理した実体とは別物
+        // デッキ上のカードそのものは処理したカードではない
         if (ソースカード条件 == SourceCardType.処理したカード)
             return false;
+
+        // 処理したカードと同名以外
+        if (ソースカード条件 == SourceCardType.処理したカードと同名以外)
+        {
+            var numbers = 処理カード番号 != null && 処理カード番号.Count > 0
+                ? 処理カード番号
+                : new List<int> { 0 };
+
+            if (context != null)
+            {
+                foreach (var number in numbers)
+                {
+                    var cards = context.GetProcessedCards(number);
+
+                    if (cards == null)
+                        continue;
+
+                    if (cards.Any(c =>
+                        c != null &&
+                        c.cardID == deck.カードID &&
+                        c.cardKind == deck.カード種類))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
 
         if (ソースカード条件 == SourceCardType.自身)
         {
             if (!selfMatchesSameCard || source == null)
                 return false;
-            return deck.カード種類 == source.cardKind && deck.カードID == source.cardID;
+
+            return deck.カード種類 == source.cardKind &&
+                   deck.カードID == source.cardID;
         }
 
         if (ソースカード条件 == SourceCardType.同名カード以外)
         {
             if (source == null)
                 return nullSourcePassesExclude;
-            return !(deck.カード種類 == source.cardKind && deck.カードID == source.cardID);
+
+            return !(deck.カード種類 == source.cardKind &&
+                     deck.カードID == source.cardID);
         }
 
         return true;

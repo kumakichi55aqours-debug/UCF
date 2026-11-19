@@ -10,25 +10,22 @@ using UnityEngine;
 /// 対象状態が空なら、受けるバトラーは適用条件だけで決まる。
 /// </summary>
 [Serializable]
-[SkillDisplayName("(〇付与)枚数ダメージ")]
+[SkillDisplayName("(〇付与)枚数パワー")]
 public class CountDamageUpSkill : SkillDB
 {
     [Header("数える対象")]
     public List<CardZoneType> 参照場所 = new List<CardZoneType> { CardZoneType.プレイヤーBゾーン };
     public SearchCriteria 対象条件;
 
-    [Tooltip("対象条件に合うカードのうち、この状態も満たすものだけを数える。空なら状態では絞らない。状態を指定したときはデッキを数えない。")]
     [SerializeReference]
     public List<ISkillCondition> 数える対象状態 = new List<ISkillCondition>();
 
     public bool 自分を除く;
 
-    [Header("ダメージを足す技")]
     public TargetList 効果対象 = TargetList.自分;
     public PlayerType 対象側 = PlayerType.プレイヤー;
     public SearchCriteria 適用条件;
 
-    [Tooltip("適用条件に合うバトラーのうち、この状態も満たすときだけダメージを足す。空なら状態では絞らない。")]
     [SerializeReference]
     public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
 

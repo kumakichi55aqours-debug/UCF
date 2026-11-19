@@ -98,11 +98,11 @@ public class CardDetailManager : MonoBehaviour
         // 表示内容の更新
         if (card.model is BattlerModel battler)
         {
-            nameText.text = battler.cardName;
-            rarity = battler.rarity;
-            artworkImage.sprite = battler.artwork;
-            ShowCost(battler.cost, cc);
-            skillDescriptionText.text = ConvertSkillDescription(battler.skillDescription);
+            nameText.text = battler.カード名;
+            rarity = battler.レア度;
+            artworkImage.sprite = battler.画像;
+            ShowCost(battler.コスト, cc);
+            skillDescriptionText.text = ConvertSkillDescription(battler.テキスト);
 
             onlyBattler.SetActive(true);
             onlyTactics.SetActive(false);
@@ -148,11 +148,11 @@ public class CardDetailManager : MonoBehaviour
         }
         else if (card.model is TacticsModel tactics)
         {
-            nameText.text = tactics.cardName;
-            rarity = tactics.rarity;
-            artworkImage.sprite = tactics.artwork;
-            ShowCost(tactics.cost, cc);
-            skillDescriptionText.text = ConvertSkillDescription(tactics.skillDescription);
+            nameText.text = tactics.カード名;
+            rarity = tactics.レア度;
+            artworkImage.sprite = tactics.画像;
+            ShowCost(tactics.コスト, cc);
+            skillDescriptionText.text = ConvertSkillDescription(tactics.テキスト);
 
             onlyTactics.SetActive(true);
             onlyBattler.SetActive(false);
@@ -162,11 +162,11 @@ public class CardDetailManager : MonoBehaviour
         }
         else if (card.model is FieldModel field)
         {
-            nameText.text = field.cardName;
-            rarity = field.rarity;
-            artworkImage.sprite = field.artwork;
-            ShowCost(field.cost, cc);
-            skillDescriptionText.text = ConvertSkillDescription(field.skillDescription);
+            nameText.text = field.カード名;
+            rarity = field.レア度;
+            artworkImage.sprite = field.画像;
+            ShowCost(field.コスト, cc);
+            skillDescriptionText.text = ConvertSkillDescription(field.テキスト);
 
             onlyField.SetActive(true);
             onlyBattler.SetActive(false);

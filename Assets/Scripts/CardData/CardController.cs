@@ -174,38 +174,61 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
     // 生成直後は親がキャンバスのことがあり、その時点では持ち主が決まらない。
     // 手札や場などのゾーンに入ってから、同名スキルの使用回数を付け直す。
+
     void OnTransformParentChanged()
     {
+        // BattleScene以外ではBattleManager関連の処理を行わない。
+        if (SceneManager.GetActiveScene().name != "BattleScene")
+        {
+            parentBeforeChange = null;
+            leftDimensionZone = null;
+
+            if (cardKind == CardKind.None || !IsPlayZone()) return;
+            SkillUseCountStore.ApplyTo(this);
+            return;
+        }
+
         Transform leftZone = parentBeforeChange;
         parentBeforeChange = null;
 
         var battle = BattleManager.Instance;
-        battle?.OnCardLeftZone(this, leftZone);
-        if (leftDimensionZone != null)
+
+        if (battle != null)
         {
-            battle?.RefreshDimensionZonePresence(leftDimensionZone);
-            leftDimensionZone = null;
+            battle.OnCardLeftZone(this, leftZone);
+
+            if (leftDimensionZone != null)
+                battle.RefreshDimensionZonePresence(leftDimensionZone);
+
+            Transform parent = transform.parent;
+
+            bool enteredDimension =
+                parent == battle.pDimensionZone ||
+                parent == battle.eDimensionZone;
+
+            if (enteredDimension)
+                battle.RefreshDimensionZonePresence(parent);
+
+            if ((parent == battle.pGraveZone || parent == battle.eGraveZone)
+                && parent != leftZone)
+                墓地に送られたターン = battle.curTurn;
+
+            if (cardKind != CardKind.None && IsPlayZone())
+            {
+                SkillUseCountStore.ApplyTo(this);
+
+                bool enteredHand =
+                    parent == battle.pHandZone ||
+                    parent == battle.eHandZone;
+
+                if (enteredHand || enteredDimension)
+                    PersistentEffectManager.Instance?.RecalculateImmediately();
+            }
         }
 
-        var parent = transform.parent;
-        bool enteredDimension = battle != null && (parent == battle.pDimensionZone || parent == battle.eDimensionZone);
-        if (enteredDimension)
-            battle.RefreshDimensionZonePresence(parent);
-
-        if (battle != null && (parent == battle.pGraveZone || parent == battle.eGraveZone)
-            && parent != leftZone)
-            墓地に送られたターン = battle.curTurn;
-
-        if (cardKind == CardKind.None || !IsPlayZone()) return;
-        SkillUseCountStore.ApplyTo(this);
-
-        if (SceneManager.GetActiveScene().name != "BattleScene")
-            return;
-
-        bool enteredHand = battle != null && (parent == battle.pHandZone || parent == battle.eHandZone);
-        if (enteredHand || enteredDimension)
-            PersistentEffectManager.Instance?.RecalculateImmediately();
+        leftDimensionZone = null;
     }
+
 
     bool IsPlayZone()
     {
@@ -243,11 +266,11 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
                 model = battler;
                 トークン = battler.トークン;
                 type = battler.type;
-                cardName = battler.cardName;
-                rarity = battler.rarity;
+                cardName = battler.カード名;
+                rarity = battler.レア度;
                 curHp = battler.maxHp;
-                cost = battler.cost;
-                category = battler.category;
+                cost = battler.コスト;
+                category = battler.カテゴリ;
                 strongElement = battler.得意属性;
                 downElementPower = battler.属性軽減値;
                 weakElement = battler.弱点属性;
@@ -263,29 +286,29 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
                 対象側2 = battler.対象側2;
                 moveElement1 = battler.moveElement1;
                 moveElement2 = battler.moveElement2;
-                skills = SkillDB.CloneList(battler.skills);
+                skills = SkillDB.CloneList(battler.スキル);
                 break;
             case CardKind.作戦:
                 var tactics = ScriptableObject.CreateInstance<TacticsModel>();
                 tactics.Init(cardID);
                 model = tactics;
                 type = tactics.type;
-                cardName = tactics.cardName;
-                rarity = tactics.rarity;
-                cost = tactics.cost;
-                category = tactics.category;
-                skills = SkillDB.CloneList(tactics.skills);
+                cardName = tactics.カード名;
+                rarity = tactics.レア度;
+                cost = tactics.コスト;
+                category = tactics.カテゴリ;
+                skills = SkillDB.CloneList(tactics.スキル);
                 break;
             case CardKind.フィールド:
                 var field = ScriptableObject.CreateInstance<FieldModel>();
                 field.Init(cardID);
                 model = field;
-                cardName = field.cardName;
-                rarity = field.rarity;
+                cardName = field.カード名;
+                rarity = field.レア度;
                 curHp = field.maxHp;
-                cost = field.cost;
-                category = field.category;
-                skills = SkillDB.CloneList(field.skills);
+                cost = field.コスト;
+                category = field.カテゴリ;
+                skills = SkillDB.CloneList(field.スキル);
                 break;
         }
 
@@ -509,32 +532,58 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         if (cardDB == null)
             return;
 
-        battler.moveElement1 = cardDB.moveElement1;
-        battler.moveElement2 = cardDB.moveElement2;
-        moveElement1 = cardDB.moveElement1;
-        moveElement2 = cardDB.moveElement2;
+        battler.moveElement1 = cardDB.属性1;
+        battler.moveElement2 = cardDB.属性2;
+        moveElement1 = cardDB.属性1;
+        moveElement2 = cardDB.属性2;
         UpdateDisplay();
     }
 
-    public bool IsInZone(ActiveLocation zone)
+    /// <summary>
+    /// 技情報をカードデータの元の値に戻す。
+    /// 墓地へ送られたとき、または手札に戻ったときに使用。
+    /// </summary>
+    public void ResetMoveChanges()
     {
-        switch (zone)
-        {
-            case ActiveLocation.Bゾーン:
-                return transform.parent == BattleManager.Instance.pBattlerZone;
-            case ActiveLocation.Tゾーン:
-                return transform.parent == BattleManager.Instance.pTacticsZone;
-            case ActiveLocation.Fゾーン:
-                return transform.parent == BattleManager.Instance.pFieldZone;
-            case ActiveLocation.手札:
-                return transform.parent == BattleManager.Instance.pHandZone;
-            case ActiveLocation.墓地:
-                return transform.parent == BattleManager.Instance.pGraveZone;
-            case ActiveLocation.異次元:
-                return transform.parent == BattleManager.Instance.pDimensionZone;
-            default:
-                return false;
-        }
+        if (cardKind != CardKind.バトラー ||
+            !(model is BattlerModel battler))
+            return;
+
+        BattlerDB cardDB = BattlerAssets.Load(cardID, out _);
+        if (cardDB == null)
+            return;
+
+        battler.moveName1 = cardDB.技名1;
+        battler.energy1 = cardDB.EN1;
+        battler.power1 = cardDB.PW1;
+        battler.moveElement1 = cardDB.属性1;
+        battler.target1 = cardDB.対象1;
+        battler.対象側1 = cardDB.対象側1;
+        battler.対象選択1 = SelectTarget.Copy(cardDB.対象選択1);
+        battler.description1 = cardDB.効果1;
+
+        battler.moveName2 = cardDB.技名2;
+        battler.energy2 = cardDB.EN2;
+        battler.power2 = cardDB.PW2;
+        battler.moveElement2 = cardDB.属性2;
+        battler.target2 = cardDB.対象2;
+        battler.対象側2 = cardDB.対象側2;
+        battler.対象選択2 = SelectTarget.Copy(cardDB.対象選択2);
+        battler.description2 = cardDB.効果2;
+
+        basePower1 = battler.power1;
+        basePower2 = battler.power2;
+        energy1 = battler.energy1;
+        energy2 = battler.energy2;
+        moveElement1 = battler.moveElement1;
+        moveElement2 = battler.moveElement2;
+        target1 = battler.target1;
+        target2 = battler.target2;
+        対象側1 = battler.対象側1;
+        対象側2 = battler.対象側2;
+
+        RecalculateModifiedPowers();
+        UpdateDisplay();
     }
 
     public async Task UseZoneActivatedSkill()
@@ -598,11 +647,6 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         {
             passiveEffects.Remove(effectToRemove);
             UpdatePassiveEffectUI();
-            Debug.Log($"[CardController] パッシブ効果を削除: カード={cardName}, スキル={skillName}");
-        }
-        else
-        {
-            Debug.LogWarning($"[CardController] 削除対象のパッシブ効果が見つかりません: カード={cardName}, スキル={skillName}");
         }
     }
 
@@ -1131,8 +1175,9 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
             return modifiedCostOverride;
 
         int adjustment = 0;
+
         if (BattleManager.Instance != null)
-            adjustment = BattleManager.Instance.GetPlayCostAdjustment(isPlayerCard, cardKind);
+            adjustment = BattleManager.Instance.GetPlayCostAdjustment(isPlayerCard, this);
 
         return Mathf.Max(0, cost + bonusCost + adjustment);
     }
@@ -1271,7 +1316,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     /// ダメージを受け終わったあと、気絶と混乱を解く。
     /// 技の途中では呼ばず、技撃破時スキルが返ったあとに呼ぶ。
     /// </summary>
-    public void ResolveStunAfterReceivingMove()
+    public void AfterMoveCleanseStan()
     {
         if (cardKind != CardKind.バトラー) return;
         RemoveStatus(StatusAilmentType.気絶);

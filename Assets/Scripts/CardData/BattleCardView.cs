@@ -84,9 +84,9 @@ public class BattleCardView : MonoBehaviour
         // 表示内容の更新
         if (model is BattlerModel battler)
         {
-            nameText.text = battler.cardName;
-            artworkImage.sprite = battler.artwork;
-            ShowCost(battler.cost);
+            nameText.text = battler.カード名;
+            artworkImage.sprite = battler.画像;
+            ShowCost(battler.コスト);
             onlyBattler.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : battler.maxHp.ToString();
             hpText.transform.parent.gameObject.SetActive(true);
@@ -116,9 +116,9 @@ public class BattleCardView : MonoBehaviour
         }
         else if (model is TacticsModel tactics)
         {
-            nameText.text = tactics.cardName;
-            artworkImage.sprite = tactics.artwork;
-            ShowCost(tactics.cost);
+            nameText.text = tactics.カード名;
+            artworkImage.sprite = tactics.画像;
+            ShowCost(tactics.コスト);
             onlyTactics.SetActive(true);
             onlyBattler.SetActive(false);
             onlyField.SetActive(false);
@@ -129,9 +129,9 @@ public class BattleCardView : MonoBehaviour
         }
         else if (model is FieldModel field)
         {
-            nameText.text = field.cardName;
-            artworkImage.sprite = field.artwork;
-            ShowCost(field.cost);
+            nameText.text = field.カード名;
+            artworkImage.sprite = field.画像;
+            ShowCost(field.コスト);
             onlyField.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : field.maxHp.ToString();
             hpText.transform.parent.gameObject.SetActive(true);

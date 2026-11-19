@@ -7,6 +7,6 @@ public class FieldDB : CardDBBase
 
     private void OnEnable()
     {
-        cardKind = CardKind.フィールド;
+        分類 = CardKind.フィールド;
     }
 }

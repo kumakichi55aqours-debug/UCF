@@ -7,16 +7,16 @@ public class TacticsModel : CardDBBase
     public void Init(int cardID)
     {
         TacticsDB cardDB = Resources.Load<TacticsDB>("CardDBList/作戦/" + cardID);
-        cardKind = cardDB.cardKind;
-        cardId = cardDB.cardId;
+        分類 = cardDB.分類;
+        ID = cardDB.ID;
         type = cardDB.type;
-        cardName = cardDB.cardName;
-        rarity = cardDB.rarity;
-        artwork = cardDB.artwork;
-        cost = cardDB.cost;
-        category = cardDB.category;
+        カード名 = cardDB.カード名;
+        レア度 = cardDB.レア度;
+        画像 = cardDB.画像;
+        コスト = cardDB.コスト;
+        カテゴリ = cardDB.カテゴリ;
 
-        skills = cardDB.skills;
-        skillDescription = cardDB.skillDescription;
+        スキル = cardDB.スキル;
+        テキスト = cardDB.テキスト;
     }
 }

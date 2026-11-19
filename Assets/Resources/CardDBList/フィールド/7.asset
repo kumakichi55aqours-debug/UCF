@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d56bdb42bbbd5d4bb46f7d95b403299, type: 3}
   m_Name: 7
   m_EditorClassIdentifier: 
-  cardName: "\u5915\u713C\u3051\u306E\u8857"
-  cardKind: 3
-  cardId: 7
-  rarity: 0
-  artwork: {fileID: 21300000, guid: 114a75a74ea28c949805001da76f6fb3, type: 3}
-  cost: 0
-  category: 6a000000
-  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u5915\u65B9\nZON \u72B6\u614B\u7570\u5E38\u304C\u4ED8\u4E0E\u3055\u308C\u3066\u3044\u308B\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u304C\u53D7\u3051\u308B\u30C0\u30E1\u30FC\u30B8\u3092++2\u3059\u308B\u3002\nACT
+  "\u30AB\u30FC\u30C9\u540D": "\u5915\u713C\u3051\u306E\u8857"
+  "\u5206\u985E": 3
+  ID: 7
+  "\u30EC\u30A2\u5EA6": 0
+  "\u753B\u50CF": {fileID: 21300000, guid: 114a75a74ea28c949805001da76f6fb3, type: 3}
+  "\u30B3\u30B9\u30C8": 0
+  "\u30AB\u30C6\u30B4\u30EA": 6a000000
+  "\u30C6\u30AD\u30B9\u30C8": "\u30AB\u30C6\u30B4\u30EA \u5915\u65B9\nZON \u72B6\u614B\u7570\u5E38\u304C\u4ED8\u4E0E\u3055\u308C\u3066\u3044\u308B\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u304C\u53D7\u3051\u308B\u30C0\u30E1\u30FC\u30B8\u3092++2\u3059\u308B\u3002\nACT
     B\u30BE\u30FC\u30F3\u306B\u300C\u5B87\u5B99\u4EBA\u300D\u30D0\u30C8\u30E9\u30FC\u3068\u300C\u30A6\u30EB\u30C8\u30E9\u300D\u30D0\u30C8\u30E9\u30FC\u304C\u3044\u308B\u6642\u306B\u767A\u52D5\u3067\u304D\u308B\u3002\u81EA\u5206\u306E\u5893\u5730\u306E\u4F5C\u6226\u30AB\u30FC\u30C91\u679A\u3092\u624B\u672D\u306B\u52A0\u3048\u308B\u3002"
-  skills:
+  "\u30B9\u30AD\u30EB":
   - rid: 3123607541896970261
   - rid: 3123607600000603
   hp: 5
@@ -44,9 +44,10 @@ MonoBehaviour:
         - rid: 3123607600000605
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
-        "\u3069\u3053\u304B\u3089": 
-        "\u3044\u308B\u5834\u6240": 
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
         "\u767A\u52D5\u5074": 2
         "\u5BFE\u8C61\u9078\u629E":
@@ -54,6 +55,7 @@ MonoBehaviour:
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u53C2\u7167\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 2
             "\u30AB\u30FC\u30C9ID": 0
@@ -64,17 +66,20 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
         "\u53C2\u7167\u5834\u6240": 05000000
         "\u9078\u629E\u6570": 1
         "\u9078\u629E\u6570\u306E\u6271\u3044": 0
         "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
         "\u30E9\u30F3\u30C0\u30E0": 0
+        "\u5168\u9078\u629E": 0
     - rid: 3123607600000604
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:
         "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 0200000008000000
         searchCriteria:
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
             "\u30AB\u30FC\u30C9ID": 0
@@ -95,6 +100,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 0200000008000000
         searchCriteria:
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
             "\u30AB\u30FC\u30C9ID": 0
@@ -123,9 +129,10 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
-        "\u3069\u3053\u304B\u3089": 
-        "\u3044\u308B\u5834\u6240": 
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
         "\u767A\u52D5\u5074": 2
         "\u5BFE\u8C61\u9078\u629E":
@@ -137,6 +144,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 1
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u88AB\u30C0\u30E1\u30FC\u30B8\u6761\u4EF6":
         - rid: 7839874395618148354

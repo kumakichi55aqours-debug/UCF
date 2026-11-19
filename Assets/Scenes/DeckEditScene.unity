@@ -341,9 +341,9 @@ MonoBehaviour:
   - type: 3
     sprite: {fileID: 1564046335, guid: 713fa414e88bf784293794f5c7d790a0, type: 3}
   - type: 4
-    sprite: {fileID: 1988024735, guid: 713fa414e88bf784293794f5c7d790a0, type: 3}
-  - type: 5
     sprite: {fileID: 385774160, guid: 713fa414e88bf784293794f5c7d790a0, type: 3}
+  - type: 5
+    sprite: {fileID: 1988024735, guid: 713fa414e88bf784293794f5c7d790a0, type: 3}
   - type: 7
     sprite: {fileID: 1788517881, guid: 713fa414e88bf784293794f5c7d790a0, type: 3}
   - type: 8
@@ -1074,10 +1074,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 597059888}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 111.111115, y: 55.555557}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &100946009
 MonoBehaviour:
@@ -4740,7 +4740,7 @@ MonoBehaviour:
   m_MinWidth: -1
   m_MinHeight: -1
   m_PreferredWidth: -1
-  m_PreferredHeight: 700
+  m_PreferredHeight: 740
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
@@ -5574,8 +5574,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1023.3332, y: 34.72223}
-  m_SizeDelta: {x: 166.66667, y: 66.666664}
+  m_AnchoredPosition: {x: 1028, y: 0}
+  m_SizeDelta: {x: 150, y: 64}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &600059020
 GameObject:
@@ -9168,7 +9168,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 75, y: -544}
+  m_AnchoredPosition: {x: 75, y: -520}
   m_SizeDelta: {x: 930, y: 188}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1240513577
@@ -9923,7 +9923,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u7A2E\u985E"
+  m_text: "\u5206\u985E"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6b1678bfc34c5014d9fe83418fd74c65, type: 2}
   m_sharedMaterial: {fileID: 7536885282166458494, guid: 6b1678bfc34c5014d9fe83418fd74c65, type: 2}
@@ -11228,7 +11228,7 @@ MonoBehaviour:
   m_MinWidth: -1
   m_MinHeight: -1
   m_PreferredWidth: -1
-  m_PreferredHeight: 580
+  m_PreferredHeight: 540
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1

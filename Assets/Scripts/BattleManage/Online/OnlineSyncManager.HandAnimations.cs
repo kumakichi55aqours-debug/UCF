@@ -404,6 +404,7 @@ public partial class OnlineSyncManager
         card.RemoveAllPassiveEffects();
         card.ClearStatusAilments();
         card.ResetBonuses();
+        card.ResetMoveChanges();
         card.ResetMoveElements();
         card.RecalculateModifiedPowers();
         card.hasUsedMove = false;

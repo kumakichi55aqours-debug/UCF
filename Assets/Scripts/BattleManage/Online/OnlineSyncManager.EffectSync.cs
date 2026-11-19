@@ -346,28 +346,48 @@ public partial class OnlineSyncManager
     /// <summary>
     /// 相手側でダメージエフェクトを表示
     /// </summary>
-    private async Task ShowDamageEffectOnOpponent(CardController targetCard, int damageAmount, bool notifyComplete = true, Color? effectColor = null)
+
+    private async Task ShowDamageEffectOnOpponent(
+        CardController targetCard,
+        int damageAmount,
+        bool notifyComplete = true,
+        Color? effectColor = null)
     {
         try
         {
             DamageEffect dmgEffectPrefab = Resources.Load<DamageEffect>("DamageEffect");
             Canvas canvas = Object.FindObjectOfType<Canvas>();
+
             if (dmgEffectPrefab == null || canvas == null)
                 return;
 
             DamageEffect damageEffect = Object.Instantiate(dmgEffectPrefab, canvas.transform);
+
             RectTransform canvasRect = canvas.transform as RectTransform;
             Vector2 screenCenter = new Vector2(Screen.width / 2 + 255, Screen.height / 2);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenCenter, null, out Vector2 localPoint);
+
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                canvasRect,
+                screenCenter,
+                null,
+                out Vector2 localPoint
+            );
 
             RectTransform effectRect = damageEffect.GetComponent<RectTransform>();
+
             if (effectRect != null)
                 effectRect.anchoredPosition = localPoint;
             else
-                damageEffect.transform.position = Camera.main.ScreenToWorldPoint(new Vector3(Screen.width / 2, Screen.height / 2, 10f));
+                damageEffect.transform.position = Camera.main.ScreenToWorldPoint(
+                    new Vector3(Screen.width / 2, Screen.height / 2, 10f)
+                );
 
-            damageEffect.PlayDamageValue(damageEffect.transform.position, targetCard.transform.position, damageAmount, effectColor ?? Color.yellow);
-            await Task.Delay(300);
+            await damageEffect.PlayDamageValue(
+                damageEffect.transform.position,
+                targetCard.transform.position,
+                damageAmount,
+                effectColor ?? Color.yellow
+            );
         }
         catch (System.Exception ex)
         {
@@ -379,6 +399,7 @@ public partial class OnlineSyncManager
                 SendOpponentAnimationComplete();
         }
     }
+
 
     static int GetMaxHp(CardController card)
     {

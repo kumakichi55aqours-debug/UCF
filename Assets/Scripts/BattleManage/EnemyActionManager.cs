@@ -35,12 +35,30 @@ public class EnemyActionManager : MonoBehaviour
 
         await Task.Delay(300);
 
+        // ① フィールドカード
         await EnemyUseFieldCardAsync();
+        await WaitWhileSkillsResolve();
+
+        // ② 起動効果
+        await EnemyUseIgnitionSkillsAsync();
+
+        // ③ 作戦カード
         await EnemyUseTacticsAsync();
+        await WaitWhileSkillsResolve();
+
+        // ④ 起動効果
+        await EnemyUseIgnitionSkillsAsync();
+
+        // ⑤ バトラー召喚
         await EnemySummonCardAsync();
+        await WaitWhileSkillsResolve();
+
+        // ⑥ 起動効果
+        await EnemyUseIgnitionSkillsAsync();
 
         await Task.Delay(300);
     }
+
 
     /// <summary>
     /// エネミーのバトルフェイズ自動処理
@@ -81,7 +99,7 @@ public class EnemyActionManager : MonoBehaviour
         int printed = Mathf.Max(0, deck.コスト);
         if (battle == null)
             return printed;
-        return Mathf.Max(0, printed + battle.GetPlayCostAdjustment(false, deck.カード種類));
+        return Mathf.Max(0, printed + battle.GetPlayCostAdjustment(false, deck));
     }
 
     /// <summary>
@@ -494,6 +512,107 @@ public class EnemyActionManager : MonoBehaviour
         while (chain.IsResolvingSkills)
             await Task.Delay(50);
     }
+
+
+    /// <summary>
+    /// CPU側の使用可能な起動効果を発動する。
+    /// 発動可能な効果がなくなるまで繰り返す。
+    /// </summary>
+    async Task EnemyUseIgnitionSkillsAsync()
+    {
+        if (battle == null)
+            return;
+
+        var usedSkills = new HashSet<(int instanceId, SkillDB skill)>();
+
+        // 同じチェック段階で同じスキルを繰り返さない。
+        while (true)
+        {
+            PersistentEffectManager.Instance?.RecalculateImmediately();
+
+            var candidates = new List<(CardController card, SkillDB skill,SkillContext context)>();
+
+            Transform[] zones =
+            {
+            battle.eBattlerZone,
+            battle.eTacticsZone,
+            battle.eFieldZone,
+            battle.eHandZone,
+            battle.eGraveZone,
+            battle.eDimensionZone
+        };
+
+            var seen = new HashSet<int>();
+
+            foreach (var zone in zones)
+            {
+                if (zone == null)
+                    continue;
+
+                foreach (var card in zone.GetComponentsInChildren<CardController>())
+                {
+                    if (card == null || !seen.Add(card.GetInstanceID()))
+                        continue;
+
+                    if (card.isMyCard || card.IsActionBlocked)
+                        continue;
+
+                    if (NegateZoneEffectSkill.Blocks(card))
+                        continue;
+
+                    if (card.skills == null)
+                        continue;
+
+                    ActiveLocation location = card.GetCurrentActiveLocation();
+
+                    var context = SkillContext.WithAttackTarget(card, null);
+                    context = context.AsOwnedBy(card);
+                    context.RegisterEnhancementHosts(card);
+
+                    foreach (var skill in card.skills)
+                    {
+                        if (skill == null
+                            || skill.タイミング != ActiveTiming.起動効果
+                            || !skill.HasRemainingUses)
+                            continue;
+
+                        if (usedSkills.Contains((card.GetInstanceID(), skill)))
+                            continue;
+
+                        if (!skill.CanUseAt(
+                            ActiveTiming.起動効果,
+                            location,
+                            context))
+                            continue;
+
+                        candidates.Add((card, skill,context));
+                    }
+                }
+            }
+
+            if (candidates.Count == 0)
+                break;
+
+            // 発動可能な起動効果からランダムに選ぶ。
+            var chosen = candidates[
+                UnityEngine.Random.Range(0, candidates.Count)];
+
+            usedSkills.Add((
+                chosen.card.GetInstanceID(),
+                chosen.skill));
+
+            // 既存のチェーン処理を利用して発動。
+            await SkillManager.ResolveDeclaredIgnition(
+                chosen.card,
+                chosen.skill,
+                chosen.context);
+
+            await WaitWhileSkillsResolve();
+
+            await Task.Delay(200);
+        }
+    }
+
 
     CardController FindEnemyHandCard(DeckCard deck)
     {

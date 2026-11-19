@@ -93,14 +93,25 @@ public partial class OnlineSyncManager
     /// <summary>
     /// カードを出すときのコスト補正を、相手の視点へ同期する。
     /// </summary>
-    public void SyncSchedulePlayCostBuff(bool forPlayer, int cardKind, int amount, int durationTurns, int startTurn, string sourceCardName)
+    public void SyncSchedulePlayCostBuff(
+        bool forPlayer,
+        SearchCriteria criteria,
+        int amount,
+        int durationTurns,
+        int startTurn,
+        string sourceCardName)
     {
-        if (!IsOnlineMode) return;
+        if (!IsOnlineMode)
+            return;
+
+        string criteriaJson = criteria != null
+            ? JsonUtility.ToJson(criteria)
+            : "";
 
         SendRPC(
             "ReceiveSchedulePlayCostBuff",
             !forPlayer,
-            cardKind,
+            criteriaJson,
             amount,
             durationTurns,
             startTurn,
@@ -108,13 +119,24 @@ public partial class OnlineSyncManager
     }
 
     [PunRPC]
-    void ReceiveSchedulePlayCostBuff(bool forPlayer, int cardKind, int amount, int durationTurns, int startTurn, string sourceCardName)
+    void ReceiveSchedulePlayCostBuff(
+    bool forPlayer,
+    string criteriaJson,
+    int amount,
+    int durationTurns,
+    int startTurn,
+    string sourceCardName)
     {
-        if (!IsOnlineMode || BattleManager.Instance == null) return;
+        if (!IsOnlineMode || BattleManager.Instance == null)
+            return;
+
+        SearchCriteria criteria = !string.IsNullOrEmpty(criteriaJson)
+            ? JsonUtility.FromJson<SearchCriteria>(criteriaJson)
+            : null;
 
         BattleManager.Instance.SchedulePlayCostBuff(
             forPlayer,
-            (CardKind)cardKind,
+            criteria,
             amount,
             durationTurns,
             startTurn,

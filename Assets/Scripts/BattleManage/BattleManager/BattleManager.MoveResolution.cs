@@ -173,7 +173,7 @@ public partial class BattleManager
 
     async Task HideNoTargetMessage()
     {
-        await Task.Delay(1400);
+        await Task.Delay(1000);
         MessageManager.Instance?.HideMessage();
     }
 
@@ -269,7 +269,6 @@ public partial class BattleManager
                 else
                     await ShowDamageEffectToPlayerHP(finalDamage, effectColor);
 
-                await Task.Delay(800);
                 hp.LoseHp(finalDamage);
             }
         }
@@ -573,8 +572,8 @@ public partial class BattleManager
                 await ShowDamageEffectToEnemyHP(finalDamage, directColor);
             else
                 await ShowDamageEffectToPlayerHP(finalDamage, directColor);
-            await Task.Delay(800);
             directHp?.LoseHp(finalDamage);
+
             await PlayExtraDirectHits(attacker, moveIndex);
             if (directHp != null && hpBefore > 0 && directHp.currentHp <= 0)
                 directHp.NotifyHpDepleted();
@@ -748,21 +747,22 @@ public partial class BattleManager
             Color effectColor = attacker.GetDamageEffectColor(moveIndex, finalDamage);
             await ShowDamageEffectToCard(enemyCard, finalDamage, effectColor);
 
-            await Task.Delay(600);
-
             // ── ステップ5: HPにダメージを適用 ──
             enemyCard.curHp -= finalDamage;
             enemyCard.UpdateDisplay();
             await PlayExtraHitsOnCard(attacker, enemyCard, moveIndex);
             ClearTargetHighlights();
 
+            ResolveStunIfAlive(enemyCard);
+
             MarkAttackerMoveFinished(attacker, setHasUsedMove:true);
             await ProcessMoveUsedAfterSkills(attacker, moveIndex, enemyCard);
+
+            await Task.Delay(300);
 
             if (enemyCard.curHp <= 0)
                 await HandleGraveyardTransition(enemyCard, attacker, moveIndex);
 
-            ResolveStunIfAlive(enemyCard);
             PersistentEffectManager.Instance?.RecalculateImmediately();
         }
         finally
@@ -838,22 +838,25 @@ public partial class BattleManager
             }
 
             // 各ターゲット間で少し待機
-            await Task.Delay(200);
+            await Task.Delay(50);
         }
 
         await PlayExtraHitsOnEach(attacker, moveIndex, hitBattlers);
-        await Task.Delay(600);
+        
         ClearTargetHighlights();
+        
+        foreach (var hit in hitBattlers)
+            ResolveStunIfAlive(hit);
+
+        await Task.Delay(300);
 
         MarkAttackerMoveFinished(attacker, setHasUsedMove: true);
         await ProcessMoveUsedAfterSkills(attacker, moveIndex);
 
         // 各ターゲットの墓地への移動を処理。撃破したときは、技撃破時の前に使用済みにする
         foreach (var hit in hitBattlers)
-        {
             await HandleGraveyardTransition(hit, attacker, moveIndex);
-            ResolveStunIfAlive(hit);
-        }
+
         PersistentEffectManager.Instance?.RecalculateImmediately();
     }
 
@@ -869,8 +872,8 @@ public partial class BattleManager
             if (hit == null)
                 continue;
 
-            await HandleGraveyardTransition(hit, attacker, moveIndex);
             ResolveStunIfAlive(hit);
+            await HandleGraveyardTransition(hit, attacker, moveIndex);
         }
 
         HandleMoveCancelled(attacker);
@@ -1116,7 +1119,7 @@ public partial class BattleManager
             return;
         }
 
-        card.ResolveStunAfterReceivingMove();
+        card.AfterMoveCleanseStan();
     }
 
     void FlushPendingStunResolves()
@@ -1130,7 +1133,7 @@ public partial class BattleManager
         {
             if (card == null)
                 continue;
-            card.ResolveStunAfterReceivingMove();
+            card.AfterMoveCleanseStan();
         }
     }
 

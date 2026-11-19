@@ -52,11 +52,10 @@ public class HealSkill : SkillDB
             bool addressed = CardAddress.TryAdd(card, kinds, ids, zoneNames, indices);
             int maxHp = GetMaxHp(card);
             int actualHealAmount = Mathf.Max(0, Mathf.Min(healAmount, maxHp - card.curHp));
-            card.curHp = Mathf.Min(card.curHp + healAmount, maxHp);
-            card.UpdateDisplay();
-
             if (actualHealAmount > 0)
                 await BattleManager.Instance.ShowEffect(card.transform.position, actualHealAmount, Color.green);
+            card.curHp = Mathf.Min(card.curHp + healAmount, maxHp);
+            card.UpdateDisplay();
 
             if (!addressed)
                 continue;
@@ -77,7 +76,7 @@ public class HealSkill : SkillDB
             await OnlineSyncManager.Instance.WaitForOpponentAnimation();
         }
 
-        await Task.Delay(1000);
+        await Task.Delay(300);
 
         await Task.CompletedTask;
     }
@@ -120,8 +119,6 @@ public class HealSkill : SkillDB
             OnlineSyncManager.Instance.SyncDirectHpDamage(healtoMyHp, healToEnemyHp);
             await OnlineSyncManager.Instance.WaitForOpponentAnimation();
         }
-
-        await Task.Delay(1000);
     }
 
     static async Task HealPlyaerHp(ResourceSystem hp, Transform effectAnchor, int amount)
@@ -132,6 +129,8 @@ public class HealSkill : SkillDB
         hp.TakeDamage(-amount);
         if (effectAnchor != null)
             await BattleManager.Instance.ShowEffect(effectAnchor.position, amount, Color.yellow);
+
+        await Task.Delay(500);
     }
 
     static int GetMaxHp(CardController card)

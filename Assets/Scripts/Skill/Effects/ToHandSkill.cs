@@ -4,18 +4,20 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 
-[System.Serializable]
+[Serializable]
 [SkillDisplayName("手札へ")]
 public class ToHandSkill : SkillDB
 {
-    [SerializeField] public SearchCriteria 参照条件; // 検索条件
-    [SerializeField] public List<CardZoneType> 参照場所 = new List<CardZoneType>(); // 追加元のゾーン複数
-    [SerializeField] public int 選択数 = 1; // 選択数
+    [SerializeField] public SearchCriteria 参照条件;
+    [SerializeField] public int 処理カード番号 = 0;
+    [SerializeField] public List<CardZoneType> 参照場所 = new List<CardZoneType>();
+    [SerializeField] public int 選択数 = 1;
     [SerializeField] public CountMode 選択数の扱い = CountMode.ちょうど;
-    [SerializeField] public PlayerType 選択プレイヤー = PlayerType.プレイヤー; // どちらが選択するか
+    [SerializeField] public PlayerType 選択プレイヤー = PlayerType.プレイヤー;
     [SerializeField] public bool ランダム = false;
 
     [SerializeField] public bool 全選択 = false;
+    public SelectionComparisonOptions 比較条件 = new();
 
     public override async Task ActivateEffect(SkillContext context)
     {
@@ -37,84 +39,28 @@ public class ToHandSkill : SkillDB
         var addedCards = new List<CardController>();
         try
         {
-            if (zones == null || zones.Count == 0)
-                return;
-
-            var existingCandidates = new List<CardController>();
-            var deckCandidates = new List<DeckCard>();
-            var cond = criteria;
-            bool ownerIsLocal = context?.発動カード == null || context.発動カード.isMyCard;
-
-            foreach (var zone in zones)
-            {
-                if (CardZones.IsDeck(zone))
-                {
-                    var deck = CardZones.Deck(zone, ownerIsLocal);
-                    if (deck != null)
-                        deckCandidates.AddRange(deck.Where(d => SearchCriteria.AllowsDeck(cond, d, context)));
-                    continue;
-                }
-
-                var zoneTransform = CardZones.Of(zone, ownerIsLocal);
-                if (zoneTransform == null)
-                    continue;
-
-                existingCandidates.AddRange(
-                    zoneTransform.GetComponentsInChildren<CardController>()
-                        .Where(c => context != null ? c.MeetsCriteria(cond, context) : c.MeetsCriteria(cond))
+            // 共通ヘルパーで候補収集・選択
+            var selections = await SkillSelectionHelper.CollectAndSelectAsync(
+                context,
+                criteria,
+                zones,
+                count,
+                selectBy,
+                選択数の扱い,
+                ランダム,
+                全選択,
+                comparison: 比較条件
                 );
-            }
 
-            if (existingCandidates.Count == 0 && deckCandidates.Count == 0)
+            if (selections == null || selections.Count == 0)
                 return;
 
-            List<SelectionItem> selections;
-            int totalCandidates = existingCandidates.Count + deckCandidates.Count;
-            bool upTo = 選択数の扱い == CountMode.まで;
-            bool chooseCount = upTo && totalCandidates > 1;
-
-            if (全選択)
-            {
-                selections = SelectionItem.FromCandidates(
-                    existingCandidates,
-                    deckCandidates);
-            }
-            else if (ランダム)
-            {
-                selections = SelectionItem.FromCandidates(existingCandidates, deckCandidates)
-                    .OrderBy(_ => UnityEngine.Random.value)
-                    .Take(Mathf.Min(count, totalCandidates))
-                    .ToList();
-            }
-            else if (totalCandidates <= count && !chooseCount)
-            {
-                selections = SelectionItem.FromCandidates(existingCandidates, deckCandidates);
-            }
-            else if (ChooserIsLocal(selectBy, ownerIsLocal))
-            {
-                selections = await CardSelectionUI.Instance.ShowAsync(
-                    existingCandidates,
-                    deckCandidates,
-                    count,
-                    rejectSameKind: false,
-                    letCpuChoose: false,
-                    allowFewer: upTo);
-                if (selections == null || selections.Count == 0)
-                    return;
-            }
-            else
-            {
-                var pool = SelectionItem.FromCandidates(existingCandidates, deckCandidates);
-                selections = await ChooseRemote(pool, count, context, ownerIsLocal, upTo);
-                if (selections == null || selections.Count == 0)
-                    return;
-            }
-
+            // 選択されたカードを手札へ移動
             await MoveSelectionsToHand(selections, addedCards);
         }
         finally
         {
-            context?.SetProcessedCards(addedCards);
+            context?.SetProcessedCards(処理カード番号, addedCards);
         }
     }
 
@@ -128,7 +74,7 @@ public class ToHandSkill : SkillDB
         }
         finally
         {
-            context?.SetProcessedCards(addedCards);
+            context?.SetProcessedCards(処理カード番号, addedCards);
         }
     }
 
@@ -557,6 +503,7 @@ public class ToHandSkill : SkillDB
         // PassiveEffectをクリア
         card.RemoveAllPassiveEffects();
         card.ClearStatusAilments();
+        card.ResetMoveChanges();
         card.ResetMoveElements();
         card.RecalculateModifiedPowers();
 
@@ -580,60 +527,4 @@ public class ToHandSkill : SkillDB
         card.hpProtection2 = false;
         card.hpProtectionTargetElement2 = ElementList.None;
     }
-
-    static bool ChooserIsLocal(PlayerType selectBy, bool ownerIsLocal)
-    {
-        bool chooserIsOwner = selectBy != PlayerType.相手;
-        return chooserIsOwner ? ownerIsLocal : !ownerIsLocal;
-    }
-
-    static async Task<List<SelectionItem>> ChooseRemote(List<SelectionItem> pool, int count, SkillContext context, bool ownerIsLocal, bool upTo)
-    {
-        if (pool == null || pool.Count == 0)
-            return null;
-
-        int take = Mathf.Min(count, pool.Count);
-        bool online = BattleManager.Instance != null
-            && BattleManager.Instance.IsOnlineMode
-            && ownerIsLocal
-            && context?.発動カード != null
-            && OnlineSyncManager.Instance != null;
-
-        if (!online)
-            return pool.OrderBy(_ => UnityEngine.Random.value).Take(take).ToList();
-
-        var kinds = new int[pool.Count];
-        var ids = new int[pool.Count];
-        for (int i = 0; i < pool.Count; i++)
-        {
-            if (pool[i] != null && pool[i].TryGetIdentity(out CardKind kind, out int id))
-            {
-                kinds[i] = (int)kind;
-                ids[i] = id;
-            }
-        }
-
-        int[] picked = await OnlineSyncManager.Instance.RequestOpponentCardPick(context.発動カード, kinds, ids, take, upTo);
-        return TakeByIndices(pool, picked, take);
-    }
-
-    static List<SelectionItem> TakeByIndices(List<SelectionItem> pool, int[] indices, int count)
-    {
-        var picked = new List<SelectionItem>();
-        if (pool == null || indices == null)
-            return picked;
-
-        var used = new HashSet<int>();
-        for (int i = 0; i < indices.Length && picked.Count < count; i++)
-        {
-            int index = indices[i];
-            if (index < 0 || index >= pool.Count || !used.Add(index))
-                continue;
-            picked.Add(pool[index]);
-        }
-
-        return picked;
-    }
 }
-
-

@@ -7,6 +7,6 @@ public class TacticsDB : CardDBBase
 
     private void OnEnable()
     {
-        cardKind = CardKind.作戦;
+        分類 = CardKind.作戦;
     }
 }

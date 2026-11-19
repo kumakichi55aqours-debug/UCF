@@ -107,7 +107,11 @@ public class RandomSelectSkill : SkillDB
             return;
 
         destination.AddRange(source.Where(d =>
-            d != null && (criteria == null || criteria.MatchesDeck(d, context.発動カード, checkSource: true))));
+            d != null && (criteria == null || criteria.MatchesDeck(
+    d,
+    context?.発動カード,
+    checkSource: context != null,
+    context: context))));
     }
 
     static int CountUnique(List<CardController> existing, List<DeckCard> deck)

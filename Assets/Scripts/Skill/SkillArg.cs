@@ -9,6 +9,7 @@ public enum SkillArg
     ドロー数,
     送ったカードのHP,
     倒したバトラーの元々のHP,
+    枚数カウント
 }
 
 public static class SkillArgKey
@@ -25,6 +26,9 @@ public static class SkillArgKey
                 return true;
             case SkillArg.倒したバトラーの元々のHP:
                 key = "DefeatedOriginalHp";
+                return true;
+            case SkillArg.枚数カウント:
+                key = "MatchingCardCount";
                 return true;
             default:
                 key = null;

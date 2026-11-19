@@ -12,17 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a233ef3a7a131ad4e8d55a23cdc88cbe, type: 3}
   m_Name: 11301
   m_EditorClassIdentifier: 
-  cardName: "\u53CB\u597D\u306E\u8A3C"
-  cardKind: 2
-  cardId: 11301
-  rarity: 0
-  artwork: {fileID: 21300000, guid: a6a191a16f3deb445a9d9958803ac7d4, type: 3}
-  cost: 0
-  category: 67000000
-  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u591A\u3005\u826F\u5CF6\nACT 4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u306E\u6280\u306E\u30D1\u30EF\u30FC\u3092--1\u3059\u308B\u3002"
-  skills:
+  "\u30AB\u30FC\u30C9\u540D": "\u53CB\u597D\u306E\u8A3C"
+  "\u5206\u985E": 2
+  ID: 11301
+  "\u30EC\u30A2\u5EA6": 0
+  "\u753B\u50CF": {fileID: 21300000, guid: a6a191a16f3deb445a9d9958803ac7d4, type: 3}
+  "\u30B3\u30B9\u30C8": 0
+  "\u30AB\u30C6\u30B4\u30EA": 67000000
+  "\u30C6\u30AD\u30B9\u30C8": "\u30AB\u30C6\u30B4\u30EA \u591A\u3005\u826F\u5CF6\nACT
+    4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u76F8\u624B\u30D0\u30C8\u30E9\u30FC\u306E\u6280\u306E\u30D1\u30EF\u30FC\u3092--1\u3059\u308B\u3002"
+  "\u30B9\u30AD\u30EB":
   - rid: 7839874396099444792
-  type: 8
+  type: 7
   references:
     version: 2
     RefIds:
@@ -40,14 +41,15 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
-        "\u3069\u3053\u304B\u3089": 
-        "\u3044\u308B\u5834\u6240": 
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
         "\u767A\u52D5\u5074": 2
         "\u5BFE\u8C61\u9078\u629E":
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u52B9\u679C\u6570": -1
-        "\u6301\u7D9A\u30BF\u30FC\u30F3\u6570": 2
+        "\u6301\u7D9A\u30BF\u30FC\u30F3\u6570": 4
         "\u5BFE\u8C61\u30D7\u30EC\u30A4\u30E4\u30FC": 1

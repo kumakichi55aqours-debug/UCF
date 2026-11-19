@@ -12,47 +12,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be536d0412968f14db8325162c4a2aaf, type: 3}
   m_Name: 10901
   m_EditorClassIdentifier: 
-  cardName: "\u30A2\u30F3\u30C8\u30E9\u30FC"
-  cardKind: 1
-  cardId: 10901
-  rarity: 0
-  artwork: {fileID: 21300000, guid: f4f48a5d5bc0063489745fbd3652b438, type: 3}
-  cost: 2
-  category: 000000000300000068000000
-  skillDescription: "\u30AB\u30C6\u30B4\u30EA \u602A\u7363/\u521D\u4EE3\u30DE\u30F3\u602A\u7363/\u53E4\u4EE3\u602A\u7363\nACT
-    \u81EA\u5206\u306E\u4FDD\u6709\u30A8\u30CD\u30EB\u30AE\u30FC\u3092-1\u6D88\u8CBB\u3057\u3001\u76F8\u624B\u306E\u624B\u672D\u304B\u3089\u30E9\u30F3\u30C0\u30E0\u306B\u4F5C\u6226\u30AB\u30FC\u30C91\u679A\u3092\u5893\u5730\u306B\u9001\u308B(\u306A\u3044\u5834\u5408\u306F\u5893\u5730\u3078\u9001\u3089\u306A\u3044)\u3002\n\u81EA\u5206F\u30BE\u30FC\u30F3\u306B\u300E\u30D0\u30E9\u30FC\u30B8\u300F\u304C\u3042\u308B\u6642\u3001\u5893\u5730\u306B\u9001\u308B\u30AB\u30FC\u30C9\u3092\u9078\u3076\u3053\u3068\u304C\u3067\u304D\u308B\u3002\nTRG
+  "\u30AB\u30FC\u30C9\u540D": "\u30A2\u30F3\u30C8\u30E9\u30FC"
+  "\u5206\u985E": 1
+  ID: 10901
+  "\u30EC\u30A2\u5EA6": 0
+  "\u753B\u50CF": {fileID: 21300000, guid: f4f48a5d5bc0063489745fbd3652b438, type: 3}
+  "\u30B3\u30B9\u30C8": 2
+  "\u30AB\u30C6\u30B4\u30EA": 000000000300000068000000
+  "\u30C6\u30AD\u30B9\u30C8": "\u30AB\u30C6\u30B4\u30EA \u602A\u7363/\u521D\u4EE3/\u53E4\u4EE3\u602A\u7363\nTRG1
+    \u767B\u5834\u6642\u306B\u767A\u52D5\u3067\u304D\u308B\u3002\u76F8\u624B\u306E\u30C7\u30C3\u30AD\u306E\u4E0A\u304B\u30893\u679A\u5893\u5730\u3078\u9001\u308B\u3002\nACT
+    \u76F8\u624B\u306E\u624B\u672D\u304B\u3089\u30E9\u30F3\u30C0\u30E0\u306B\u4F5C\u6226\u30AB\u30FC\u30C91\u679A\u3092\u5893\u5730\u3078\u9001\u308B(\u306A\u3044\u5834\u5408\u306F\u5893\u5730\u3078\u9001\u3089\u306A\u3044)\u3002\n\u81EA\u5206F\u30BE\u30FC\u30F3\u306B\u300E\u30D0\u30E9\u30FC\u30B8\u300F\u304C\u3042\u308B\u6642\u3001\u5893\u5730\u306B\u9001\u308B\u30AB\u30FC\u30C9\u3092\u9078\u3076\u3053\u3068\u304C\u3067\u304D\u308B\u3002\nTRG2
     \u3053\u306E\u30AB\u30FC\u30C9\u304C\u6280\u3092\u53D7\u3051\u308B\u6642\u306B\u767A\u52D5\u3059\u308B\u3002\u305D\u306E\u30C0\u30E1\u30FC\u30B8\u3092--1\u3059\u308B\u3002"
-  skills:
+  "\u30B9\u30AD\u30EB":
   - rid: 3123607169945829392
+  - rid: 7839874577158635650
   - rid: 3123607169945829397
+  - rid: 7839874509070925842
   - rid: 3123607303214858308
-  type: 3
+  "\u30BF\u30A4\u30D7": 3
   hp: 8
-  "\u5F97\u610F\u5C5E\u6027": 4
-  "\u5C5E\u6027\u8EFD\u6E1B\u5024": 1
+  "\u5F97\u610F\u5C5E\u6027": 8
+  "\u5C5E\u6027\u8EFD\u6E1B\u5024": 2
   "\u5F31\u70B9\u5C5E\u6027": 7
-  "\u5C5E\u6027\u5897\u52A0\u5024": 2
-  moveName1: "\u306F\u3055\u307F\u3053\u3080"
-  energy1: 0
-  power1: 4
-  moveElement1: 1
-  target1: 1
+  "\u5C5E\u6027\u5897\u52A0\u5024": 3
+  "\u6280\u540D1": "\u306F\u3055\u307F\u3053\u3080"
+  "\u5C5E\u60271": 1
+  EN1: 0
+  PW1: 4
+  "\u5BFE\u8C611": 1
   "\u5BFE\u8C61\u50741": 1
   "\u5BFE\u8C61\u9078\u629E1":
     "\u9078\u629E\u6570": 1
     "\u9078\u629E\u65B9\u5F0F": 0
-  description1: 
-  moveName2: "\u30E9\u30A4\u30B8\u30F3\u30B0\u30B7\u30B6\u30FC\u30B9"
-  energy2: 1
-  power2: 6
-  moveElement2: 6
-  target2: 1
+  "\u52B9\u679C1": "\u30C7\u30C3\u30AD\u304B\u3089\u300E\u78C1\u529B\u5149\u7DDA\u300F1\u679A\u3092\u624B\u672D\u306B\u52A0\u3048\u308B\u3002"
+  "\u6280\u540D2": "\u30E9\u30A4\u30B8\u30F3\u30B0\u30B7\u30B6\u30FC\u30B9"
+  "\u5C5E\u60272": 6
+  EN2: 1
+  PW2: 6
+  "\u5BFE\u8C612": 1
   "\u5BFE\u8C61\u50742": 1
   "\u5BFE\u8C61\u9078\u629E2":
     "\u9078\u629E\u6570": 1
     "\u9078\u629E\u65B9\u5F0F": 0
-  description2: "4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u5BFE\u8C61\u306E\u30D0\u30C8\u30E9\u30FC\u306E\u53D7\u3051\u308B\u30C0\u30E1\u30FC\u30B8\u3092++1\u3057\u3001\u300C\u920D\u5316\u300D\u306B\u3059\u308B\u3002"
-  summonVoice: {fileID: 8300000, guid: 9933f33b30c23e94d890f2ea792e463a, type: 3}
+  "\u52B9\u679C2": "4\u30BF\u30FC\u30F3\u306E\u9593\u3001\u5BFE\u8C61\u306E\u30D0\u30C8\u30E9\u30FC\u306E\u53D7\u3051\u308B\u30C0\u30E1\u30FC\u30B8\u3092++1\u3057\u3001\u300C\u920D\u5316\u300D\u306B\u3059\u308B\u3002"
+  "\u30DC\u30A4\u30B9": {fileID: 8300000, guid: 9933f33b30c23e94d890f2ea792e463a, type: 3}
   references:
     version: 2
     RefIds:
@@ -68,10 +71,10 @@ MonoBehaviour:
         "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
         "\u6761\u4EF6":
-        - rid: 3123607303214858302
         - rid: 3123607303214858315
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -81,38 +84,11 @@ MonoBehaviour:
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
         subSkills:
-        - rid: 3123607169945829394
         - rid: 7839874396099444823
-    - rid: 3123607169945829394
-      type: {class: PlayerResourceModifierSkill, ns: , asm: Assembly-CSharp}
-      data:
-        "\u30B9\u30AD\u30EB\u540D": 
-        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
-        "\u5834\u6240\u30EA\u30B9\u30C8": 00000000
-        "\u4E0A\u9650\u56DE\u6570": 1
-        "\u5F37\u5236\u767A\u52D5": 0
-        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
-        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
-        "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
-        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u30D5\u30A3\u30EB\u30BF": []
-        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
-        "\u767A\u52D5\u5074": 2
-        "\u5BFE\u8C61\u9078\u629E":
-          "\u9078\u629E\u6570": 1
-          "\u9078\u629E\u65B9\u5F0F": 0
-        "\u30EA\u30BD\u30FC\u30B9\u30BF\u30A4\u30D7": 0
-        "\u52B9\u679C\u6570": -1
-        "\u6301\u7D9A\u30BF\u30FC\u30F3\u6570": 0
-        "\u5BFE\u8C61\u30D7\u30EC\u30A4\u30E4\u30FC": 0
     - rid: 3123607169945829397
       type: {class: DamageModifierSkill, ns: , asm: Assembly-CSharp}
       data:
-        "\u30B9\u30AD\u30EB\u540D": TRG
+        "\u30B9\u30AD\u30EB\u540D": TRG2
         "\u30BF\u30A4\u30DF\u30F3\u30B0": 14
         "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
         "\u4E0A\u9650\u56DE\u6570": 1
@@ -123,6 +99,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -132,17 +109,10 @@ MonoBehaviour:
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u5897\u6E1B\u5024": -1
-        "\u5BFE\u8C61\u5C5E\u6027": 0
+        "\u5BFE\u8C61\u5C5E\u6027": 
         "\u9069\u7528\u5148": 2
         "\u5897\u6E1B\u30BF\u30A4\u30D7": 0
         "\u5BFE\u8C61\u72B6\u614B": []
-    - rid: 3123607303214858302
-      type: {class: PlayerResourceCondition, ns: , asm: Assembly-CSharp}
-      data:
-        "\u5BFE\u8C61\u30D7\u30EC\u30A4\u30E4\u30FC": 0
-        "\u30EA\u30BD\u30FC\u30B9\u30BF\u30A4\u30D7": 0
-        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
-        "\u57FA\u6E96\u5024": 1
     - rid: 3123607303214858308
       type: {class: GrantSkill, ns: , asm: Assembly-CSharp}
       data:
@@ -157,6 +127,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -169,6 +140,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u5074": 0
         "\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u72B6\u614B": []
         "\u4ED8\u4E0E\u30BF\u30FC\u30F3\u6570": 4
@@ -194,6 +166,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -219,6 +192,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -228,7 +202,7 @@ MonoBehaviour:
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u5897\u6E1B\u5024": 1
-        "\u5BFE\u8C61\u5C5E\u6027": 0
+        "\u5BFE\u8C61\u5C5E\u6027": 
         "\u9069\u7528\u5148": 2
         "\u5897\u6E1B\u30BF\u30A4\u30D7": 0
         "\u5BFE\u8C61\u72B6\u614B": []
@@ -246,6 +220,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -270,6 +245,7 @@ MonoBehaviour:
         - rid: 7839874396099444825
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -299,6 +275,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -309,6 +286,7 @@ MonoBehaviour:
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u53C2\u7167\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 2
             "\u30AB\u30FC\u30C9ID": 0
@@ -319,18 +297,23 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
-        "\u53C2\u7167\u5143": 7
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
+        "\u53C2\u7167\u5834\u6240": 07000000
         "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u6570\u306E\u6271\u3044": 0
         "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
         "\u30E9\u30F3\u30C0\u30E0": 0
+        "\u5168\u9078\u629E": 0
         "\u51FA\u529B\u30AD\u30FC": 0
         "\u51FA\u529B\u3059\u308B\u5024": 0
+        "\u5BFE\u8C61\u72B6\u614B": []
     - rid: 7839874396099444825
       type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
       data:
         "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 04000000
         searchCriteria:
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 3
             "\u30AB\u30FC\u30C9ID": 0
@@ -359,6 +342,7 @@ MonoBehaviour:
         "\u6761\u4EF6": []
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF": []
         "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
         "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
@@ -369,6 +353,7 @@ MonoBehaviour:
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u53C2\u7167\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 2
             "\u30AB\u30FC\u30C9ID": 0
@@ -379,9 +364,121 @@ MonoBehaviour:
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
-        "\u53C2\u7167\u5143": 7
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
+        "\u53C2\u7167\u5834\u6240": 07000000
         "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u6570\u306E\u6271\u3044": 0
         "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
         "\u30E9\u30F3\u30C0\u30E0": 1
+        "\u5168\u9078\u629E": 0
         "\u51FA\u529B\u30AD\u30FC": 0
         "\u51FA\u529B\u3059\u308B\u5024": 0
+        "\u5BFE\u8C61\u72B6\u614B": []
+    - rid: 7839874509070925842
+      type: {class: ToHandSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": "\u62801\u52B9\u679C"
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 9
+        "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
+        "\u4E0A\u9650\u56DE\u6570": 255
+        "\u5F37\u5236\u767A\u52D5": 1
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6":
+        - rid: 7839874509070925844
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u53C2\u7167\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 2
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": "\u78C1\u529B\u5149\u7DDA"
+            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
+        "\u53C2\u7167\u5834\u6240": 06000000
+        "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u6570\u306E\u6271\u3044": 0
+        "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
+        "\u30E9\u30F3\u30C0\u30E0": 0
+        "\u5168\u9078\u629E": 0
+        "\u6BD4\u8F03\u6761\u4EF6":
+          "\u7570\u306A\u308B\u30BF\u30A4\u30D7": 0
+          "\u7570\u306A\u308B\u30B3\u30B9\u30C8": 0
+          "\u767A\u52D5\u30AB\u30FC\u30C9\u3068\u7570\u306A\u308B\u30BF\u30A4\u30D7": 0
+          "\u767A\u52D5\u30AB\u30FC\u30C9\u3068\u7570\u306A\u308B\u30B3\u30B9\u30C8": 0
+    - rid: 7839874509070925844
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 06000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 2
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": "\u78C1\u529B\u5149\u7DDA"
+            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
+    - rid: 7839874577158635650
+      type: {class: MillDeckSkill, ns: , asm: Assembly-CSharp}
+      data:
+        "\u30B9\u30AD\u30EB\u540D": TRG1
+        "\u30BF\u30A4\u30DF\u30F3\u30B0": 1
+        "\u5834\u6240\u30EA\u30B9\u30C8": 01000000
+        "\u4E0A\u9650\u56DE\u6570": 1
+        "\u5F37\u5236\u767A\u52D5": 0
+        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
+        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
+        "\u4F7F\u7528\u56DE\u6570": 0
+        "\u6761\u4EF6":
+        - rid: 7839874577158635651
+        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
+        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
+        "\u767A\u52D5\u5074": 2
+        "\u5BFE\u8C61\u9078\u629E":
+          "\u9078\u629E\u6570": 1
+          "\u9078\u629E\u65B9\u5F0F": 0
+        "\u5893\u5730\u9001\u308A\u679A\u6570": 3
+        "\u5BFE\u8C61\u30D7\u30EC\u30A4\u30E4\u30FC": 1
+    - rid: 7839874577158635651
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 0c000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF": []
+        "\u30AB\u30FC\u30C9\u72B6\u614B": []
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0

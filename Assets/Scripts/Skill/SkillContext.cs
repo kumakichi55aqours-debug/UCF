@@ -49,12 +49,18 @@ public class SkillContext
         SetArg(SkillArg.倒したバトラーの元々のHP, hp);
     }
 
-    // 直前のサブスキルが処理したカード。手札へ加えたカードを、続く登場や墓地送りの対象にする。
+    // 直前のサブスキルが処理したカード。
     public List<CardController> 処理したカード { get; } = new List<CardController>();
+
+    // スキル間で参照する番号付きの処理結果。
+    // 例：0 = Aの効果で処理したカード、1 = Bの効果で処理したカード
+    private readonly Dictionary<int, List<CardController>> 処理カード履歴
+        = new Dictionary<int, List<CardController>>();
 
     public void SetProcessedCards(IEnumerable<CardController> cards)
     {
         処理したカード.Clear();
+
         if (cards == null)
             return;
 
@@ -63,6 +69,41 @@ public class SkillContext
             if (card != null)
                 処理したカード.Add(card);
         }
+    }
+
+    /// <summary>
+    /// 指定番号に処理したカードを保存する。
+    /// 同じ番号を指定した場合は、その番号の結果を上書きする。
+    /// </summary>
+    public void SetProcessedCards(int number, IEnumerable<CardController> cards)
+    {
+        var result = new List<CardController>();
+
+        if (cards != null)
+        {
+            foreach (var card in cards)
+            {
+                if (card != null)
+                    result.Add(card);
+            }
+        }
+
+        処理カード履歴[number] = result;
+
+        // 従来どおり、最後に処理したカードも更新する。
+        処理したカード.Clear();
+        処理したカード.AddRange(result);
+    }
+
+    /// <summary>
+    /// 指定番号の処理カードを取得する。
+    /// </summary>
+    public IReadOnlyList<CardController> GetProcessedCards(int number)
+    {
+        if (処理カード履歴.TryGetValue(number, out var cards))
+            return cards;
+
+        return null;
     }
 
     // 選択スキルが渡した候補。手札へや墓地へは、これがあるときは自分では選び直さない。
@@ -224,5 +265,21 @@ public class SkillContext
             .Replace("{SourceCard}", sourceName)
             .Replace("{Attacker}", attackerName)
             .Replace("{Move}", moveNumber);
+    }
+
+    /// <summary>
+    /// 強化作戦の付与先を処理カード番号0に登録する。
+    /// </summary>
+    public void RegisterEnhancementHosts(CardController source)
+    {
+        if (source == null ||
+            source.cardKind != CardKind.作戦 ||
+            source.type != CardTypeList.強化)
+            return;
+
+        var hosts = BattleManager.Instance?.GetEnhancementHosts(source);
+
+        if (hosts != null)
+            SetProcessedCards(1, hosts);
     }
 }

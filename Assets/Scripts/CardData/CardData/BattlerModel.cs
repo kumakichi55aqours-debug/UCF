@@ -46,42 +46,42 @@ public class BattlerModel : CardDBBase
         }
 
         トークン = token;
-        cardKind = token ? CardKind.バトラー : cardDB.cardKind;
-        cardId = cardDB.cardId;
-        cardName = cardDB.cardName;
-        rarity = cardDB.rarity;
-        artwork = cardDB.artwork;
-        cost = cardDB.cost;
-        type = cardDB.type;
+        分類 = token ? CardKind.バトラー : cardDB.分類;
+        ID = cardDB.ID;
+        カード名 = cardDB.カード名;
+        レア度 = cardDB.レア度;
+        画像 = cardDB.画像;
+        コスト = cardDB.コスト;
+        type = cardDB.タイプ;
         maxHp = cardDB.hp;
         得意属性 = cardDB.得意属性;
         属性軽減値 = cardDB.属性軽減値;
         弱点属性 = cardDB.弱点属性;
         属性増加値 = cardDB.属性増加値;
-        category = cardDB.category;
+        カテゴリ = cardDB.カテゴリ;
 
-        skills = cardDB.skills;
-        skillDescription = cardDB.skillDescription;
+        スキル = cardDB.スキル;
+        テキスト = cardDB.テキスト;
 
-        moveName1 = cardDB.moveName1;
-        energy1 = cardDB.energy1;
-        power1 = cardDB.power1;
-        moveElement1 = cardDB.moveElement1;
-        target1 = cardDB.target1;
+        moveName1 = cardDB.技名1;
+        energy1 = cardDB.EN1;
+        power1 = cardDB.PW1;
+        moveElement1 = cardDB.属性1;
+        target1 = cardDB.対象1;
         対象側1 = cardDB.対象側1;
         対象選択1 = SelectTarget.Copy(cardDB.対象選択1);
-        description1 = cardDB.description1;
+        description1 = cardDB.効果1;
 
-        moveName2 = cardDB.moveName2;
-        energy2 = cardDB.energy2;
-        power2 = cardDB.power2;
-        moveElement2 = cardDB.moveElement2;
-        target2 = cardDB.target2;
+        moveName2 = cardDB.技名2;
+        energy2 = cardDB.EN2;
+        power2 = cardDB.PW2;
+        moveElement2 = cardDB.属性2;
+        target2 = cardDB.対象2;
         対象側2 = cardDB.対象側2;
         対象選択2 = SelectTarget.Copy(cardDB.対象選択2);
-        description2 = cardDB.description2;
+        description2 = cardDB.効果2;
 
-        summonVoice = cardDB.summonVoice;
+        summonVoice = cardDB.ボイス;
     }
 
     public TargetList GetMoveTarget(int moveIndex)

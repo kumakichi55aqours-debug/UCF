@@ -75,6 +75,7 @@ public class SkillManager : MonoBehaviour
 
         context = context ?? new SkillContext(card, card, card.transform);
         context.SetSourceCard(card);
+        context.RegisterEnhancementHosts(card);
 
         if (SkillChainManager.Instance == null)
         {
@@ -333,9 +334,18 @@ public class SkillManager : MonoBehaviour
 
                 // オフラインのCPUは、登場時の任意効果を集めない。TRGの任意効果は集める。
                 // 起動効果は宣言した1件だけをチェーンに載せる。使うと決めた作戦の登場時は自動で解決する。
-                if (!BattleManager.Instance.IsOnlineMode && !card.isMyCard && !skill.強制発動 && !cpuCommittedTactics
+                bool cpuOptionalAppear =!BattleManager.Instance.IsOnlineMode
+                                        && !card.isMyCard
+                                        && (trigger == SkillTrigger.登場時 || trigger == SkillTrigger.カード使用時);
+                if (!BattleManager.Instance.IsOnlineMode
+                    && !card.isMyCard
+                    && !skill.強制発動
+                    && !cpuCommittedTactics
+                    && !cpuOptionalAppear
                     && !IsTriggerTiming(skill.タイミング))
+                {
                     continue;
+                }
 
                 // 技撃破時は、倒されたカードを見る。条件が空なら、そのカードの種類では絞らない。
                 if (IsMoveDefeatTrigger(trigger))
@@ -365,6 +375,7 @@ public class SkillManager : MonoBehaviour
                     ? new SkillContext(card, card, card.transform)
                     : context ?? SkillContext.WithAttackTarget(card, moveTarget);
                 tempCtx = tempCtx.AsOwnedBy(card);
+                tempCtx.RegisterEnhancementHosts(card);
                 if (skill.CanActivate(tempCtx))
                 {
                     // 重複チェック
@@ -443,10 +454,10 @@ public class SkillManager : MonoBehaviour
             BattleManager.Instance.IsMyTurn,
             collectedSkills,
             new HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)>(),
-            (card, skill) =>
+            (card, skill, context) =>
                 (excluded == null || !excluded.Contains((card.GetInstanceID(), skill.スキル名 ?? string.Empty)))
-                && skill.MatchesActivationOwner(card, activatingCard)
-                && MatchesTriggerTarget(skill, activatingCard));
+                 && skill.MatchesActivationOwner(card, activatingCard)
+                 && MatchesTriggerTarget(skill, activatingCard, context));
 
         return collectedSkills;
     }
@@ -468,10 +479,10 @@ public class SkillManager : MonoBehaviour
             isMyTurn,
             collectedSkills,
             skillsSet,
-            (card, skill) =>
+            (card, skill,context) =>
                 CardController.MatchesFromZone(skill.対象元ゾーン, fromLocation, card.isMyCard)
                 && skill.MatchesActivationOwner(card, cardSentToGrave)
-                && MatchesTriggerTarget(skill, cardSentToGrave));
+                && MatchesTriggerTarget(skill, cardSentToGrave,context));
     }
 
     /// <summary>
@@ -493,11 +504,11 @@ public class SkillManager : MonoBehaviour
             isMyTurn,
             collectedSkills,
             skillsSet,
-            (card, skill) =>
+            (card, skill,context) =>
                 skill.MatchesAppearKind(specialSummon)
                 && CardController.MatchesFromZone(skill.対象元ゾーン, fromLocation, card.isMyCard)
                 && skill.MatchesActivationOwner(card, appearedCard)
-                && MatchesTriggerTarget(skill, appearedCard));
+                && MatchesTriggerTarget(skill, appearedCard,context));
     }
 
     /// <summary>
@@ -518,7 +529,7 @@ public class SkillManager : MonoBehaviour
             isMyTurn,
             collectedSkills,
             skillsSet,
-            (card, skill) =>
+            (card, skill, context) =>
                 CardController.MatchesFromZone(skill.対象元ゾーン, fromLocation, card.isMyCard)
                 && skill.MatchesActivationOwner(card, returnedCardIsMyCard));
     }
@@ -543,10 +554,10 @@ public class SkillManager : MonoBehaviour
             isMyTurn,
             collectedSkills,
             skillsSet,
-            (card, skill) =>
+            (card, skill,context) =>
                 CardController.MatchesFromZone(skill.対象ゾーン, defeaterZone, card.isMyCard)
                 && skill.MatchesActivationOwner(card, battlerWhoMoveUse)
-                && MatchesTriggerTarget(skill, battlerWhoMoveUse));
+                && MatchesTriggerTarget(skill, battlerWhoMoveUse, context));
     }
 
     /// <summary>
@@ -569,10 +580,10 @@ public class SkillManager : MonoBehaviour
             isMyTurn,
             collectedSkills,
             skillsSet,
-            (card, skill) =>
+            (card, skill,context) =>
                 CardController.MatchesFromZone(skill.対象ゾーン, defeaterZone, card.isMyCard)
                 && skill.MatchesActivationOwner(card, battlerWhoMoveUsed)
-                && MatchesTriggerTarget(skill, battlerWhoMoveUsed));
+                && MatchesTriggerTarget(skill, battlerWhoMoveUsed, context));
     }
 
     /// <summary>
@@ -595,10 +606,10 @@ public class SkillManager : MonoBehaviour
             isMyTurn,
             collectedSkills,
             skillsSet,
-            (card, skill) =>
+            (card, skill,context) =>
                 CardController.MatchesFromZone(skill.対象ゾーン, defeaterZone, card.isMyCard)
                 && skill.MatchesActivationOwner(card, battlerWhoDefeated)
-                && MatchesTriggerTarget(skill, battlerWhoDefeated));
+                && MatchesTriggerTarget(skill, battlerWhoDefeated, context));
     }
 
     /// <summary>
@@ -615,7 +626,7 @@ public class SkillManager : MonoBehaviour
         bool isMyTurn,
         CollectedSkills collectedSkills,
         HashSet<(int instanceId, SkillDB skill, SkillTrigger trigger)> skillsSet,
-        Func<CardController, SkillDB, bool> matches)
+        Func<CardController, SkillDB, SkillContext, bool> matches)
     {
         var timing = OtherTriggerTiming(trigger);
         if (timing == ActiveTiming.None)
@@ -649,12 +660,18 @@ public class SkillManager : MonoBehaviour
             {
                 if (skill == null || skill.タイミング != timing || !skill.HasRemainingUses)
                     continue;
+
                 if (!skill.IncludesLocation(activeLocation) && !skill.IncludesLocation(ActiveLocation.None))
                     continue;
-                if (matches != null && !matches(card, skill))
+
+                // スキル所持カードとトリガー対象カードからContextを生成
+                var tempCtx = new SkillContext(card, subject, card.transform);
+                tempCtx.RegisterEnhancementHosts(card);
+
+                // トリガーごとの条件チェック
+                if (matches != null && !matches(card, skill, tempCtx))
                     continue;
 
-                var tempCtx = new SkillContext(card, subject, card.transform);
                 if (!skill.CanActivate(tempCtx))
                     continue;
 
@@ -669,6 +686,7 @@ public class SkillManager : MonoBehaviour
                     MoveTarget = subject,
                     Context = tempCtx
                 };
+
                 AddCollected(collectedSkills, skillInfo, skill.強制発動, isTurnPlayerCard);
             }
         }
@@ -695,11 +713,12 @@ public class SkillManager : MonoBehaviour
     /// <summary>
     /// トリガー対象条件が空なら通す。条件があるときは、対象カードがそれを満たすときだけ通す。
     /// </summary>
-    private static bool MatchesTriggerTarget(SkillDB skill, CardController target)
+    private static bool MatchesTriggerTarget(SkillDB skill, CardController target, SkillContext context)
     {
         if (skill.トリガー対象条件 == null || !skill.トリガー対象条件.HasCondition())
             return true;
-        return target != null && target.MeetsCriteria(skill.トリガー対象条件);
+
+        return target != null && target.MeetsCriteria(skill.トリガー対象条件, context);
     }
 
     /// <summary>
@@ -897,6 +916,8 @@ public class SkillManager : MonoBehaviour
             {
                 ctx = SkillContext.WithAttackTarget(link.SourceCard, link.MoveTarget);
             }
+
+            ctx.RegisterEnhancementHosts(link.SourceCard);
 
             if (BattleManager.Instance.IsOnlineMode)
             {

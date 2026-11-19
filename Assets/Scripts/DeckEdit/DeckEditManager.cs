@@ -148,7 +148,7 @@ public class DeckEditManager : MonoBehaviour
         CardController card = Instantiate(cardPrefab, parent);
         card.cardData = cardData;
         card.zoneType = zone;
-        card.Init(cardData.cardKind, cardData.cardId);
+        card.Init(cardData.分類, cardData.ID);
         card.deckCardView.Show(card.model);
         if (draggable)
             card.gameObject.AddComponent<DeckEditCardDrag>();
@@ -240,7 +240,7 @@ public class DeckEditManager : MonoBehaviour
         int count = 0;
         foreach (CardDBBase card in currentDeck)
         {
-            if (card != null && card.cardKind == cardData.cardKind && card.cardId == cardData.cardId)
+            if (card != null && card.分類 == cardData.分類 && card.ID == cardData.ID)
                 count++;
         }
 
@@ -251,7 +251,7 @@ public class DeckEditManager : MonoBehaviour
     {
         foreach (CardDBBase card in availableCards)
         {
-            if (card != null && card.cardKind == kind && card.cardId == cardId)
+            if (card != null && card.分類 == kind && card.ID == cardId)
                 return card;
         }
 
@@ -278,10 +278,7 @@ public class DeckEditManager : MonoBehaviour
             currentDeckName = deckNameInput.text.Trim();
 
         if (string.IsNullOrEmpty(currentDeckName))
-        {
-            Debug.LogWarning("デッキ名が入力されていません。");
             return;
-        }
 
         File.WriteAllText(DeckPath(currentDeckName), JsonConvert.SerializeObject(ToDeckCards(currentDeck), Formatting.Indented));
         isDeckModified = false;
@@ -293,10 +290,7 @@ public class DeckEditManager : MonoBehaviour
     void LoadDeckByName(string deckName)
     {
         if (string.IsNullOrEmpty(deckName))
-        {
-            Debug.LogWarning("デッキ名が指定されていません。");
             return;
-        }
 
         if (isDeckModified)
             Debug.LogWarning("現在のデッキに未保存の変更があります。");
@@ -340,7 +334,7 @@ public class DeckEditManager : MonoBehaviour
         {
             if (!MatchesSearchText(card, searchTerm))
                 continue;
-            if (selectedKind != CardKind.None && card.cardKind != selectedKind)
+            if (selectedKind != CardKind.None && card.分類 != selectedKind)
                 continue;
             if (!MatchesType(card, selectedType))
                 continue;
@@ -413,11 +407,11 @@ public class DeckEditManager : MonoBehaviour
 
     static int CompareCards(CardDBBase a, CardDBBase b)
     {
-        int kind = a.cardKind.CompareTo(b.cardKind);
+        int kind = a.分類.CompareTo(b.分類);
         if (kind != 0)
             return kind;
 
-        return a.cardId.CompareTo(b.cardId);
+        return a.ID.CompareTo(b.ID);
     }
 
     // 0番は「全て」。以降の表示文字がコスト。
@@ -427,7 +421,7 @@ public class DeckEditManager : MonoBehaviour
             return true;
 
         return int.TryParse(cardCostDropdown.options[cardCostDropdown.value].text, out int cost)
-            && card.cost == cost;
+            && card.コスト == cost;
     }
 
     static bool MatchesSearchText(CardDBBase card, string searchTerm)
@@ -435,11 +429,11 @@ public class DeckEditManager : MonoBehaviour
         if (string.IsNullOrEmpty(searchTerm))
             return true;
 
-        if (ContainsText(card.cardName, searchTerm) || ContainsText(card.skillDescription, searchTerm))
+        if (ContainsText(card.カード名, searchTerm) || ContainsText(card.テキスト, searchTerm))
             return true;
 
         if (card is BattlerDB battler)
-            return ContainsText(battler.description1, searchTerm) || ContainsText(battler.description2, searchTerm);
+            return ContainsText(battler.効果1, searchTerm) || ContainsText(battler.効果2, searchTerm);
 
         return false;
     }
@@ -488,7 +482,7 @@ public class DeckEditManager : MonoBehaviour
         if (selectedType == CardTypeList.None)
             return true;
         if (card is BattlerDB battler)
-            return battler.type == selectedType;
+            return battler.タイプ == selectedType;
         if (card is TacticsDB tactics)
             return tactics.type == selectedType;
         return false;
@@ -506,7 +500,7 @@ public class DeckEditManager : MonoBehaviour
         if (elementTarget == 2)
             return battler.弱点属性 == selectedElement;
 
-        return battler.moveElement1 == selectedElement || battler.moveElement2 == selectedElement;
+        return battler.属性1 == selectedElement || battler.属性2 == selectedElement;
     }
 
     void LoadInitialDeck()
@@ -690,13 +684,13 @@ public class DeckEditManager : MonoBehaviour
 
             CardTypeList cardType = CardTypeList.None;
             if (card is BattlerDB battler)
-                cardType = battler.type;
+                cardType = battler.タイプ;
             else if (card is TacticsDB tactics)
                 cardType = tactics.type;
-            List<CardCategoryList> category = card.category != null
-                ? new List<CardCategoryList>(card.category)
+            List<CardCategoryList> category = card.カテゴリ != null
+                ? new List<CardCategoryList>(card.カテゴリ)
                 : new List<CardCategoryList>();
-            list.Add(new DeckCard(card.cardKind, card.cardId, card.cost, category, cardType));
+            list.Add(new DeckCard(card.分類, card.ID, card.コスト, category, cardType));
         }
 
         return list;
