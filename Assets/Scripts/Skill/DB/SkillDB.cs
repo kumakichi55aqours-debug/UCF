@@ -37,7 +37,7 @@ public abstract class SkillDB
     // 「他のバトラーが撃破した時」で、撃破したバトラーがいるゾーン。空ならどこにいても
     // 「プレイヤー」はそのスキルを持つカード側、「相手」は反対側。複数指定したときはどれかと一致すればよい
     public List<CardZoneType> 対象ゾーン = new List<CardZoneType>();
-    // 「自分のフェイズ開始時」「自分のフェイズ終了時」のとき、どのフェイズかを見る
+    // 「フェイズ開始時」「フェイズ終了時」のとき、どのフェイズかを見る。自分側・相手側・両方を含む。
     public TurnPhase 対象フェイズ = TurnPhase.ドローフェイズ;
     // トリガー対象のカードの側。プレイヤーは、このスキルを持つカード側。両方は側を見ない。
     public PlayerType 発動側 = PlayerType.両方;
@@ -729,9 +729,9 @@ public class SearchCriteria
         {
             CardTypeList cardType = card.type;
             if (cardType == CardTypeList.None && card.model is BattlerModel battlerModel)
-                cardType = battlerModel.type;
+                cardType = battlerModel.タイプ;
             if (cardType == CardTypeList.None && card.model is TacticsModel tacticsModel)
-                cardType = tacticsModel.type;
+                cardType = tacticsModel.タイプ;
             if (!filter.カードのタイプ.Contains(cardType))
                 return false;
         }

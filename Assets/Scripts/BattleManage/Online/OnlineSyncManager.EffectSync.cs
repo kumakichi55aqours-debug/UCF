@@ -9,28 +9,6 @@ using UnityEngine;
 public partial class OnlineSyncManager
 {
     /// <summary>
-    /// ダメージエフェクトを同期（スキル効果用）
-    /// </summary>
-    public void SyncDamageEffect(string cardKindStr, int cardID, string zoneName, int zoneIndex, int damageAmount)
-    {
-        if (!IsOnlineMode)
-            return;
-
-        SendAnimatedRpc("ReceiveDamageEffect", cardKindStr, cardID, zoneName, zoneIndex, damageAmount);
-    }
-
-    /// <summary>
-    /// ダメージ値を同期（スキル効果用）
-    /// </summary>
-    public void SyncDamageValue(string cardKindStr, int cardID, string zoneName, int zoneIndex, int damageAmount)
-    {
-        if (!IsOnlineMode)
-            return;
-
-        SendRPC("ReceiveDamageValue", cardKindStr, cardID, zoneName, zoneIndex, damageAmount);
-    }
-
-    /// <summary>
     /// 複数対象のダメージを、動かす前の住所でまとめて同期する
     /// </summary>
     public void SyncAreaDamage(string[] cardKinds, int[] cardIds, string[] zoneNames, int[] indices, int[] amounts)
@@ -101,49 +79,15 @@ public partial class OnlineSyncManager
     }
 
     [PunRPC]
-    private void ReceiveDamageValue(string cardKindStr, int cardID, string zoneName, int zoneIndex, int damageAmount)
-    {
-        try
-        {
-            CardController targetCard = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
-            if (targetCard == null)
-                return;
-
-            targetCard.curHp -= damageAmount;
-            targetCard.UpdateDisplay();
-            PersistentEffectManager.Instance?.RecalculateImmediately();
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] ダメージ値受信でエラー: {ex.Message}");
-        }
-    }
-
-    [PunRPC]
-    private void ReceiveDamageEffect(string cardKindStr, int cardID, string zoneName, int zoneIndex, int damageAmount)
-    {
-        ReceiveAnimatedCardAction(
-            cardKindStr,
-            cardID,
-            zoneName,
-            zoneIndex,
-            "ダメージエフェクト受信でエラー",
-            targetCard =>
-            {
-                _ = ShowDamageEffectOnOpponent(targetCard, damageAmount);
-            });
-    }
-
-    [PunRPC]
     private void ReceiveDirectHpDamage(int damageToSender, int damageToReceiver)
     {
-        _ = ApplyDirectHpDamage(damageToSender, damageToReceiver);
+        _ = ApplyDirectHpDelta(damageToSender, damageToReceiver, heal: false);
     }
 
     [PunRPC]
     private void ReceiveDirectHpHeal(int healToSender, int healToReceiver)
     {
-        _ = ApplyDirectHpHeal(healToSender, healToReceiver);
+        _ = ApplyDirectHpDelta(healToSender, healToReceiver, heal: true);
     }
 
     [PunRPC]
@@ -171,23 +115,7 @@ public partial class OnlineSyncManager
             var cards = new List<CardController>();
             var hpValues = new List<int>();
             var amounts = new List<int>();
-            int count = CardAddress.Count(cardKinds, cardIds, zoneNames, indices);
-            if (newHps != null)
-                count = Mathf.Min(count, newHps.Length);
-            if (shownAmounts != null)
-                count = Mathf.Min(count, shownAmounts.Length);
-
-            for (int i = 0; i < count; i++)
-            {
-                CardController card = CardAddress.ResolveAt(cardKinds, cardIds, zoneNames, indices, i);
-                if (card == null)
-                    continue;
-
-                cards.Add(card);
-                hpValues.Add(newHps[i]);
-                amounts.Add(shownAmounts[i]);
-            }
-
+            CollectResolvedCards(cardKinds, cardIds, zoneNames, indices, newHps, cards, hpValues, shownAmounts, amounts);
             _ = ApplyAreaHeal(cards, hpValues, amounts);
         }
         catch (System.Exception ex)
@@ -203,16 +131,8 @@ public partial class OnlineSyncManager
         if (BattleManager.Instance == null)
             return;
 
-        var cards = new List<CardController>();
-        int count = CardAddress.Count(cardKinds, cardIds, zoneNames, indices);
-        for (int i = 0; i < count; i++)
-        {
-            CardController card = CardAddress.ResolveAt(cardKinds, cardIds, zoneNames, indices, i);
-            if (card != null)
-                cards.Add(card);
-        }
-
-        BattleManager.Instance.ShowResolvedTargetHighlights(cards);
+        BattleManager.Instance.ShowResolvedTargetHighlights(
+            CardAddress.ResolveAll(cardKinds, cardIds, zoneNames, indices));
     }
 
     [PunRPC]
@@ -221,7 +141,11 @@ public partial class OnlineSyncManager
         BattleManager.Instance?.ClearResolvedTargetHighlights();
     }
 
-    private async Task ApplyDirectHpDamage(int damageToSender, int damageToReceiver)
+    /// <summary>
+    /// 送信者視点の自分/相手への直接HP変更を、受信者視点へ適用する。
+    /// heal が真なら回復、偽ならダメージ。回復時のみ表示後に待機する。
+    /// </summary>
+    private async Task ApplyDirectHpDelta(int amountToSender, int amountToReceiver, bool heal)
     {
         try
         {
@@ -229,59 +153,36 @@ public partial class OnlineSyncManager
             if (battle == null)
                 return;
 
-            if (damageToSender > 0)
+            Color color = heal ? Color.green : Color.yellow;
+            if (amountToSender > 0)
             {
-                battle.eResources?.Hp?.TakeDamage(damageToSender);
+                if (heal)
+                    battle.eResources?.Hp?.Heal(amountToSender);
+                else
+                    battle.eResources?.Hp?.TakeDamage(amountToSender);
+
                 if (battle.eFieldZone != null)
-                    await battle.ShowEffect(battle.eFieldZone.position, damageToSender, Color.yellow);
-                await Task.Delay(800);
+                    await battle.ShowEffect(battle.eFieldZone.position, amountToSender, color);
+                if (heal)
+                    await Task.Delay(800);
             }
 
-            if (damageToReceiver > 0)
+            if (amountToReceiver > 0)
             {
-                battle.pResources?.Hp?.TakeDamage(damageToReceiver);
+                if (heal)
+                    battle.pResources?.Hp?.Heal(amountToReceiver);
+                else
+                    battle.pResources?.Hp?.TakeDamage(amountToReceiver);
+
                 if (battle.pFieldZone != null)
-                    await battle.ShowEffect(battle.pFieldZone.position, damageToReceiver, Color.yellow);
-                await Task.Delay(800);
+                    await battle.ShowEffect(battle.pFieldZone.position, amountToReceiver, color);
+                if (heal)
+                    await Task.Delay(800);
             }
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[OnlineSyncManager] ApplyDirectHpDamageでエラー: {ex.Message}");
-        }
-        finally
-        {
-            SendOpponentAnimationComplete();
-        }
-    }
-
-    private async Task ApplyDirectHpHeal(int healToSender, int healToReceiver)
-    {
-        try
-        {
-            var battle = BattleManager.Instance;
-            if (battle == null)
-                return;
-
-            if (healToSender > 0)
-            {
-                battle.eResources?.Hp?.Heal(healToSender);
-                if (battle.eFieldZone != null)
-                    await battle.ShowEffect(battle.eFieldZone.position, healToSender, Color.green);
-                await Task.Delay(800);
-            }
-
-            if (healToReceiver > 0)
-            {
-                battle.pResources?.Hp?.Heal(healToReceiver);
-                if (battle.pFieldZone != null)
-                    await battle.ShowEffect(battle.pFieldZone.position, healToReceiver, Color.green);
-                await Task.Delay(800);
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] ApplyDirectHpHealでエラー: {ex.Message}");
+            Debug.LogError($"[OnlineSyncManager] ApplyDirectHpDeltaでエラー: {ex.Message}");
         }
         finally
         {
@@ -436,29 +337,32 @@ public partial class OnlineSyncManager
         string errorLabel,
         System.Action<CardController> onFound)
     {
-        try
-        {
-            CardController targetCard = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
-            if (targetCard == null)
-            {
-                SendOpponentAnimationComplete();
-                return;
-            }
-
-            onFound(targetCard);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] {errorLabel}: {ex.Message}");
-            SendOpponentAnimationComplete();
-        }
+        WithResolvedCard(
+            cardKindStr, cardID, zoneName, zoneIndex,
+            errorLabel,
+            onFound,
+            onMissing: SendOpponentAnimationComplete);
     }
 
-    private void CollectResolvedCards(string[] cardKinds, int[] cardIds, string[] zoneNames, int[] indices, int[] amounts, List<CardController> cards, List<int> values)
+    /// <summary>
+    /// 住所と並列の数値配列から、解決できたカードと対応する値だけを集める。
+    /// </summary>
+    private void CollectResolvedCards(
+        string[] cardKinds,
+        int[] cardIds,
+        string[] zoneNames,
+        int[] indices,
+        int[] amounts,
+        List<CardController> cards,
+        List<int> values,
+        int[] secondaryAmounts = null,
+        List<int> secondaryValues = null)
     {
         int count = CardAddress.Count(cardKinds, cardIds, zoneNames, indices);
         if (amounts != null)
             count = Mathf.Min(count, amounts.Length);
+        if (secondaryAmounts != null)
+            count = Mathf.Min(count, secondaryAmounts.Length);
 
         for (int i = 0; i < count; i++)
         {
@@ -467,7 +371,10 @@ public partial class OnlineSyncManager
                 continue;
 
             cards.Add(card);
-            values?.Add(amounts[i]);
+            if (amounts != null)
+                values?.Add(amounts[i]);
+            if (secondaryAmounts != null)
+                secondaryValues?.Add(secondaryAmounts[i]);
         }
     }
 }

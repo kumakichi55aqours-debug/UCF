@@ -25,17 +25,8 @@ public partial class OnlineSyncManager
 
         var category = (CleanseCategory)categories;
         var filter = ToStatusFilter(statusTypes);
-        int count = CardAddress.Count(cardKinds, cardIds, zoneNames, indices);
-        for (int i = 0; i < count; i++)
-        {
-            var card = CardAddress.ResolveAt(cardKinds, cardIds, zoneNames, indices, i);
-            if (card == null)
-            {
-                continue;
-            }
-
+        foreach (var card in CardAddress.ResolveAll(cardKinds, cardIds, zoneNames, indices))
             card.ApplyCleanse(category, filter);
-        }
 
         if (CardController.CleanseNeedsRecalc(category))
             PersistentEffectManager.Instance?.QueueRecalculation();

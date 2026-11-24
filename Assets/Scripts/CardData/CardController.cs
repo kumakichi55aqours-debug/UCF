@@ -265,7 +265,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
                 battler.Init(cardID);
                 model = battler;
                 トークン = battler.トークン;
-                type = battler.type;
+                type = battler.タイプ;
                 cardName = battler.カード名;
                 rarity = battler.レア度;
                 curHp = battler.maxHp;
@@ -292,7 +292,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
                 var tactics = ScriptableObject.CreateInstance<TacticsModel>();
                 tactics.Init(cardID);
                 model = tactics;
-                type = tactics.type;
+                type = tactics.タイプ;
                 cardName = tactics.カード名;
                 rarity = tactics.レア度;
                 cost = tactics.コスト;
@@ -344,6 +344,7 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
         {
             battleCardview.Show(model);
             battleCardview.UpdateCanUseMovePanel();
+            battleCardview.UpdateCanUseSkillPanel();
         }
         else if (SceneManager.GetActiveScene().name == "DeckEditScene")
             deckCardView.Show(model);
@@ -360,6 +361,34 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
     public void SetTargetChosen(bool chosen)
     {
         battleCardview?.SetTargetChosen(chosen);
+    }
+
+    public void SetCanUseSkillHighlightVisible(bool isVisible)
+    {
+        battleCardview?.SetCanUseSkillPanelVisible(isVisible);
+    }
+
+    /// <summary>
+    /// 指定タイミング・場所で使えるスキルがあるか。墓地・異次元以外は行動不能と鈍化も見る。
+    /// </summary>
+    public bool HasCanUseSkill(ActiveTiming timing, ActiveLocation location)
+    {
+        if (skills == null) return false;
+        if (NegateZoneEffectSkill.Blocks(this)) return false;
+        if (location != ActiveLocation.墓地 && location != ActiveLocation.異次元)
+        {
+            if (IsActionBlocked) return false;
+            if (timing == ActiveTiming.起動効果 && IsSlowed) return false;
+        }
+
+        var ctx = new SkillContext(this, this, transform);
+        for (int i = 0; i < skills.Count; i++)
+        {
+            var skill = skills[i];
+            if (skill != null && skill.CanUseAt(timing, location, ctx))
+                return true;
+        }
+        return false;
     }
 
     public void BindGraveSkillChoice(CardController source)
@@ -854,7 +883,6 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
 
     /// <summary>
     /// 召喚元を、ローカルプレイヤー基準のゾーンにする。
-    /// SummonSource の墓地とデッキは名前と逆で、墓地指定はデッキ、デッキ指定は墓地を指す。
     /// 場はゾーンが複数あるので、呼び出し側が移動前の親から取る。
     /// </summary>
     public static CardZoneType ZoneFromSummonSource(SummonSource source, bool isPlayerSide)
@@ -864,9 +892,9 @@ public class CardController : MonoBehaviour, IPointerClickHandler, IPointerEnter
             case SummonSource.手札:
                 return isPlayerSide ? CardZoneType.プレイヤー手札 : CardZoneType.相手手札;
             case SummonSource.墓地:
-                return isPlayerSide ? CardZoneType.プレイヤーデッキ : CardZoneType.相手デッキ;
-            case SummonSource.デッキ:
                 return isPlayerSide ? CardZoneType.プレイヤー墓地 : CardZoneType.相手墓地;
+            case SummonSource.デッキ:
+                return isPlayerSide ? CardZoneType.プレイヤーデッキ : CardZoneType.相手デッキ;
             default:
                 return CardZoneType.None;
         }

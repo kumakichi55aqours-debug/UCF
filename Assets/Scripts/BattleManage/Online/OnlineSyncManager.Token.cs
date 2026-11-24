@@ -24,16 +24,8 @@ public partial class OnlineSyncManager
 
     async Task PlayReceivedTokenSummon(int cardId, string targetZoneName)
     {
-        BattleManager battle = BattleManager.Instance;
-        if (battle == null)
+        if (!TryResolveSummonZone(targetZoneName, "トークン", out BattleManager battle, out Transform zone))
             return;
-
-        Transform zone = battle.GetZoneByName(targetZoneName);
-        if (zone == null)
-        {
-            Debug.LogError($"トークンの召喚先が見つかりません: {targetZoneName}");
-            return;
-        }
 
         Transform parent = battle.mainCanvas != null ? battle.mainCanvas.transform : zone;
         CardController card = battle.CreateCard(CardKind.バトラー, cardId, parent);
@@ -44,7 +36,7 @@ public partial class OnlineSyncManager
             return;
         }
 
-        await battle.SummonRoutine(card, zone, true, SummonSource.生成, openUseChain: true, specialSummon: true);
+        await battle.SummonRoutine(card, zone, true, SummonSource.生成, openAppearanceChain: true, specialSummon: true);
     }
 
     /// <summary>
@@ -68,18 +60,25 @@ public partial class OnlineSyncManager
 
     async Task PlayReceivedCloneTokenSummon(int cardId, string targetZoneName, bool setHp, int hp)
     {
-        BattleManager battle = BattleManager.Instance;
-        if (battle == null)
+        if (!TryResolveSummonZone(targetZoneName, "分身トークン", out BattleManager battle, out Transform zone))
             return;
-
-        Transform zone = battle.GetZoneByName(targetZoneName);
-        if (zone == null)
-        {
-            Debug.LogError($"分身トークンの召喚先が見つかりません: {targetZoneName}");
-            return;
-        }
 
         await CloneTokenSkill.Summon(battle, cardId, zone, setHp, hp);
+    }
+
+    bool TryResolveSummonZone(string targetZoneName, string label, out BattleManager battle, out Transform zone)
+    {
+        battle = BattleManager.Instance;
+        zone = null;
+        if (battle == null)
+            return false;
+
+        zone = battle.GetZoneByName(targetZoneName);
+        if (zone != null)
+            return true;
+
+        Debug.LogError($"{label}の召喚先が見つかりません: {targetZoneName}");
+        return false;
     }
 
     /// <summary>

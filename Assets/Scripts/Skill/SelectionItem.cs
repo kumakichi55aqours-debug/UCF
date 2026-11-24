@@ -68,7 +68,7 @@ public class SelectionItem
                 return false;
             type = existingCard.type;
             if (type == CardTypeList.None && existingCard.model is BattlerModel battler)
-                type = battler.type;
+                type = battler.タイプ;
         }
         else if (deckData != null)
         {

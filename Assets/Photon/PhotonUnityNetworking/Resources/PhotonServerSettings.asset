@@ -239,6 +239,12 @@ MonoBehaviour:
   - ReceiveOpponentCostChange
   - ReceiveSentToGrave
   - ReceiveOpponentTopDeckToGrave
+  - AcknowledgePhasePreview
+  - ReceiveOpponentPhaseChain
+  - ReceiveOpponentPhaseChainDone
+  - ReceivePhasePreview
+  - ReceiveAddToHandEmphasisComplete
+  - ReceiveAddToHandMoveComplete
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

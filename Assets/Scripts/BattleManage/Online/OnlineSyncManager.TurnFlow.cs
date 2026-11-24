@@ -9,6 +9,10 @@ public partial class OnlineSyncManager
     bool ownTurnRunning;
     // 相手がエンドフェイズの盤面処理を終えた通知
     SyncState peerEndPhaseApplied = new SyncState();
+    // 相手がフェイズ表示を切り替えた通知。スキル確認より前に揃える
+    SyncState peerPhasePreview = new SyncState();
+    // 相手がフェイズ窓を開き終えた通知。こちらに候補が無いときに、相手へ確認を頼む
+    SyncState opponentPhaseSkillsDone = new SyncState();
     // 相手から届いたフェイズ処理を、届いた順に1つずつ実行する
     Task opponentPhaseChain = Task.CompletedTask;
 
@@ -91,6 +95,49 @@ public partial class OnlineSyncManager
     void SyncPhaseToOpponent(TurnPhase phase)
     {
         SendRPC("ReceiveOpponentPhase", (int)phase);
+    }
+
+    /// <summary>
+    /// フェイズスキルを確認する前に、相手のフェイズ表示だけ切り替える。
+    /// 盤面処理は、これまでのフェイズ通知で行う。
+    /// </summary>
+    public async Task PreviewPhaseToOpponent(TurnPhase phase)
+    {
+        if (!IsOnlineMode)
+            return;
+
+        peerPhasePreview.Reset();
+        SendRPC("ReceivePhasePreview", (int)phase);
+        await peerPhasePreview.WaitForCompletion();
+    }
+
+    [PunRPC]
+    private void ReceivePhasePreview(int phaseInt)
+    {
+        EnqueueOpponentPhase(() => ApplyPhasePreview((TurnPhase)phaseInt));
+    }
+
+    async Task ApplyPhasePreview(TurnPhase phase)
+    {
+        try
+        {
+            if (PhaseManager.Instance != null)
+                await PhaseManager.Instance.ApplyPhaseAsync(phase, previewToOpponent: false);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[OnlineSyncManager] フェイズ表示の同期でエラー: {ex.Message}");
+        }
+        finally
+        {
+            SendRPC("AcknowledgePhasePreview");
+        }
+    }
+
+    [PunRPC]
+    private void AcknowledgePhasePreview()
+    {
+        peerPhasePreview.SetComplete();
     }
 
     [PunRPC]
@@ -236,6 +283,8 @@ public partial class OnlineSyncManager
     {
         clientDrawsCompleted.Reset();
         peerEndPhaseApplied.Reset();
+        peerPhasePreview.Reset();
+        opponentPhaseSkillsDone.Reset();
         deckSyncCompleted.Reset();
     }
 

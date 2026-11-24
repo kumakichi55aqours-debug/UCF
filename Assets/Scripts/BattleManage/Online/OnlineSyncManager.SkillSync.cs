@@ -11,10 +11,7 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncTacticsSkillCompleted(CardController card)
     {
-        if (!CardAddress.TryFrom(card, out CardAddress address))
-            return;
-
-        SyncTacticsSkillCompleted(address);
+        TrySendCardRpc("ReceiveTacticsSkillCompleted", card);
     }
 
     public void SyncTacticsSkillCompleted(CardAddress address)
@@ -22,7 +19,7 @@ public partial class OnlineSyncManager
         if (!address.IsValid)
             return;
 
-        SendRPC("ReceiveTacticsSkillCompleted", address.Kind.ToString(), address.Id, address.ZoneName, address.Index);
+        SendCardRpc("ReceiveTacticsSkillCompleted", address);
     }
 
     /// <summary>
@@ -44,7 +41,8 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 相手に、自分のフェイズ開始時・終了時のチェーン窓へ空の候補で参加するよう頼む
+    /// 相手に、フェイズ開始時・終了時のチェーン窓へ参加するよう頼む。
+    /// 自分のフェイズの窓なら、相手は相手のフェイズのスキルを候補に載せる。
     /// </summary>
     public void SyncJoinPhaseChain(SkillTrigger trigger, TurnPhase phase)
     {
@@ -52,13 +50,77 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 受信: 相手のフェイズタイミングのチェーンに、自分のスキルは足さず参加する
+    /// 受信: 相手が開いたフェイズの窓に参加する
     /// </summary>
     [PunRPC]
     private void ReceiveJoinPhaseChain(int triggerInt, int phaseInt)
     {
         if (!IsOnlineMode) return;
         SkillChainManager.Instance?.JoinPhaseWindow((SkillTrigger)triggerInt, (TurnPhase)phaseInt);
+    }
+
+    /// <summary>
+    /// こちらに自分のフェイズの候補が無いとき、相手のフェイズの候補があれば相手に窓を開いてもらう。
+    /// </summary>
+    public async Task RequestOpponentPhaseChain(SkillTrigger trigger, TurnPhase phase)
+    {
+        if (!IsOnlineMode || !SkillManager.IsOwnPhaseTrigger(trigger))
+            return;
+
+        opponentPhaseSkillsDone.Reset();
+        SendRPC("ReceiveOpponentPhaseChain", (int)trigger, (int)phase);
+        await opponentPhaseSkillsDone.WaitForCompletion();
+    }
+
+    /// <summary>
+    /// 受信: 相手のフェイズに、自分の「相手のフェイズ」スキルがあれば窓を開く
+    /// </summary>
+    [PunRPC]
+    private void ReceiveOpponentPhaseChain(int triggerInt, int phaseInt)
+    {
+        if (!IsOnlineMode)
+            return;
+
+        RespondToOpponentPhaseChain((SkillTrigger)triggerInt, (TurnPhase)phaseInt)
+            .Forget("相手のフェイズスキルの確認");
+    }
+
+    async Task RespondToOpponentPhaseChain(SkillTrigger trigger, TurnPhase phase)
+    {
+        try
+        {
+            if (!SkillManager.IsOwnPhaseTrigger(trigger) || SkillChainManager.Instance == null)
+                return;
+
+            var context = new SkillContext(null, null, null);
+            var collected = SkillManager.CollectSkillsForTrigger(
+                SkillManager.ToOpponentPhaseTrigger(trigger),
+                null,
+                null,
+                context,
+                phase: phase);
+            if (!SkillManager.HasCollectedSkills(collected))
+                return;
+
+            collected.InvitePhasePartner = true;
+            context.ProcessingCompleteTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await SkillChainManager.Instance.ProcessChainForCollectedSkills(collected);
+            await SkillChainManager.Instance.WaitUntilIdle();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[OnlineSyncManager] 相手のフェイズスキルの確認でエラー: {ex.Message}");
+        }
+        finally
+        {
+            SendRPC("ReceiveOpponentPhaseChainDone");
+        }
+    }
+
+    [PunRPC]
+    private void ReceiveOpponentPhaseChainDone()
+    {
+        opponentPhaseSkillsDone.SetComplete();
     }
 
     /// <summary>
@@ -70,19 +132,12 @@ public partial class OnlineSyncManager
             return;
 
         skillActivationAck.Reset();
-        if (!CardAddress.TryFrom(card, out CardAddress address))
+        if (!TrySendCardRpc("ReceiveRequestOpponentSkillActivation", card, triggerStr))
         {
-            Debug.LogWarning("[OnlineSyncManager] スキル発動アニメーションの送信先が決まらないため、完了通知を待ちます。");
-            return;
+            // 住所が取れないと相手へ要求を送れない。完了扱いにしないと WaitForSkillActivationAck で操作不能になる。
+            Debug.LogWarning("[OnlineSyncManager] スキル発動アニメーションの送信先が決まらないため、完了扱いにします。");
+            skillActivationAck.SetComplete();
         }
-
-        SendRPC(
-            "ReceiveRequestOpponentSkillActivation",
-            address.Kind.ToString(),
-            address.Id,
-            address.ZoneName,
-            address.Index,
-            triggerStr);
     }
 
     /// <summary>
@@ -164,22 +219,16 @@ public partial class OnlineSyncManager
         if (!IsOnlineMode || cards == null)
             return;
 
-        var kinds = new List<string>();
-        var ids = new List<int>();
-        var zones = new List<string>();
-        var indices = new List<int>();
-        foreach (var card in cards)
-            CardAddress.TryAdd(card, kinds, ids, zones, indices);
-
-        if (kinds.Count == 0)
+        var packed = CardAddress.Pack(cards);
+        if (packed.IsEmpty)
             return;
 
         SendAnimatedRpc(
             "ReceiveSelectedTargetEmphasis",
-            kinds.ToArray(),
-            ids.ToArray(),
-            zones.ToArray(),
-            indices.ToArray());
+            packed.Kinds,
+            packed.Ids,
+            packed.Zones,
+            packed.Indices);
     }
 
     [PunRPC]
@@ -192,15 +241,7 @@ public partial class OnlineSyncManager
     {
         try
         {
-            var cards = new List<CardController>();
-            int count = CardAddress.Count(kinds, ids, zones, indices);
-            for (int i = 0; i < count; i++)
-            {
-                CardController card = CardAddress.ResolveAt(kinds, ids, zones, indices, i);
-                if (card != null && !cards.Contains(card))
-                    cards.Add(card);
-            }
-
+            var cards = CardAddress.ResolveAll(kinds, ids, zones, indices);
             if (cards.Count > 0 && CardAnimationManager.Instance != null)
                 await CardAnimationManager.Instance.EmphasizeSelectedCards(cards);
         }
@@ -218,10 +259,7 @@ public partial class OnlineSyncManager
     {
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (opponentAnimationAckLock)
-        {
             opponentAnimationAcks.Enqueue(tcs);
-            lastOpponentAnimationAck = tcs;
-        }
     }
 
     public void SendOpponentAnimationComplete()
@@ -236,9 +274,7 @@ public partial class OnlineSyncManager
         lock (opponentAnimationAckLock)
         {
             if (opponentAnimationAcks.Count > 0)
-            {
                 tcs = opponentAnimationAcks.Dequeue();
-            }
         }
 
         tcs?.TrySetResult(true);
@@ -248,16 +284,17 @@ public partial class OnlineSyncManager
     {
         if (!IsOnlineMode) return;
 
+        // 完了通知は登録順（先頭）から消化する。最新だけを待つと、残件があるときに食い違う。
         TaskCompletionSource<bool> tcs;
         lock (opponentAnimationAckLock)
         {
-            tcs = lastOpponentAnimationAck;
+            tcs = opponentAnimationAcks.Count > 0
+                ? opponentAnimationAcks.Peek()
+                : null;
         }
 
         if (tcs == null || tcs.Task.IsCompleted)
-        {
             return;
-        }
 
         await tcs.Task;
     }
@@ -266,15 +303,36 @@ public partial class OnlineSyncManager
     {
         if (!IsOnlineMode) return;
 
-        List<Task> pending;
+        List<TaskCompletionSource<bool>> generalWaits;
+        List<TaskCompletionSource<bool>> handWaits;
         lock (opponentAnimationAckLock)
         {
-            pending = opponentAnimationAcks.Select(ack => (Task)ack.Task).ToList();
+            generalWaits = opponentAnimationAcks.ToList();
         }
 
+        lock (addToHandAckLock)
+        {
+            handWaits = addToHandMoveAcks.Values
+                .Concat(addToHandEmphasisAcks.Values)
+                .ToList();
+        }
+
+        var pending = generalWaits.Concat(handWaits).Select(ack => (Task)ack.Task).ToList();
         if (pending.Count == 0) return;
 
-        await Task.WhenAll(pending);
+        Task all = Task.WhenAll(pending);
+        Task finished = await Task.WhenAny(all, Task.Delay(AddToHandAckTimeoutMs));
+        if (finished != all)
+        {
+            Debug.LogWarning($"[OnlineSyncManager] 相手アニメ完了待ちがタイムアウトしました: general={generalWaits.Count}, hand={handWaits.Count}");
+            foreach (var tcs in generalWaits)
+                tcs.TrySetResult(true);
+            foreach (var tcs in handWaits)
+                tcs.TrySetResult(true);
+            return;
+        }
+
+        await all;
     }
 
     /// <summary>
@@ -318,15 +376,7 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncRegisterOpponentMoveCancellation(CardController attacker)
     {
-        if (!CardAddress.TryFrom(attacker, out CardAddress address))
-            return;
-
-        SendRPC(
-            "ReceiveRegisterOpponentMoveCancellation",
-            address.Kind.ToString(),
-            address.Id,
-            address.ZoneName,
-            address.Index);
+        TrySendCardRpc("ReceiveRegisterOpponentMoveCancellation", attacker);
     }
 
     /// <summary>
@@ -334,61 +384,31 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncRegisterMoveDamageNullification(CardController attacker, int nullificationType, int subtract)
     {
-        if (!CardAddress.TryFrom(attacker, out CardAddress address))
-            return;
-
-        SendRPC(
-            "ReceiveRegisterMoveDamageNullification",
-            address.Kind.ToString(),
-            address.Id,
-            address.ZoneName,
-            address.Index,
-            nullificationType,
-            subtract);
+        TrySendCardRpc("ReceiveRegisterMoveDamageNullification", attacker, nullificationType, subtract);
     }
 
     /// <summary>
     /// 相手プレイヤーにYes/No選択を要求し、回答が届くまで待つ
     /// </summary>
-    public async Task<bool> RequestOpponentYesNoDecision(CardController sourceCard, string message)
+    public Task<bool> RequestOpponentYesNoDecision(CardController sourceCard, string message)
     {
-        if (!IsOnlineMode || sourceCard == null)
-        {
-            Debug.LogWarning("[OnlineSyncManager] 相手選択を開始できないため、回答を待ち続けます。");
-            return await new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
-        }
-
-        while (opponentDecisionTcs != null)
-        {
-            var pending = opponentDecisionTcs;
-            if (!pending.Task.IsCompleted)
-                await pending.Task;
-            else
-                await Task.Yield();
-        }
-
-        opponentDecisionTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        currentOpponentDecisionRequestId = ++opponentDecisionRequestIdCounter;
-
-        string safeMessage = message ?? string.Empty;
-        string cardKindStr = sourceCard.cardKind.ToString();
-        int cardId = sourceCard.cardID;
-        string sourceCardName = sourceCard.cardName ?? string.Empty;
-
-        SendRPC("ReceiveOpponentDecisionRequest", currentOpponentDecisionRequestId, cardKindStr, cardId, sourceCardName, safeMessage);
-
-        bool result = await opponentDecisionTcs.Task;
-
-        opponentDecisionTcs = null;
-        currentOpponentDecisionRequestId = -1;
-
-        return result;
+        return RequestFromOpponent(
+            opponentYesNo,
+            sourceCard,
+            id => SendRPC(
+                "ReceiveOpponentDecisionRequest",
+                id,
+                sourceCard.cardKind.ToString(),
+                sourceCard.cardID,
+                sourceCard.cardName ?? string.Empty,
+                message ?? string.Empty),
+            unavailable: false,
+            label: "相手選択");
     }
 
     public Task SendOpponentDecisionResponse(int requestId, bool accepted)
     {
         SendRPC("ReceiveOpponentDecisionResponse", requestId, accepted);
-        pendingOpponentDecisionRequestId = -1;
         return Task.CompletedTask;
     }
 
@@ -401,16 +421,10 @@ public partial class OnlineSyncManager
         if (!IsOnlineMode)
             return;
 
-        try
-        {
-            CardController targetCard = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
-            if (targetCard != null)
-                _ = ExecuteTacticsToGraveyard(targetCard);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] ReceiveTacticsSkillCompletedでエラー: {ex.Message}");
-        }
+        WithResolvedCard(
+            cardKindStr, cardID, zoneName, zoneIndex,
+            "ReceiveTacticsSkillCompletedでエラー",
+            card => _ = ExecuteTacticsToGraveyard(card));
     }
 
     /// <summary>
@@ -436,16 +450,10 @@ public partial class OnlineSyncManager
     {
         if (!IsOnlineMode) return;
 
-        try
-        {
-            CardController attacker = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
-            if (attacker != null)
-                BattleManager.Instance.RegisterOpponentMoveCancellation(attacker, false);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] ReceiveRegisterOpponentMoveCancellationでエラー: {ex.Message}");
-        }
+        WithResolvedCard(
+            cardKindStr, cardID, zoneName, zoneIndex,
+            "ReceiveRegisterOpponentMoveCancellationでエラー",
+            attacker => BattleManager.Instance.RegisterOpponentMoveCancellation(attacker, false));
     }
 
     [PunRPC]
@@ -453,19 +461,14 @@ public partial class OnlineSyncManager
     {
         if (!IsOnlineMode) return;
 
-        try
-        {
-            CardController attacker = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
-            if (attacker == null)
-                return;
-
-            var type = (DamageNullificationType)nullificationType;
-            BattleManager.Instance.RegisterMoveDamageNullification(attacker, type, subtract, false);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] ReceiveRegisterMoveDamageNullificationでエラー: {ex.Message}");
-        }
+        WithResolvedCard(
+            cardKindStr, cardID, zoneName, zoneIndex,
+            "ReceiveRegisterMoveDamageNullificationでエラー",
+            attacker =>
+            {
+                var type = (DamageNullificationType)nullificationType;
+                BattleManager.Instance.RegisterMoveDamageNullification(attacker, type, subtract, false);
+            });
     }
 
     [PunRPC]
@@ -475,7 +478,6 @@ public partial class OnlineSyncManager
 
         try
         {
-            pendingOpponentDecisionRequestId = requestId;
             BeginOperationBlock();
 
             string displayMessage = BuildOpponentDecisionMessage(message, sourceCardName, cardKindStr, cardId);
@@ -508,56 +510,33 @@ public partial class OnlineSyncManager
     private void ReceiveOpponentDecisionResponse(int requestId, bool accepted)
     {
         if (!IsOnlineMode) return;
-
-        if (opponentDecisionTcs != null && requestId == currentOpponentDecisionRequestId)
-        {
-            opponentDecisionTcs.TrySetResult(accepted);
-        }
+        opponentYesNo.TryComplete(requestId, accepted);
     }
 
     /// <summary>
     /// 相手プレイヤーに文章ボタンの選択を要求し、選ばれた番号が届くまで待つ。
     /// </summary>
-    public async Task<int> RequestOpponentSelectDecision(CardController sourceCard, string title, string[] options, bool[] selectable)
+    public Task<int> RequestOpponentSelectDecision(CardController sourceCard, string title, string[] options, bool[] selectable)
     {
-        if (!IsOnlineMode || sourceCard == null)
-        {
-            Debug.LogWarning("[OnlineSyncManager] 相手選択(セレクト)を開始できないため、回答を待ち続けます。");
-            return await new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
-        }
-
-        while (opponentSelectTcs != null)
-        {
-            var pending = opponentSelectTcs;
-            if (!pending.Task.IsCompleted)
-                await pending.Task;
-            else
-                await Task.Yield();
-        }
-
-        opponentSelectTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        currentOpponentSelectRequestId = ++opponentSelectRequestIdCounter;
-
-        SendRPC(
-            "ReceiveOpponentSelectRequest",
-            currentOpponentSelectRequestId,
-            sourceCard.cardKind.ToString(),
-            sourceCard.cardID,
-            sourceCard.cardName ?? string.Empty,
-            title ?? string.Empty,
-            options ?? new string[0],
-            selectable ?? new bool[0]);
-
-        int result = await opponentSelectTcs.Task;
-        opponentSelectTcs = null;
-        currentOpponentSelectRequestId = -1;
-        return result;
+        return RequestFromOpponent(
+            opponentSelect,
+            sourceCard,
+            id => SendRPC(
+                "ReceiveOpponentSelectRequest",
+                id,
+                sourceCard.cardKind.ToString(),
+                sourceCard.cardID,
+                sourceCard.cardName ?? string.Empty,
+                title ?? string.Empty,
+                options ?? new string[0],
+                selectable ?? new bool[0]),
+            unavailable: -1,
+            label: "相手選択(セレクト)");
     }
 
     public Task SendOpponentSelectResponse(int requestId, int selectedIndex)
     {
         SendRPC("ReceiveOpponentSelectResponse", requestId, selectedIndex);
-        pendingOpponentSelectRequestId = -1;
         return Task.CompletedTask;
     }
 
@@ -568,7 +547,6 @@ public partial class OnlineSyncManager
 
         try
         {
-            pendingOpponentSelectRequestId = requestId;
             BeginOperationBlock();
 
             var labels = options ?? new string[0];
@@ -618,49 +596,27 @@ public partial class OnlineSyncManager
     private void ReceiveOpponentSelectResponse(int requestId, int selectedIndex)
     {
         if (!IsOnlineMode) return;
-
-        if (opponentSelectTcs != null && requestId == currentOpponentSelectRequestId)
-        {
-            opponentSelectTcs.TrySetResult(selectedIndex);
-        }
+        opponentSelect.TryComplete(requestId, selectedIndex);
     }
 
     /// <summary>
     /// 相手に候補カードから枚数だけ選ばせ、選ばれた番号が届くまで待つ。
     /// </summary>
-    public async Task<int[]> RequestOpponentCardPick(CardController sourceCard, int[] kinds, int[] ids, int pickCount, bool upTo = false)
+    public Task<int[]> RequestOpponentCardPick(CardController sourceCard, int[] kinds, int[] ids, int pickCount, bool upTo = false)
     {
-        if (!IsOnlineMode || sourceCard == null)
-        {
-            Debug.LogWarning("[OnlineSyncManager] 相手のカード選択を開始できないため、選択結果を待ち続けます。");
-            return await new TaskCompletionSource<int[]>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
-        }
-
-        while (opponentCardPickTcs != null)
-        {
-            var pending = opponentCardPickTcs;
-            if (!pending.Task.IsCompleted)
-                await pending.Task;
-            else
-                await Task.Yield();
-        }
-
-        opponentCardPickTcs = new TaskCompletionSource<int[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-        currentOpponentCardPickRequestId = ++opponentCardPickRequestIdCounter;
-
-        SendRPC(
-            "ReceiveOpponentCardPickRequest",
-            currentOpponentCardPickRequestId,
-            pickCount,
-            kinds ?? new int[0],
-            ids ?? new int[0],
-            sourceCard.cardName ?? string.Empty,
-            upTo);
-
-        int[] result = await opponentCardPickTcs.Task;
-        opponentCardPickTcs = null;
-        currentOpponentCardPickRequestId = -1;
-        return result;
+        return RequestFromOpponent(
+            opponentCardPick,
+            sourceCard,
+            id => SendRPC(
+                "ReceiveOpponentCardPickRequest",
+                id,
+                pickCount,
+                kinds ?? new int[0],
+                ids ?? new int[0],
+                sourceCard.cardName ?? string.Empty,
+                upTo),
+            unavailable: new int[0],
+            label: "相手のカード選択");
     }
 
     [PunRPC]
@@ -676,11 +632,11 @@ public partial class OnlineSyncManager
         int[] indices = new int[0];
         try
         {
-            indices = await BuildOpponentCardPick(pickCount, kinds, ids, sourceCardName, upTo);
+            indices = await BuildOpponentCardPick(pickCount, kinds, ids, upTo);
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[OnlineSyncManager] ReceiveOpponentCardPickRequestでエラー: {ex.Message}");
+            Debug.LogError($"[OnlineSyncManager] ReceiveOpponentCardPickRequestでエラー: {ex.Message} source={sourceCardName}");
             indices = RandomIndices(Mathf.Min(kinds != null ? kinds.Length : 0, ids != null ? ids.Length : 0), pickCount);
         }
         finally
@@ -691,7 +647,7 @@ public partial class OnlineSyncManager
         }
     }
 
-    async Task<int[]> BuildOpponentCardPick(int pickCount, int[] kinds, int[] ids, string sourceCardName, bool upTo)
+    async Task<int[]> BuildOpponentCardPick(int pickCount, int[] kinds, int[] ids, bool upTo)
     {
         int length = Mathf.Min(kinds != null ? kinds.Length : 0, ids != null ? ids.Length : 0);
         int take = Mathf.Clamp(pickCount, 0, length);
@@ -712,8 +668,6 @@ public partial class OnlineSyncManager
                 deckData = new DeckCard((CardKind)kinds[i], ids[i])
             });
         }
-
-        if (!string.IsNullOrEmpty(sourceCardName))
 
         if (length <= take && !(upTo && length > 1))
         {
@@ -755,11 +709,7 @@ public partial class OnlineSyncManager
     private void ReceiveOpponentCardPickResponse(int requestId, int[] indices)
     {
         if (!IsOnlineMode) return;
-
-        if (opponentCardPickTcs != null && requestId == currentOpponentCardPickRequestId)
-        {
-            opponentCardPickTcs.TrySetResult(indices ?? new int[0]);
-        }
+        opponentCardPick.TryComplete(requestId, indices ?? new int[0]);
     }
 
     private string BuildOpponentDecisionMessage(string message, string sourceCardName, string cardKindStr, int cardId)

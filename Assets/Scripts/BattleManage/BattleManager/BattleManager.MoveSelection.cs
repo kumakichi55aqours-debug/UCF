@@ -460,10 +460,18 @@ public partial class BattleManager
         return cards;
     }
 
-    private IEnumerable<CardController> ApplyCriteriaFilter(IEnumerable<CardController> candidates, SearchCriteria criteria, CardController sourceCard)
+    private IEnumerable<CardController> ApplyCriteriaFilter(
+        IEnumerable<CardController> candidates,
+        SearchCriteria criteria,
+        CardController sourceCard,
+        SkillContext skillContext = null)
     {
         if (criteria == null)
             return candidates;
+
+        // 処理カード番号など、発動中コンテキストを残す。空の Context だと「処理したカード」が落ちる。
+        if (skillContext != null)
+            return candidates.Where(card => card != null && card.MeetsCriteria(criteria, skillContext));
 
         if (sourceCard != null && criteria.ソースカード条件 != SourceCardType.None)
         {
@@ -482,9 +490,10 @@ public partial class BattleManager
         PlayerType side,
         SearchCriteria criteria,
         CardController sourceCard,
-        IReadOnlyList<ISkillCondition> cardState = null)
+        IReadOnlyList<ISkillCondition> cardState = null,
+        SkillContext skillContext = null)
     {
-        return ApplyCriteriaFilter(GetSkillTargetCandidates(targetList, side, sourceCard), criteria, sourceCard)
+        return ApplyCriteriaFilter(GetSkillTargetCandidates(targetList, side, sourceCard), criteria, sourceCard, skillContext)
             .Where(card => card != null && SkillDB.ConditionsMet(cardState, card))
             .ToList();
     }
@@ -494,10 +503,11 @@ public partial class BattleManager
         PlayerType side,
         SearchCriteria criteria = null,
         CardController sourceCard = null,
-        IReadOnlyList<ISkillCondition> cardState = null)
+        IReadOnlyList<ISkillCondition> cardState = null,
+        SkillContext skillContext = null)
     {
         ClearTargetHighlights();
-        HighlightTargetCards(ListSelectableSkillTargets(targetList, side, criteria, sourceCard, cardState));
+        HighlightTargetCards(ListSelectableSkillTargets(targetList, side, criteria, sourceCard, cardState, skillContext));
         SyncSkillTargetHighlights();
     }
 

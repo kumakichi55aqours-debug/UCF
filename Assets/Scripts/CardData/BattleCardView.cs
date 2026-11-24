@@ -29,6 +29,7 @@ public class BattleCardView : MonoBehaviour
     [SerializeField] private GameObject onlyField;
 
     [SerializeField] private GameObject canUseMovePanel;
+    [SerializeField] private GameObject canUseSkillPanel;
     [SerializeField] private GameObject targetPanel;
 
     [Header("カード裏面")]
@@ -65,6 +66,7 @@ public class BattleCardView : MonoBehaviour
     {
         cc = GetComponent<CardController>();
         EnsureTargetPanel();
+        EnsureCanUseSkillPanel();
         if (targetPanel != null)
         {
             foreach (var graphic in targetPanel.GetComponentsInChildren<Graphic>(true))
@@ -73,6 +75,7 @@ public class BattleCardView : MonoBehaviour
             }
         }
         UpdateCanUseMovePanel();
+        UpdateCanUseSkillPanel();
         SetTargetPanelVisible(false);
     }
 
@@ -90,7 +93,7 @@ public class BattleCardView : MonoBehaviour
             onlyBattler.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : battler.maxHp.ToString();
             hpText.transform.parent.gameObject.SetActive(true);
-            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(battler.type);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(battler.タイプ);
             if (battler.得意属性 != ElementList.None)
             {
                 strongElement.gameObject.SetActive(true);
@@ -124,7 +127,7 @@ public class BattleCardView : MonoBehaviour
             onlyField.SetActive(false);
             onlyBack.SetActive(false);
             hpText.transform.parent.gameObject.SetActive(false);
-            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.type);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.タイプ);
             HideStatusIcons();
         }
         else if (model is FieldModel field)
@@ -378,7 +381,90 @@ public class BattleCardView : MonoBehaviour
             && battle.curTurn != 1
             && currentTurnSide;
 
-        canUseMovePanel.SetActive(show);
+        if (canUseMovePanel != null)
+            canUseMovePanel.SetActive(show);
+    }
+
+    bool skillPanelForced;
+
+    // 起動効果が使えるカード、または発動確認中の対象カードにパネルを出す
+    public void UpdateCanUseSkillPanel()
+    {
+        EnsureCanUseSkillPanel();
+        ApplyCanUseSkillPanel();
+    }
+
+    public void SetCanUseSkillPanelVisible(bool isVisible)
+    {
+        EnsureCanUseSkillPanel();
+        skillPanelForced = isVisible;
+        ApplyCanUseSkillPanel();
+    }
+
+    void ApplyCanUseSkillPanel()
+    {
+        if (canUseSkillPanel == null)
+            return;
+
+        canUseSkillPanel.SetActive(skillPanelForced || ShouldShowIgnitionSkillHint());
+    }
+
+    bool ShouldShowIgnitionSkillHint()
+    {
+        var battle = BattleManager.Instance;
+        if (cc == null || battle == null || PhaseManager.Instance == null)
+            return false;
+        if (!cc.isMyCard || !battle.IsMyTurn)
+            return false;
+
+        TurnPhase phase = PhaseManager.Instance.CurrentPhase;
+        if (phase != TurnPhase.メインフェイズ && phase != TurnPhase.バトルフェイズ)
+            return false;
+
+        ActiveLocation location = cc.GetCurrentActiveLocation();
+        if (location == ActiveLocation.墓地
+            || location == ActiveLocation.異次元
+            || location == ActiveLocation.デッキ
+            || location == ActiveLocation.None)
+            return false;
+
+        // 手札の起動効果はメインフェイズのみメニューに出る
+        if (location == ActiveLocation.手札 && phase == TurnPhase.バトルフェイズ)
+            return false;
+
+        // バトルフェイズの場は、バトルフェイズ条件付きの起動効果だけ
+        if (phase == TurnPhase.バトルフェイズ
+            && location != ActiveLocation.手札
+            && !PhaseCondition.CardRequires(cc, TurnPhase.バトルフェイズ))
+            return false;
+
+        return cc.HasCanUseSkill(ActiveTiming.起動効果, location);
+    }
+
+    void EnsureCanUseSkillPanel()
+    {
+        if (canUseSkillPanel != null)
+            return;
+
+        Transform panelTransform = transform.Find("CanUseSkillPanel");
+        if (panelTransform == null)
+        {
+            foreach (var child in GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name == "CanUseSkillPanel")
+                {
+                    panelTransform = child;
+                    break;
+                }
+            }
+        }
+
+        if (panelTransform == null)
+            return;
+
+        canUseSkillPanel = panelTransform.gameObject;
+        foreach (var graphic in canUseSkillPanel.GetComponentsInChildren<Graphic>(true))
+            graphic.raycastTarget = false;
     }
 
     static readonly Color ChosenTargetColor = new Color(1f, 0.72f, 0.1f, 1f);

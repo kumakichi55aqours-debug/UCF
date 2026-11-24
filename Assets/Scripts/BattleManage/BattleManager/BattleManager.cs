@@ -117,24 +117,21 @@ public partial class BattleManager : MonoBehaviour
         EventBus.Unsubscribe<SkillActivationCompletedEvent>(OnSkillActivationCompleted);
     }
 
-    // 作戦カードの場合、スキル処理完了後に墓地に移動
+    // 作戦登場の解決後。強化で付与が残っているあいだは場に置き、それ以外は墓地へ送る。
     private async void OnSkillActivationCompleted(SkillActivationCompletedEvent e)
     {
-        if (e.Card.cardKind == CardKind.作戦)
-        {
-            if (KeepsTacticsOnField(e.Card))
-                return;
+        if (e.Card == null || e.Card.cardKind != CardKind.作戦)
+            return;
 
-            if (e.Card.isMyCard)
-                await UseTacticsComplete(e.Card);
-            else
-            {
-                if (IsOnlineMode)
-                    await OnlineSyncManager.Instance.ExecuteTacticsToGraveyard(e.Card);
-                else
-                    await UseTacticsComplete(e.Card);
-            }
-        }
+        if (KeepsTacticsOnField(e.Card))
+            return;
+
+        if (e.Card.isMyCard)
+            await UseTacticsComplete(e.Card);
+        else if (IsOnlineMode)
+            await OnlineSyncManager.Instance.ExecuteTacticsToGraveyard(e.Card);
+        else
+            await UseTacticsComplete(e.Card);
     }
 
     private async void Start()
@@ -205,10 +202,24 @@ public partial class BattleManager : MonoBehaviour
         RefreshCanUseMovePanels();
     }
 
+    public void RefreshCardUsabilityPanels()
+    {
+        RefreshCanUseMovePanels();
+    }
+
     void RefreshCanUseMovePanels()
     {
         RefreshZoneCanUseMovePanels(pBattlerZone);
         RefreshZoneCanUseMovePanels(eBattlerZone);
+        RefreshCanUseSkillPanels();
+    }
+
+    void RefreshCanUseSkillPanels()
+    {
+        RefreshZoneCanUseSkillPanels(pBattlerZone);
+        RefreshZoneCanUseSkillPanels(pTacticsZone);
+        RefreshZoneCanUseSkillPanels(pFieldZone);
+        RefreshZoneCanUseSkillPanels(pHandZone);
     }
 
     static void RefreshZoneCanUseMovePanels(Transform zone)
@@ -217,6 +228,14 @@ public partial class BattleManager : MonoBehaviour
             return;
         foreach (CardController card in zone.GetComponentsInChildren<CardController>())
             card.GetComponent<BattleCardView>()?.UpdateCanUseMovePanel();
+    }
+
+    static void RefreshZoneCanUseSkillPanels(Transform zone)
+    {
+        if (zone == null)
+            return;
+        foreach (CardController card in zone.GetComponentsInChildren<CardController>())
+            card.GetComponent<BattleCardView>()?.UpdateCanUseSkillPanel();
     }
 
     // ゾーン内の並び順番号。Destroy 直後のカードはフレーム末まで残るので、番号には数えない。

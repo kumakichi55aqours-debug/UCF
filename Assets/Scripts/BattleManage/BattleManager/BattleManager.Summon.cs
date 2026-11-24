@@ -6,40 +6,30 @@ public partial class BattleManager
 {
     #region 召喚関連
 
-    // 統一的なカード召喚処理導入
     public async Task SummonCard(CardController card, Transform targetZone, bool playVoice = true, bool deductCost = true, SummonSource? summonSource = null, bool specialSummon = false)
     {
-        // コスト消費
         if (deductCost)
         {
             int pay = card.GetModifiedCost();
             pResources.Cost.TakeCost(pay);
             if (IsOnlineMode) OnlineSyncManager.Instance.SyncOpponentCostChange(pay);
         }
-        
-        // 召喚元の決定（デフォルトは手札）
+
         SummonSource actualSummonSource = summonSource ?? SummonSource.手札;
         bool leftOwnDimension = card != null && card.transform.parent == pDimensionZone;
         OnlineSyncManager.Instance?.NoteCardLeavingOpponentPile(card);
-        
-        // オンライン対戦時はRPCで同期
+
         if (IsOnlineMode)
         {
-            // 相手側の視点でのゾーン名を取得
             string opponentZoneName = GetOpponentZoneName(targetZone);
-            
-            // 相手に召喚情報を送信
             int sourceIndex = GetCardIndexInZone(card, card.transform.parent);
             OnlineSyncManager.Instance.SyncSummonCard(card.cardKind.ToString(), card.cardID, sourceIndex, opponentZoneName, actualSummonSource, specialSummon);
-            
-            // 自分のカードは直接召喚処理を実行
-            await SummonRoutine(card, targetZone, playVoice, actualSummonSource, specialSummon: specialSummon);
-            if (leftOwnDimension)
-                OnlineSyncManager.Instance?.SendDimensionInfoToOpponent();
-            return;
         }
 
         await SummonRoutine(card, targetZone, playVoice, actualSummonSource, specialSummon: specialSummon);
+
+        if (IsOnlineMode && leftOwnDimension)
+            OnlineSyncManager.Instance?.SendDimensionInfoToOpponent();
     }
 
     /// <summary>
@@ -54,9 +44,7 @@ public partial class BattleManager
             return false;
 
         var resources = card.isPlayerCard ? pResources : eResources;
-        if (resources == null || resources.Cost == null)
-            return false;
-        return card.GetModifiedCost() <= resources.Cost.currentCost;
+        return resources?.Cost != null && card.GetModifiedCost() <= resources.Cost.currentCost;
     }
 
     /// <summary>
@@ -78,8 +66,8 @@ public partial class BattleManager
     /// <summary>
     /// 発動すると決めた手札の作戦を、作戦ゾーンへ出してコストを払う。
     /// 自分のカードは自分の作戦ゾーン、CPUのカードは相手の作戦ゾーンへ出す。
-    /// カード使用時のチェーンは開かない。場に出す対象でなければ何もせず成功とする。
-    /// 払えないときは false。
+    /// すでにチェーン上の登場リンクなので、新しい作戦登場窓は開かない。
+    /// 場に出す対象でなければ何もせず成功とする。払えないときは false。
     /// </summary>
     public async Task<bool> TryCommitHandTacticsAppearance(CardController card)
     {
@@ -89,18 +77,16 @@ public partial class BattleManager
             return false;
 
         bool playerCard = card.isPlayerCard;
-        var resources = playerCard ? pResources : eResources;
+        var cost = (playerCard ? pResources : eResources)?.Cost;
         var handZone = playerCard ? pHandZone : eHandZone;
         var tacticsZone = playerCard ? pTacticsZone : eTacticsZone;
 
         int pay = card.GetModifiedCost();
         int handIndex = GetCardIndexInZone(card, handZone);
-        if (pay > 0 && resources != null && resources.Cost != null)
-            resources.Cost.TakeCost(pay);
+        if (pay > 0 && cost != null)
+            cost.TakeCost(pay);
 
-        DeckCard removedFromEnemyHand = null;
-        if (!playerCard)
-            removedFromEnemyHand = TakeEnemyHandEntry(card, handIndex);
+        DeckCard removedFromEnemyHand = playerCard ? null : TakeEnemyHandEntry(card, handIndex);
 
         if (playerCard && IsOnlineMode && OnlineSyncManager.Instance != null)
         {
@@ -109,11 +95,12 @@ public partial class BattleManager
             OnlineSyncManager.Instance.SyncAppearTacticsDuringChain(card.cardKind.ToString(), card.cardID, handIndex);
         }
 
-        await SummonRoutine(card, tacticsZone, false, SummonSource.手札, openUseChain: false);
+        // openAppearanceChain: false → 自身の登場時は再開せず、他カード反応とチェーン終了後の墓地送りだけ残す
+        await SummonRoutine(card, tacticsZone, false, SummonSource.手札, openAppearanceChain: false);
         if (card == null || card.transform.parent != tacticsZone)
         {
-            if (pay > 0 && resources != null && resources.Cost != null)
-                resources.Cost.AddCost(pay);
+            if (pay > 0 && cost != null)
+                cost.AddCost(pay);
             if (removedFromEnemyHand != null && card != null && card.transform.parent == handZone)
             {
                 int index = handIndex < 0 ? enemyHand.Count : Mathf.Clamp(handIndex, 0, enemyHand.Count);
@@ -127,6 +114,20 @@ public partial class BattleManager
     }
 
     /// <summary>
+    /// オフラインCPUの手札から場へ出すとき、表示と同じ1枚を enemyHand から外す。
+    /// リストに残ったままだと、手札へ戻したときに作り直して2枚になる。
+    /// </summary>
+    public DeckCard ConsumeOfflineEnemyHand(CardController card)
+    {
+        if (IsOnlineMode || card == null || card.isPlayerCard || eHandZone == null)
+            return null;
+        if (card.transform.parent != eHandZone)
+            return null;
+
+        return TakeEnemyHandEntry(card, GetCardIndexInZone(card, eHandZone));
+    }
+
+    /// <summary>
     /// CPU手札の実体から、場に出す1枚を外す。表示だけ動かすと、次の手札更新で戻る。
     /// </summary>
     DeckCard TakeEnemyHandEntry(CardController card, int handIndex)
@@ -134,53 +135,53 @@ public partial class BattleManager
         if (card == null || enemyHand == null)
             return null;
 
-        if (handIndex >= 0 && handIndex < enemyHand.Count)
+        bool Matches(DeckCard deck) =>
+            deck != null && deck.カード種類 == card.cardKind && deck.カードID == card.cardID;
+
+        if (handIndex >= 0 && handIndex < enemyHand.Count && Matches(enemyHand[handIndex]))
         {
             DeckCard atIndex = enemyHand[handIndex];
-            if (atIndex != null && atIndex.カード種類 == card.cardKind && atIndex.カードID == card.cardID)
-            {
-                enemyHand.RemoveAt(handIndex);
-                return atIndex;
-            }
+            enemyHand.RemoveAt(handIndex);
+            return atIndex;
         }
 
         for (int i = 0; i < enemyHand.Count; i++)
         {
+            if (!Matches(enemyHand[i]))
+                continue;
+
             DeckCard deck = enemyHand[i];
-            if (deck != null && deck.カード種類 == card.cardKind && deck.カードID == card.cardID)
-            {
-                enemyHand.RemoveAt(i);
-                return deck;
-            }
+            enemyHand.RemoveAt(i);
+            return deck;
         }
 
         return null;
     }
 
     /// <summary>
-    /// 召喚元に応じたゾーンを取得
+    /// 召喚元に応じたゾーンを取得。
     /// </summary>
     private RectTransform GetSummonSourceZone(SummonSource summonSource, bool isPlayerCard)
     {
-        switch (summonSource)
+        Transform zone = summonSource switch
         {
-            case SummonSource.手札:
-                return isPlayerCard ? pHandZone.GetComponent<RectTransform>() : eHandZone.GetComponent<RectTransform>();
-            case SummonSource.墓地:
-                return isPlayerCard ? pDeckZone.GetComponent<RectTransform>() : eDeckZone.GetComponent<RectTransform>();
-            case SummonSource.デッキ:
-                return isPlayerCard ? pGraveZone.GetComponent<RectTransform>() : eGraveZone.GetComponent<RectTransform>();
-            case SummonSource.異次元:
-                return isPlayerCard ? pDimensionZone.GetComponent<RectTransform>() : eDimensionZone.GetComponent<RectTransform>();
-            default:
-                return null;
-        }
+            SummonSource.手札 => isPlayerCard ? pHandZone : eHandZone,
+            SummonSource.墓地 => isPlayerCard ? pGraveZone : eGraveZone,
+            SummonSource.デッキ => isPlayerCard ? pDeckZone : eDeckZone,
+            SummonSource.異次元 => isPlayerCard ? pDimensionZone : eDimensionZone,
+            _ => null
+        };
+        return zone != null ? zone.GetComponent<RectTransform>() : null;
     }
 
     /// <summary>
-    /// 統一的な召喚ルーチン
+    /// 統一的な召喚ルーチン。
+    /// バトラー／フィールドは SummonCompletedEvent → 登場時。
+    /// 作戦は UseCardFromHandEvent → カード使用時（作戦登場の内部トリガー。スキルは登場時）。
+    /// openAppearanceChain が false のときは、すでにチェーン上の作戦登場なので自身の窓は開かず、
+    /// 他のカードが登場した時だけ通す。
     /// </summary>
-    public async Task SummonRoutine(CardController card, Transform targetZone, bool playVoice = true, SummonSource? summonSource = null, bool openUseChain = true, bool specialSummon = false)
+    public async Task SummonRoutine(CardController card, Transform targetZone, bool playVoice = true, SummonSource? summonSource = null, bool openAppearanceChain = true, bool specialSummon = false)
     {
         bool ownerIsPlayer = card.isPlayerCard;
         CardZoneType fromLocation = summonSource.HasValue
@@ -189,20 +190,12 @@ public partial class BattleManager
         if (fromLocation == CardZoneType.None)
             fromLocation = CardController.ZoneTypeFromTransform(card.transform.parent);
 
-        RectTransform fromZone;
-        if (summonSource.HasValue)
-        {
-            // 指定された召喚元を使用
-            fromZone = GetSummonSourceZone(summonSource.Value, ownerIsPlayer);
-            if (fromZone != null) card.transform.position = fromZone.position;
-        }
-        else
-        {
-            // 手札からの召喚を前提（従来の動作）
-            fromZone = card.transform.parent as RectTransform;
-        }
+        RectTransform fromZone = summonSource.HasValue
+            ? GetSummonSourceZone(summonSource.Value, ownerIsPlayer)
+            : card.transform.parent as RectTransform;
+        if (summonSource.HasValue && fromZone != null)
+            card.transform.position = fromZone.position;
 
-        // 召喚先のゾーン指定
         RectTransform targetSlot = targetZone as RectTransform;
 
         // 相手手札のバトラーと作戦は裏面のまま飛んでいる。出す前に表面にする。
@@ -213,7 +206,6 @@ public partial class BattleManager
                 card.UpdateDisplay();
         }
 
-        // 召喚ボイス再生
         if (playVoice && card.model is BattlerModel battler && battler.summonVoice != null)
             AudioManager.Instance.PlaySE(battler.summonVoice, 1f);
 
@@ -222,7 +214,6 @@ public partial class BattleManager
             ? CardAnimationManager.Instance.PlayBattlerSummonCutIn(card)
             : Task.CompletedTask;
 
-        // アニメ再生
         await CardAnimationManager.Instance.AnimateSummon(fromZone, targetSlot, card);
         await summonCutIn;
 
@@ -234,7 +225,6 @@ public partial class BattleManager
 
         if (card.cardKind != CardKind.作戦)
         {
-            // バトラーなど、作戦以外
             await Task.Delay(250);
             EventBus.Publish(new SummonCompletedEvent(card, specialSummon, fromLocation));
 
@@ -243,43 +233,43 @@ public partial class BattleManager
                 card.hasUsedMove = false;
                 card.GetComponent<BattleCardView>().UpdateCanUseMovePanel();
             }
+            return;
         }
-        else if (card.type == CardTypeList.強化)
+
+        // 作戦登場は1系統。強化でも SummonCompletedEvent は出さない（登場時との二重発火を防ぐ）。
+        if (openAppearanceChain)
         {
-            if (openUseChain)
-                EventBus.Publish(new UseCardFromHandEvent(card, fromLocation, specialSummon));
-            // 強化作戦
-            await Task.Delay(250);
-            EventBus.Publish(new SummonCompletedEvent(card, specialSummon, fromLocation));
+            EventBus.Publish(new UseCardFromHandEvent(card, fromLocation, specialSummon));
         }
         else
         {
-            // 強化以外の作戦
-            if (openUseChain)
-                EventBus.Publish(new UseCardFromHandEvent(card, fromLocation, specialSummon));
-            else
-                EventBus.Publish(new SkillTriggerEvent(SkillTrigger.他カードが登場した時, card, card, null, fromLocation)
-                {
-                    SpecialSummon = specialSummon
-                });
+            EventBus.Publish(new SkillTriggerEvent(SkillTrigger.他のカードが登場した時, card, card, null, fromLocation)
+            {
+                SpecialSummon = specialSummon
+            });
         }
     }
 
     /// <summary>
-    /// バトラー召喚
+    /// 手札からの通常登場。バトラーはBゾーン、フィールドはFゾーンへ出す。
     /// </summary>
     public async Task SummonBattler(CardController card)
     {
         if (CannotNormalSummonSkill.Blocks(card))
             return;
-        if (card.cardKind == CardKind.バトラー)
-            await SummonCard(card, pBattlerZone, true, true);
-        if (card.cardKind == CardKind.フィールド)
-            await SummonCard(card, pFieldZone, true, true);
+
+        Transform zone = card.cardKind switch
+        {
+            CardKind.バトラー => pBattlerZone,
+            CardKind.フィールド => pFieldZone,
+            _ => null
+        };
+        if (zone != null)
+            await SummonCard(card, zone, true, true);
     }
 
     /// <summary>
-    /// タクティクス使用
+    /// 手札からの作戦登場。Tゾーンへ出し、登場時スキル解決後に強化以外は墓地へ送る。
     /// </summary>
     public async Task UseTactics(CardController card)
     {
@@ -288,6 +278,9 @@ public partial class BattleManager
         await SummonCard(card, pTacticsZone, false, true);
     }
 
+    /// <summary>
+    /// 作戦登場チェーン完了後の墓地送り。強化で付与が残っているときは呼ばない側で抑止する。
+    /// </summary>
     public async Task UseTacticsComplete(CardController card)
     {
         await AnimateTacticsToGrave(card, suppressSkillTrigger: false);

@@ -109,11 +109,7 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncDiscardAnimation(string cardKindStr, int cardID, string zoneName, int zoneIndex)
     {
-        if (IsOnlineMode)
-        {
-            RegisterOpponentAnimationWait();
-            SendRPC("ReceiveDiscardAnimation", cardKindStr, cardID, zoneName, zoneIndex);
-        }
+        SendAnimatedRpc("ReceiveDiscardAnimation", cardKindStr, cardID, zoneName, zoneIndex);
     }
 
     /// <summary>
@@ -121,11 +117,7 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncDeckToGraveyard(string cardKindStr, int cardID)
     {
-        if (IsOnlineMode)
-        {
-            RegisterOpponentAnimationWait();
-            SendRPC("ReceiveDeckToGraveyard", cardKindStr, cardID);
-        }
+        SendAnimatedRpc("ReceiveDeckToGraveyard", cardKindStr, cardID);
     }
 
     /// <summary>
@@ -399,63 +391,4 @@ public partial class OnlineSyncManager
             SendOpponentAnimationComplete();
         }
     }
-    #region パッシブ効果同期
-    /// <summary>
-    /// パッシブ効果の同期
-    /// </summary>
-    public void SyncPassiveEffect(string targetCardKindStr, int targetCardID, string zoneName, int zoneIndex,
-                                 string effectType, int value, int duration)
-    {
-        SendRPC("ReceivePassiveEffect", targetCardKindStr, targetCardID, zoneName, zoneIndex, effectType, value, duration);
-    }
-
-    [PunRPC]
-    private void ReceivePassiveEffect(string targetCardKindStr, int targetCardID, string zoneName, int zoneIndex,
-                                     string effectType, int value, int duration)
-    {
-        ApplyReceivedCardEffect(targetCardKindStr, targetCardID, zoneName, zoneIndex, "パッシブ効果受信", targetCard =>
-        {
-            return ExecutePassiveEffectOnOpponent(targetCard, effectType, value, duration);
-        });
-    }
-
-    private void ApplyReceivedCardEffect(string targetCardKindStr, int targetCardID, string zoneName, int zoneIndex, string errorLabel, System.Func<CardController, Task> apply)
-    {
-        try
-        {
-            CardController targetCard = CardAddress.Resolve(targetCardKindStr, targetCardID, zoneName, zoneIndex);
-            if (targetCard != null)
-                _ = apply(targetCard);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] {errorLabel}でエラー: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 相手側でパッシブ効果を実行
-    /// </summary>
-    private Task ExecutePassiveEffectOnOpponent(CardController targetCard, string effectType, int value, int duration)
-    {
-        try
-        {
-            BeginOperationBlock();
-            // パッシブ効果の実装（効果タイプに応じて処理を分岐）
-            // ここでは基本的な実装例を示します
-            var passiveEffect = new ActivePassiveEffect(null, duration);
-            targetCard.AddPassiveEffect(passiveEffect);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"[OnlineSyncManager] 相手側パッシブ効果実行でエラー: {ex.Message}");
-        }
-        finally
-        {
-            EndOperationBlock();
-        }
-        return Task.CompletedTask;
-    }
-
-    #endregion
 }

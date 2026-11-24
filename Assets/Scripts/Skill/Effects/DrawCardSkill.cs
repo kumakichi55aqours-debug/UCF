@@ -99,8 +99,8 @@ public class DrawCardSkill : SkillDB
 
             if (battle.IsOnlineMode && OnlineSyncManager.Instance != null)
             {
-                OnlineSyncManager.Instance.SyncAddToHandAnimation(drawn.カード種類.ToString(), drawn.カードID, (int)SummonSource.墓地, false);
-                await OnlineSyncManager.Instance.WaitForOpponentAnimation();
+                OnlineSyncManager.Instance.SyncAddToHandAnimation(drawn.カード種類.ToString(), drawn.カードID, (int)SummonSource.デッキ, false);
+                await OnlineSyncManager.Instance.WaitForAddToHandMove();
                 OnlineSyncManager.Instance.SendDetailedHandInfoToOpponent();
                 OnlineSyncManager.Instance.SyncDeckCountToOpponent();
             }

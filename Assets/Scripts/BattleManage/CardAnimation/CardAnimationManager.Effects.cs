@@ -35,36 +35,31 @@ public partial class CardAnimationManager
         PlaySe(battler.summonVoice, 1f);
 
         string moveName = moveIndex == 0 ? battler.moveName1 : battler.moveName2;
-        string text = $"{card.cardName}の\n{moveName}！";
+        string text = $"  {card.cardName}の\n{moveName}！";
         await PlayCutIn("CutIn", battler.画像, text);
     }
 
     async Task PlayCutIn(string resourceName, Sprite artwork, string text)
     {
         SummonCutIn instance = null;
-        try
-        {
-            var prefab = Resources.Load<SummonCutIn>(resourceName);
-            if (prefab == null)
-                return;
 
-            Canvas canvas = BattleManager.Instance != null ? BattleManager.Instance.mainCanvas : null;
-            if (canvas == null)
-                canvas = FindObjectOfType<Canvas>();
-            if (canvas == null)
-                return;
+        var prefab = Resources.Load<SummonCutIn>(resourceName);
+        if (prefab == null)
+            return;
 
-            instance = Instantiate(prefab, canvas.transform);
-            instance.transform.SetAsLastSibling();
-            await instance.Play(artwork, text);
-            instance = null;
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"PlayCutIn({resourceName}) でエラー: {ex.Message}");
-            if (instance != null)
-                Destroy(instance.gameObject);
-        }
+        Canvas canvas = BattleManager.Instance != null ? BattleManager.Instance.mainCanvas : null;
+        if (canvas == null)
+            canvas = FindObjectOfType<Canvas>();
+        if (canvas == null)
+            return;
+
+        instance = Instantiate(prefab, canvas.transform);
+        instance.transform.SetAsLastSibling();
+        await instance.Play(artwork, text);
+        instance = null;
+
+        if (instance != null)
+            Destroy(instance.gameObject);
     }
 
     /// <summary>
@@ -79,34 +74,26 @@ public partial class CardAnimationManager
             return;
 
         GameObject instance = null;
-        try
-        {
-            var prefab = Resources.Load<GameObject>("DefeatExplosion");
-            if (prefab == null)
-                return;
 
-            instance = Instantiate(prefab, card.transform, false);
-            instance.transform.localPosition = Vector3.zero;
-            instance.transform.localRotation = Quaternion.identity;
-            instance.transform.localScale = Vector3.one;
-            instance.transform.SetAsLastSibling();
+        var prefab = Resources.Load<GameObject>("DefeatExplosion");
+        if (prefab == null)
+            return;
 
-            float duration = 0.8f;
-            var effect = instance.GetComponentInChildren<DefeatExplosion>();
-            if (effect != null)
-                duration = effect.Play(card.cardKind);
+        instance = Instantiate(prefab, card.transform, false);
+        instance.transform.localPosition = Vector3.zero;
+        instance.transform.localRotation = Quaternion.identity;
+        instance.transform.localScale = Vector3.one;
+        instance.transform.SetAsLastSibling();
 
-            await Task.Delay(Mathf.CeilToInt(Mathf.Max(0.05f, duration) * 900f));
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"PlayDefeatExplosion でエラー: {ex.Message}");
-        }
-        finally
-        {
-            if (instance != null)
-                Destroy(instance);
-        }
+        float duration = 0.75f;
+        var effect = instance.GetComponentInChildren<DefeatExplosion>();
+        if (effect != null)
+            duration = effect.Play(card.cardKind);
+
+        await Task.Delay(Mathf.CeilToInt(Mathf.Max(0.05f, duration) * 750f));
+
+        if (instance != null)
+            Destroy(instance);
     }
 
     /// <summary>
@@ -179,7 +166,7 @@ public partial class CardAnimationManager
     public async Task PlayMoveImpact(Transform from, Transform to, CardController targetCard, int blinkCount = 2)
     {
         if (from != null && to != null)
-            await ShowTargetArrow(from, to, 0.4f);
+            await ShowTargetArrow(from, to, 0.27f);
 
         PlaySe(hitSe, hitSeVolume);
 
@@ -234,54 +221,48 @@ public partial class CardAnimationManager
     /// 攻撃者からターゲットへ向かう矢印UIを表示して消す。
     /// Resources/TargetArrowEffect を Canvas 直下に生成する。
     /// </summary>
-    public async Task ShowTargetArrow(Transform from, Transform to, float duration = 0.4f)
+    public async Task ShowTargetArrow(Transform from, Transform to, float duration = 0.27f)
     {
-        try
-        {
-            if (from == null || to == null)
-                return;
+        if (from == null || to == null)
+            return;
 
-            Canvas canvas = FindObjectOfType<Canvas>();
-            if (canvas == null)
-                return;
+        Canvas canvas = FindObjectOfType<Canvas>();
+        if (canvas == null)
+            return;
 
-            var arrowPrefab = Resources.Load<RectTransform>("TargetArrowEffect");
-            if (arrowPrefab == null)
-                return;
+        var arrowPrefab = Resources.Load<RectTransform>("TargetArrowEffect");
+        if (arrowPrefab == null)
+            return;
 
-            RectTransform arrow = Instantiate(arrowPrefab, canvas.transform);
-            arrow.gameObject.SetActive(true);
-            arrow.localScale = Vector3.one;
-            arrow.SetAsLastSibling();
+        RectTransform arrow = Instantiate(arrowPrefab, canvas.transform);
+        arrow.gameObject.SetActive(true);
+        arrow.localScale = Vector3.one;
+        arrow.SetAsLastSibling();
 
-            var image = arrow.GetComponent<Image>();
-            if (image != null)
-                image.enabled = true;
+        var image = arrow.GetComponent<Image>();
+        if (image != null)
+            image.enabled = true;
 
-            Vector3 fromPos = from.position;
-            Vector3 toPos = to.position;
-            arrow.position = fromPos;
+        Vector3 fromPos = from.position;
+        Vector3 toPos = to.position;
+        arrow.position = fromPos;
 
-            Vector3 dir = (toPos - fromPos).normalized;
-            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        Vector3 dir = (toPos - fromPos).normalized;
+        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
 
-            var cg = arrow.GetComponent<CanvasGroup>();
-            if (cg == null)
-                cg = arrow.gameObject.AddComponent<CanvasGroup>();
-            cg.alpha = 1f;
+        var cg = arrow.GetComponent<CanvasGroup>();
+        if (cg == null)
+            cg = arrow.gameObject.AddComponent<CanvasGroup>();
+        cg.alpha = 1f;
 
-            Sequence seq = DOTween.Sequence();
-            seq.Append(arrow.DORotate(new Vector3(0f, 0f, angle), 0.2f, RotateMode.Fast).SetEase(Ease.OutQuad));
-            seq.AppendInterval(0.15f);
-            seq.Append(arrow.DOMove(toPos, duration).SetEase(Ease.InQuad));
-            seq.Join(cg.DOFade(0f, 0.18f).SetDelay(duration));
-            await seq.AsyncWaitForCompletion();
+        Sequence seq = DOTween.Sequence();
+        seq.Append(arrow.DORotate(new Vector3(0f, 0f, angle), 0f, RotateMode.Fast).SetEase(Ease.OutQuad));
+        seq.AppendInterval(0.15f);
+        seq.Append(arrow.DOMove(toPos, duration).SetEase(Ease.InQuad));
+        seq.Join(cg.DOFade(0f, 0.18f).SetDelay(duration));
+        await seq.AsyncWaitForCompletion();
 
-            Destroy(arrow.gameObject);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"ShowTargetArrow でエラー: {ex.Message}");
-        }
+        Destroy(arrow.gameObject);
+
     }
 }

@@ -64,13 +64,14 @@ public class SpecialSummonSkill : SkillDB
             .Where(d => !UniqueCardRestrictionHelper.IsDeckCardRestrictedByUniqueCardRule(d, isMyCard))
             .ToList();
 
-        // 登場先のバトラーゾーンが埋まっているカードは選べない。デッキのカードは発動した側に作って出す。
+        // 登場先ゾーンが埋まっているカードは選べない。デッキのカードは発動した側に作って出す。
         bool deckToPlayer = context.発動カード != null && context.発動カード.isPlayerCard;
         existingCandidates = existingCandidates
-            .Where(c => HasBattlerRoom(c.isMyCard))
+            .Where(c => CanSummonToZone(c.cardKind, c.isMyCard))
             .ToList();
-        if (!HasBattlerRoom(deckToPlayer))
-            deckCandidates.Clear();
+        deckCandidates = deckCandidates
+            .Where(d => CanSummonToZone(d.カード種類, deckToPlayer))
+            .ToList();
 
         // --- 3) 候補がないチェック ---
         if (existingCandidates.Count == 0 && deckCandidates.Count == 0)
@@ -128,7 +129,10 @@ public class SpecialSummonSkill : SkillDB
         bool selectedIsPlayer = sel.source == SelectionItem.SourceType.Existing
             ? sel.existingCard != null && sel.existingCard.isMyCard
             : deckToPlayer;
-        if (!HasBattlerRoom(selectedIsPlayer))
+        CardKind selectedKind = sel.source == SelectionItem.SourceType.Existing
+            ? (sel.existingCard != null ? sel.existingCard.cardKind : CardKind.None)
+            : (sel.deckData != null ? sel.deckData.カード種類 : CardKind.None);
+        if (!CanSummonToZone(selectedKind, selectedIsPlayer))
             return;
 
         CardController toSummon = null;
@@ -143,7 +147,7 @@ public class SpecialSummonSkill : SkillDB
             if (toSummon.transform.parent == BattleManager.Instance.pGraveZone ||
                 toSummon.transform.parent == BattleManager.Instance.eGraveZone)
             {
-                summonSource = SummonSource.デッキ;
+                summonSource = SummonSource.墓地;
             }
             else if (toSummon.transform.parent == BattleManager.Instance.pDimensionZone ||
                      toSummon.transform.parent == BattleManager.Instance.eDimensionZone)
@@ -159,7 +163,7 @@ public class SpecialSummonSkill : SkillDB
         else // Deck
         {
             var pick = sel.deckData;
-            summonSource = SummonSource.墓地;
+            summonSource = SummonSource.デッキ;
 
             // デッキリストから削除
             if (BattleManager.Instance.pBattleDeck.Contains(pick)) BattleManager.Instance.pBattleDeck.Remove(pick);
@@ -192,25 +196,64 @@ public class SpecialSummonSkill : SkillDB
                     return;
             }
 
-            // 適切なバトラーゾーンを選択
-            var targetZone = toSummon.isMyCard
-                ? BattleManager.Instance.pBattlerZone
-                : BattleManager.Instance.eBattlerZone;
+            // バトラー→Bゾーン、作戦→Tゾーン、フィールド→Fゾーン
+            var targetZone = ResolveSummonZone(toSummon.cardKind, toSummon.isMyCard);
+            if (targetZone == null || !CanSummonToZone(toSummon.cardKind, toSummon.isMyCard))
+                return;
 
-            await BattleManager.Instance.SummonCard(toSummon, targetZone, playVoice: true, deductCost: false, summonSource: summonSource, specialSummon: true);
+            // 通常召喚は出す前に手札リストから外す。特殊登場は表示だけ動くので、ここで同じ1枚を外す。
+            if (summonSource == SummonSource.手札)
+                BattleManager.Instance.ConsumeOfflineEnemyHand(toSummon);
+
+            bool playVoice = toSummon.cardKind != CardKind.作戦;
+            await BattleManager.Instance.SummonCard(toSummon, targetZone, playVoice: playVoice, deductCost: false, summonSource: summonSource, specialSummon: true);
             context?.SetProcessedCards(new[] { toSummon });
         }
 
         BattleManager.Instance.UpdateDeckUI();
     }
 
-    static bool HasBattlerRoom(bool playerSide)
+    static Transform ResolveSummonZone(CardKind kind, bool playerSide)
+    {
+        var battle = BattleManager.Instance;
+        if (battle == null)
+            return null;
+
+        return kind switch
+        {
+            CardKind.バトラー => playerSide ? battle.pBattlerZone : battle.eBattlerZone,
+            CardKind.作戦 => playerSide ? battle.pTacticsZone : battle.eTacticsZone,
+            CardKind.フィールド => playerSide ? battle.pFieldZone : battle.eFieldZone,
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// カード種類に応じた登場先（B/T/F）に空きがあるか。
+    /// </summary>
+    public static bool CanSummonToZone(CardKind kind, bool playerSide)
     {
         var battle = BattleManager.Instance;
         if (battle == null)
             return false;
-        Transform zone = playerSide ? battle.pBattlerZone : battle.eBattlerZone;
-        return zone != null && zone.childCount < BattlerZoneLimit;
+
+        switch (kind)
+        {
+            case CardKind.バトラー:
+            {
+                Transform zone = playerSide ? battle.pBattlerZone : battle.eBattlerZone;
+                return zone != null && zone.childCount < BattlerZoneLimit;
+            }
+            case CardKind.作戦:
+                return battle.TacticsZoneHasRoom(playerSide);
+            case CardKind.フィールド:
+            {
+                Transform zone = playerSide ? battle.pFieldZone : battle.eFieldZone;
+                return zone != null && zone.childCount == 0;
+            }
+            default:
+                return false;
+        }
     }
 
     int PaymentOf(SelectionItem item)

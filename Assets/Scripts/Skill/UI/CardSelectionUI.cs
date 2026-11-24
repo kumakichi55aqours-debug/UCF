@@ -39,6 +39,8 @@ public class CardSelectionUI : MonoBehaviour
 
     public Transform Content => content;
 
+    public bool IsShowing => panel != null && panel.activeInHierarchy;
+
     public async Task<List<SelectionItem>> ShowAsync(
         IEnumerable<CardController> existing,
         IEnumerable<DeckCard> deckItems,
@@ -449,7 +451,7 @@ public class CardSelectionUI : MonoBehaviour
                 else
                 {
                     selectedItems.Add(item);
-                    var panelGO = go.transform.Find("CanUseMovePanel");
+                    var panelGO = go.transform.Find("TargetPanel");
                     if (panelGO != null)
                         panelGO.gameObject.SetActive(true);
                 }
@@ -500,13 +502,13 @@ public class CardSelectionUI : MonoBehaviour
         if (selectedItems.Contains(item))
         {
             selectedItems.Remove(item);
-            var panelGO = go.transform.Find("CanUseMovePanel");
+            var panelGO = go.transform.Find("TargetPanel");
             if (panelGO != null) panelGO.gameObject.SetActive(false);
         }
         else if (selectedItems.Count < maxSelect && !IsBlocked(item))
         {
             selectedItems.Add(item);
-            var panelGO = go.transform.Find("CanUseMovePanel");
+            var panelGO = go.transform.Find("TargetPanel");
             if (panelGO != null) panelGO.gameObject.SetActive(true);
         }
         RefreshPickLocks();

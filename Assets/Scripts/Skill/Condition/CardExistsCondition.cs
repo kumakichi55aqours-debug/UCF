@@ -171,7 +171,7 @@ public class CardExistsCondition : ISkillCondition
         if (card.type != CardTypeList.None)
             return card.type;
         if (card.model is BattlerModel battler)
-            return battler.type;
+            return battler.タイプ;
         return CardTypeList.None;
     }
 

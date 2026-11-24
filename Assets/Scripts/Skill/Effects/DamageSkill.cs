@@ -304,8 +304,6 @@ public class DamageSkill : SkillDB
         if (effectAnchor != null)
             await BattleManager.Instance.ShowEffect(
                 effectAnchor.position, amount, Color.yellow);
-
-        await Task.Delay(500);
     }
 
     protected override void CopyPolymorphicFieldsTo(SkillDB clone)

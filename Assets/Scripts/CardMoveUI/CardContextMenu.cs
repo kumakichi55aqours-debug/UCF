@@ -181,7 +181,7 @@ public class CardContextMenu : MonoBehaviour
         return true;
     }
 
-    // 作戦カードは、支払えて登場時スキルを手札から使えるときだけ。
+    // 作戦登場は登場時スキル。支払えて手札から使えるときだけ。
     private static bool CanPlayTacticsFromHand(CardController card)
     {
         return CanPayToEnterPlay(card)
@@ -368,19 +368,9 @@ public class CardContextMenu : MonoBehaviour
         return result;
     }
 
-    // スキル使用可能条件判定。墓地のカードは行動不能にもスローにもならない
     private static bool HasCanUseSkill(CardController card, ActiveTiming timing, ActiveLocation location)
     {
-        if (card == null || card.skills == null) return false;
-        if (NegateZoneEffectSkill.Blocks(card)) return false;
-        if (location != ActiveLocation.墓地 && location != ActiveLocation.異次元)
-        {
-            if (card.IsActionBlocked) return false;
-            if (timing == ActiveTiming.起動効果 && card.IsSlowed) return false;
-        }
-
-        var ctx = new SkillContext(card, card, card.transform);
-        return card.skills.Any(s => s != null && s.CanUseAt(timing, location, ctx));
+        return card != null && card.HasCanUseSkill(timing, location);
     }
 
     private static bool HasGrantedSkills(CardController card)
@@ -461,14 +451,14 @@ public class CardContextMenu : MonoBehaviour
 
     //--- ボタンコールバック ---
 
-    // バトラー/フィールド登場処理
+    // バトラー／フィールドの通常登場
     private async void OnSummon()
     {
         Hide();
         await BattleManager.Instance.SummonBattler(currentCard);
     }
 
-    // 作戦カード発動処理
+    // 作戦の登場（Tゾーンへ出し、登場時スキル解決。強化以外は事後に墓地へ）
     private async void OnUseFromHand()
     {
         Hide();

@@ -46,7 +46,7 @@ public class DeckCardView : MonoBehaviour
             onlyBattler.SetActive(true);
             hpText.text = (cc != null) ? cc.curHp.ToString() : battler.maxHp.ToString();
             hpText.transform.parent.gameObject.SetActive(true);
-            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(battler.type);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(battler.タイプ);
             elementImage1.sprite = CardIconManager.Instance.GetElementSprite(battler.moveElement1);
             elementImage2.sprite = CardIconManager.Instance.GetElementSprite(battler.moveElement2);
             moves.SetActive(true);
@@ -63,7 +63,7 @@ public class DeckCardView : MonoBehaviour
             onlyBattler.SetActive(false);
             onlyField.SetActive(false);
             hpText.transform.parent.gameObject.SetActive(false);
-            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.type);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.タイプ);
             moves.SetActive(false);
         }
         else if (model is FieldModel field)

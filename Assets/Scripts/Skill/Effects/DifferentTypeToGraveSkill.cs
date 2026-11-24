@@ -261,7 +261,7 @@ public class DifferentTypeToGraveSkill : SkillDB
             return card.type;
 
         if (card.model is BattlerModel battler)
-            return battler.type;
+            return battler.タイプ;
 
         return CardTypeList.None;
     }

@@ -281,7 +281,7 @@ public class ToHandSkill : SkillDB
             OnlineSyncManager.Instance.SyncAddToHandAnimation(
                 deckData.カード種類.ToString(),
                 deckData.カードID,
-                (int)SummonSource.墓地,
+                (int)SummonSource.デッキ,
                 true,
                 mirrorDeckIndex,
                 null);
@@ -418,6 +418,11 @@ public class ToHandSkill : SkillDB
 
         SkillChainManager.Instance?.ScheduleCardReturnedToHand(fromLocation, returnedIsMyCard, notifyOpponent: true);
         await battle.RetireEnhancementsIfSpent(card);
+
+        // 手札の実体は enemyHand。表示はあとで作り直すので、動かしたカード自体は手札に残さない。
+        card.gameObject.SetActive(false);
+        if (battle.mainCanvas != null)
+            card.transform.SetParent(battle.mainCanvas.transform, false);
         battle.enemyHand.Add(new DeckCard(kind, id, cost, categories, cardType));
         UnityEngine.Object.Destroy(card.gameObject);
     }
@@ -432,7 +437,7 @@ public class ToHandSkill : SkillDB
         bool online = sync != null && sync.IsOnlineMode;
 
         if (online)
-            await sync.WaitForOpponentAnimation();
+            await sync.WaitForAddToHandMove();
 
         if (syncDeckCount && sync != null)
             sync.SyncDeckCountToOpponent();
@@ -452,12 +457,12 @@ public class ToHandSkill : SkillDB
         finally
         {
             if (online)
-                await sync.WaitForOpponentAnimation();
+                await sync.WaitForAddToHandEmphasis();
         }
     }
 
     /// <summary>
-    /// ゾーンからSummonSourceを判定。墓地とデッキの対応は召喚元の名前と逆。
+    /// ゾーンからSummonSourceを判定。
     /// </summary>
     static SummonSource GetSummonSourceFromZone(Transform zone)
     {
@@ -465,10 +470,10 @@ public class ToHandSkill : SkillDB
         {
             case CardZoneType.プレイヤー墓地:
             case CardZoneType.相手墓地:
-                return SummonSource.デッキ;
+                return SummonSource.墓地;
             case CardZoneType.プレイヤーデッキ:
             case CardZoneType.相手デッキ:
-                return SummonSource.墓地;
+                return SummonSource.デッキ;
             case CardZoneType.プレイヤー手札:
             case CardZoneType.相手手札:
                 return SummonSource.手札;
@@ -483,7 +488,7 @@ public class ToHandSkill : SkillDB
             case CardZoneType.相手異次元:
                 return SummonSource.異次元;
             default:
-                return SummonSource.デッキ;
+                return SummonSource.墓地;
         }
     }
 

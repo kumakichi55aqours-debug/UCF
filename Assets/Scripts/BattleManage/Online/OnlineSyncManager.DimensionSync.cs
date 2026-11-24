@@ -120,9 +120,7 @@ public partial class OnlineSyncManager
     {
         try
         {
-            var cards = new List<CardController>();
-            CollectResolvedCards(cardKinds, cardIds, zoneNames, indices, null, cards, null);
-            _ = MoveReceivedCardsToDimension(cards);
+            _ = MoveReceivedCardsToDimension(CardAddress.ResolveAll(cardKinds, cardIds, zoneNames, indices));
         }
         catch (System.Exception ex)
         {
@@ -278,19 +276,5 @@ public partial class OnlineSyncManager
     }
 
     void RemoveCardFromOpponentDimension(CardKind cardKind, int cardID, int index = -1)
-    {
-        if (index >= 0 && index < opponentDimension.Count)
-        {
-            var addressed = opponentDimension[index];
-            if (addressed != null && addressed.カード種類 == cardKind && addressed.カードID == cardID)
-            {
-                opponentDimension.RemoveAt(index);
-                return;
-            }
-        }
-
-        var cardToRemove = opponentDimension.Find(c => c != null && c.カード種類 == cardKind && c.カードID == cardID);
-        if (cardToRemove != null)
-            opponentDimension.Remove(cardToRemove);
-    }
+        => RemoveFromOpponentPile(opponentDimension, cardKind, cardID, index);
 }

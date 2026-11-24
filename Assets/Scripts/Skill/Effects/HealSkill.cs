@@ -129,8 +129,6 @@ public class HealSkill : SkillDB
         hp.TakeDamage(-amount);
         if (effectAnchor != null)
             await BattleManager.Instance.ShowEffect(effectAnchor.position, amount, Color.yellow);
-
-        await Task.Delay(500);
     }
 
     static int GetMaxHp(CardController card)

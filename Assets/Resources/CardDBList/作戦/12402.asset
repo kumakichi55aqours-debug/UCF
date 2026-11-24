@@ -25,7 +25,7 @@ MonoBehaviour:
   "\u30B9\u30AD\u30EB":
   - rid: 3123607099449016335
   - rid: 7839874577158635542
-  type: 8
+  "\u30BF\u30A4\u30D7": 8
   references:
     version: 2
     RefIds:

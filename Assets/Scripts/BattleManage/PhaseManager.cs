@@ -34,6 +34,8 @@ public class PhaseManager : MonoBehaviour
     int playingTweenCount;
     const int PhaseTransitionDelayMs = 150;
     const int TurnTransitionDelayMs = 1000;
+    // フェイズ表示を切り替えてから、開始時スキルを確認するまでの待ち
+    const int PhaseStartSkillDelayMs = 500;
 
     public bool IsLeavingBattle { get; private set; }
 
@@ -261,11 +263,12 @@ public class PhaseManager : MonoBehaviour
     }
 
     /// <summary>
-    /// フェイズを切り替え、自分のフェイズ開始時・終了時のスキル確認を待つ。
+    /// フェイズを切り替え、自分と相手のフェイズ開始時・終了時のスキル確認を待つ。
+    /// 開始時は表示切り替えのあと少し待ってから確認する。終了時はそのまま確認する。
     /// 同じフェイズへの再設定ではスキルは走らない。
     /// すでにスキル処理が残っているときは、それが空になってから切り替える。
     /// </summary>
-    public async Task ApplyPhaseAsync(TurnPhase next)
+    public async Task ApplyPhaseAsync(TurnPhase next, bool previewToOpponent = true)
     {
         if (SkillChainManager.Instance != null)
             await SkillChainManager.Instance.WaitUntilIdle();
@@ -287,19 +290,33 @@ public class PhaseManager : MonoBehaviour
             CurrentPhase = next;
             currentPhaseOwnedByLocal = enteringOwnedByLocal;
             phaseInitialized = true;
+            BattleManager.Instance?.RefreshCardUsabilityPanels();
         }
 
         var glow = FindObjectOfType<PhaseGlowUI>();
         if (glow != null)
             glow.HighlightPhase(CurrentPhase);
 
+        // スキル確認の前に相手の表示も切り替える。条件が今のフェイズを見るため。
+        // 開始時の待ちより先に揃えるので、オンラインでも両画面が同じフェイズを見てから確認する。
+        if (previewToOpponent
+            && changed
+            && BattleManager.Instance != null
+            && BattleManager.Instance.IsOnlineMode
+            && enteringOwnedByLocal
+            && OnlineSyncManager.Instance != null)
+            await OnlineSyncManager.Instance.PreviewPhaseToOpponent(next);
+
         if (changed && BattleManager.Instance != null)
         {
             // エンドフェイズの終了時は ExecuteEndPhase 側で、まだそのターンのうちに確認する
             if (leavingOwnedByLocal && previous != TurnPhase.エンドフェイズ)
-                await BattleManager.Instance.ProcessOwnPhaseTiming(SkillTrigger.自分のフェイズ終了時, previous);
+                await BattleManager.Instance.ProcessPhaseTiming(SkillTrigger.自分のフェイズ終了時, previous);
             if (enteringOwnedByLocal)
-                await BattleManager.Instance.ProcessOwnPhaseTiming(SkillTrigger.自分のフェイズ開始時, next);
+            {
+                await Task.Delay(PhaseStartSkillDelayMs);
+                await BattleManager.Instance.ProcessPhaseTiming(SkillTrigger.自分のフェイズ開始時, next);
+            }
         }
     }
 

@@ -129,6 +129,7 @@ public class SkillChainManager : MonoBehaviour
         }
 
         waiter?.TrySetResult(true);
+        BattleManager.Instance?.RefreshCardUsabilityPanels();
     }
 
     // スキル処理完了タスク
@@ -198,7 +199,7 @@ public class SkillChainManager : MonoBehaviour
         if (notifyOpponent && BattleManager.Instance != null && BattleManager.Instance.IsOnlineMode)
             OnlineSyncManager.Instance?.SyncCardReturnedToHand((int)fromLocation, returnedCardIsMyCard);
 
-        var trigger = new SkillTriggerEvent(SkillTrigger.他カードが手札に戻った時, null, null, null, fromLocation)
+        var trigger = new SkillTriggerEvent(SkillTrigger.他のカードが手札に戻った時, null, null, null, fromLocation)
         {
             SubjectIsMyCard = returnedCardIsMyCard
         };
@@ -312,7 +313,8 @@ public class SkillChainManager : MonoBehaviour
                 if (collected == null && item.TriggerEvent != null)
                 {
                     var triggerEvent = item.TriggerEvent;
-                    Debug.Log($"[SkillChainManager] 保留したトリガーを処理: Trigger={triggerEvent.Trigger}, Source={triggerEvent.SourceCard?.cardName}");
+                    string sourceName = triggerEvent.SourceCard != null ? triggerEvent.SourceCard.cardName : "なし";
+                    Debug.Log($"[SkillChainManager] 保留したトリガーを処理: Trigger={triggerEvent.Trigger}, Source={sourceName}");
                     collected = SkillManager.CollectSkillsForTrigger(
                         triggerEvent.Trigger,
                         triggerEvent.SourceCard,
@@ -361,11 +363,12 @@ public class SkillChainManager : MonoBehaviour
                 OnlineSyncManager.Instance?.SyncJoinIgnitionChain();
             }
 
+            // フェイズ窓を始めた側だけが相手を誘う。誘われた側がもう一度誘うと、窓が往復する。
             if (BattleManager.Instance.IsOnlineMode
                 && SkillChainSync.Instance != null
                 && SkillChainSync.Instance.IsReady
-                && SkillManager.IsOwnPhaseTrigger(collectedSkills.Trigger)
-                && HasAnySkill(collectedSkills))
+                && collectedSkills.InvitePhasePartner
+                && SkillManager.IsPhaseTrigger(collectedSkills.Trigger))
             {
                 OnlineSyncManager.Instance?.SyncJoinPhaseChain(collectedSkills.Trigger, collectedSkills.Phase);
             }
@@ -478,7 +481,9 @@ public class SkillChainManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 相手のフェイズタイミングの窓に、自分の候補は足さず参加する。
+    /// 相手が開いたフェイズの窓に参加する。
+    /// 相手の自分のフェイズ開始／終了には、こちらの相手のフェイズ開始／終了を候補として返す。
+    /// こちらが窓を開いた側なら、自分のスキルはすでに載っているので空で参加する。
     /// </summary>
     public void JoinPhaseWindow(SkillTrigger trigger, TurnPhase phase)
     {
@@ -512,8 +517,26 @@ public class SkillChainManager : MonoBehaviour
             }
         }
 
-        var collected = SkillManager.CreateEmptyCollected(trigger);
-        collected.Phase = phase;
+        CollectedSkills collected;
+        bool answerWithOpponentPhase = SkillManager.IsOwnPhaseTrigger(trigger)
+            && (OnlineSyncManager.Instance == null || !OnlineSyncManager.Instance.IsMyTurn);
+        if (answerWithOpponentPhase)
+        {
+            var context = new SkillContext(null, null, null);
+            collected = SkillManager.CollectSkillsForTrigger(
+                SkillManager.ToOpponentPhaseTrigger(trigger),
+                null,
+                null,
+                context,
+                phase: phase);
+        }
+        else
+        {
+            collected = SkillManager.CreateEmptyCollected(trigger);
+            collected.Phase = phase;
+        }
+
+        collected.InvitePhasePartner = false;
         await ProcessChainForCollectedSkills(collected);
     }
 
@@ -1600,11 +1623,17 @@ public class SkillChainManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 作戦登場チェーンの終端。強化以外（と付与が尽きた強化）は SkillActivationCompleted 経由で墓地へ送る。
+    /// </summary>
     static void PublishTacticsIfNeeded(CollectedSkills collected)
     {
-        var source = collected?.SourceCard;
-        if (source == null || source.cardKind != CardKind.作戦) return;
-        if (collected.Trigger != SkillTrigger.カード使用時) return;
+        if (collected == null)
+            return;
+
+        var source = collected.SourceCard;
+        if (!SkillManager.IsTacticsAppearance(collected.Trigger, source))
+            return;
 
         var battle = BattleManager.Instance;
         // オンラインの相手作戦は、持ち主の側で墓地へ送って同期する。オフラインのCPUはここで送る。

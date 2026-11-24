@@ -6,12 +6,6 @@ using UnityEngine;
 
 public partial class OnlineSyncManager
 {
-    // emphasize 付きの手札追加は、移動完了と強調完了で完了通知を2回返す。
-    // 2回目は SyncContinueAddToHandEmphasis を受けてから送る。
-    private TaskCompletionSource<bool> addToHandEmphasisContinue;
-    private bool addToHandEmphasisContinuePending;
-    TaskCompletionSource<bool> opponentOwnHandFinished;
-
     /// <summary>
     /// 相手に「デッキ/墓地/場から手札へ加えた」アニメーションを同期。
     /// emphasize が真のときは移動だけ再生して待ち、SyncContinueAddToHandEmphasis のあと強調を再生する。
@@ -19,11 +13,21 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncAddToHandAnimation(string cardKindStr, int cardID, int sourceInt, bool emphasize = true, int mirrorIndex = -1, string mirrorZone = null)
     {
-        if (IsOnlineMode)
-        {
-            RegisterOpponentAnimationWait();
-            SendRPC("ReceiveAddToHandAnimation", cardKindStr, cardID, sourceInt, emphasize, mirrorIndex, mirrorZone ?? string.Empty);
-        }
+        if (!IsOnlineMode)
+            return;
+
+        // 共有の相手アニメFIFOとは別チャネル。残件解放で遅延ACKが食い違うのを防ぐ。
+        int requestId = BeginAddToHandMoveWait();
+        activeAddToHandRequestId = requestId;
+        SendRPC(
+            "ReceiveAddToHandAnimation",
+            requestId,
+            cardKindStr,
+            cardID,
+            sourceInt,
+            emphasize,
+            mirrorIndex,
+            mirrorZone ?? string.Empty);
     }
 
     /// <summary>
@@ -35,36 +39,60 @@ public partial class OnlineSyncManager
         if (!IsOnlineMode)
             return;
 
-        RegisterOpponentAnimationWait();
-        SendRPC("ReceiveContinueAddToHandEmphasis");
+        int requestId = activeAddToHandRequestId;
+        if (requestId < 0)
+            return;
+
+        BeginAddToHandEmphasisWait(requestId);
+        SendRPC("ReceiveContinueAddToHandEmphasis", requestId);
+    }
+
+    /// <summary>
+    /// 手札追加の移動アニメ完了を待つ。
+    /// </summary>
+    public Task WaitForAddToHandMove()
+    {
+        return WaitForAddToHandAck(activeAddToHandRequestId, movePhase: true);
+    }
+
+    /// <summary>
+    /// 手札追加の強調アニメ完了を待つ。
+    /// </summary>
+    public Task WaitForAddToHandEmphasis()
+    {
+        return WaitForAddToHandAck(activeAddToHandRequestId, movePhase: false);
     }
 
     [PunRPC]
-    private void ReceiveContinueAddToHandEmphasis()
+    private void ReceiveContinueAddToHandEmphasis(int requestId)
     {
-        if (addToHandEmphasisContinue != null)
-            addToHandEmphasisContinue.TrySetResult(true);
-        else
-            addToHandEmphasisContinuePending = true;
+        TaskCompletionSource<bool> continueTcs = null;
+        lock (addToHandAckLock)
+        {
+            if (!addToHandEmphasisContinues.TryGetValue(requestId, out continueTcs))
+                addToHandEmphasisContinuePending.Add(requestId);
+        }
+
+        continueTcs?.TrySetResult(true);
     }
 
     /// <summary>
     /// 「デッキ/墓地/場から手札へ加えた」アニメーション受信
     /// </summary>
     [PunRPC]
-    private void ReceiveAddToHandAnimation(string cardKindStr, int cardID, int sourceInt, bool emphasize, int mirrorIndex, string mirrorZone)
+    private void ReceiveAddToHandAnimation(int requestId, string cardKindStr, int cardID, int sourceInt, bool emphasize, int mirrorIndex, string mirrorZone)
     {
         try
         {
             if (!System.Enum.TryParse<CardKind>(cardKindStr, out CardKind cardKind))
             {
-                BeginAddToHandFailureAck(emphasize);
+                BeginAddToHandFailureAck(requestId, emphasize);
                 return;
             }
 
             SummonSource source = (SummonSource)sourceInt;
 
-            if (source == SummonSource.デッキ)
+            if (source == SummonSource.墓地)
             {
                 RemoveCardFromOpponentGraveyard(cardKind, cardID, mirrorIndex);
                 BattleManager.Instance.UpdateEnemyGraveyardUI();
@@ -76,12 +104,12 @@ public partial class OnlineSyncManager
             }
 
             BattleManager.Instance.UpdateDeckUI();
-            _ = ExecuteAddToHandAnimation(cardKind, cardID, source, emphasize, mirrorIndex, mirrorZone);
+            _ = ExecuteAddToHandAnimation(requestId, cardKind, cardID, source, emphasize, mirrorIndex, mirrorZone);
         }
         catch (System.Exception ex)
         {
             Debug.LogError($"[OnlineSyncManager] ReceiveAddToHandAnimationでエラー: {ex.Message}");
-            BeginAddToHandFailureAck(emphasize);
+            BeginAddToHandFailureAck(requestId, emphasize);
         }
     }
 
@@ -89,7 +117,7 @@ public partial class OnlineSyncManager
     /// 相手側の画面で「デッキ/墓地/場→手札」アニメーションを実行。
     /// emphasize が真のときは移動後に完了を返し、強調の合図を待ってから拡縮する。
     /// </summary>
-    private async Task ExecuteAddToHandAnimation(CardKind cardKind, int cardID, SummonSource source, bool emphasize, int mirrorIndex, string mirrorZone)
+    private async Task ExecuteAddToHandAnimation(int requestId, CardKind cardKind, int cardID, SummonSource source, bool emphasize, int mirrorIndex, string mirrorZone)
     {
         CardController tempCard = null;
         bool isFromField = false;
@@ -98,7 +126,7 @@ public partial class OnlineSyncManager
         try
         {
             if (emphasize)
-                continueTcs = BeginAddToHandEmphasisWait();
+                continueTcs = BeginAddToHandEmphasisContinue(requestId);
 
             if (source == SummonSource.場)
             {
@@ -135,7 +163,7 @@ public partial class OnlineSyncManager
             }
             else
             {
-                Transform fromZone = source == SummonSource.墓地
+                Transform fromZone = source == SummonSource.デッキ
                     ? BattleManager.Instance.eDeckZone
                     : source == SummonSource.異次元
                         ? BattleManager.Instance.eDimensionZone
@@ -156,7 +184,7 @@ public partial class OnlineSyncManager
                     RectTransform from = fromZone as RectTransform;
                     RectTransform to = BattleManager.Instance.eHandZone as RectTransform;
 
-                    if (source == SummonSource.墓地)
+                    if (source == SummonSource.デッキ)
                     {
                         await CardAnimationManager.Instance.AnimateDraw(from, to, tempCard);
                         if (tempCard != null && tempCard.gameObject != null && to != null)
@@ -177,7 +205,7 @@ public partial class OnlineSyncManager
             if (!emphasize)
                 return;
 
-            SendOpponentAnimationComplete();
+            SendAddToHandMoveComplete(requestId);
             phase1Sent = true;
 
             if (continueTcs != null)
@@ -195,7 +223,7 @@ public partial class OnlineSyncManager
             {
                 if (emphasize && !phase1Sent)
                 {
-                    SendOpponentAnimationComplete();
+                    SendAddToHandMoveComplete(requestId);
                     phase1Sent = true;
                     if (continueTcs != null)
                         await continueTcs.Task;
@@ -203,7 +231,7 @@ public partial class OnlineSyncManager
             }
             finally
             {
-                EndAddToHandEmphasisWait(continueTcs);
+                EndAddToHandEmphasisContinue(requestId, continueTcs);
 
                 if (!isFromField && tempCard != null && tempCard.gameObject != null)
                 {
@@ -217,7 +245,10 @@ public partial class OnlineSyncManager
                     }
                 }
 
-                SendOpponentAnimationComplete();
+                if (emphasize)
+                    SendAddToHandEmphasisComplete(requestId);
+                else
+                    SendAddToHandMoveComplete(requestId);
             }
         }
     }
@@ -241,50 +272,156 @@ public partial class OnlineSyncManager
         }
     }
 
-    private TaskCompletionSource<bool> BeginAddToHandEmphasisWait()
+    int BeginAddToHandMoveWait()
     {
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        addToHandEmphasisContinue = tcs;
-        if (addToHandEmphasisContinuePending)
+        int requestId;
+        lock (addToHandAckLock)
         {
-            addToHandEmphasisContinuePending = false;
-            tcs.TrySetResult(true);
+            requestId = nextAddToHandRequestId++;
+            addToHandMoveAcks[requestId] = tcs;
+        }
+        return requestId;
+    }
+
+    void BeginAddToHandEmphasisWait(int requestId)
+    {
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (addToHandAckLock)
+            addToHandEmphasisAcks[requestId] = tcs;
+    }
+
+    async Task WaitForAddToHandAck(int requestId, bool movePhase)
+    {
+        if (!IsOnlineMode || requestId < 0)
+            return;
+
+        TaskCompletionSource<bool> tcs;
+        lock (addToHandAckLock)
+        {
+            var map = movePhase ? addToHandMoveAcks : addToHandEmphasisAcks;
+            if (!map.TryGetValue(requestId, out tcs))
+                return;
+        }
+
+        string label = movePhase ? "AddToHandMove" : "AddToHandEmphasis";
+        try
+        {
+            Task completed = await Task.WhenAny(tcs.Task, Task.Delay(AddToHandAckTimeoutMs));
+            if (completed != tcs.Task)
+            {
+                Debug.LogWarning($"[OnlineSyncManager] {label} の完了待ちがタイムアウトしました: requestId={requestId}");
+                tcs.TrySetResult(true);
+            }
+            else
+                await tcs.Task;
+        }
+        finally
+        {
+            lock (addToHandAckLock)
+            {
+                var map = movePhase ? addToHandMoveAcks : addToHandEmphasisAcks;
+                map.Remove(requestId);
+            }
+        }
+    }
+
+    void SendAddToHandMoveComplete(int requestId)
+    {
+        SendRPC("ReceiveAddToHandMoveComplete", requestId);
+    }
+
+    void SendAddToHandEmphasisComplete(int requestId)
+    {
+        SendRPC("ReceiveAddToHandEmphasisComplete", requestId);
+    }
+
+    [PunRPC]
+    void ReceiveAddToHandMoveComplete(int requestId)
+    {
+        CompleteAddToHandAck(requestId, movePhase: true);
+    }
+
+    [PunRPC]
+    void ReceiveAddToHandEmphasisComplete(int requestId)
+    {
+        CompleteAddToHandAck(requestId, movePhase: false);
+    }
+
+    void CompleteAddToHandAck(int requestId, bool movePhase)
+    {
+        TaskCompletionSource<bool> tcs = null;
+        lock (addToHandAckLock)
+        {
+            var map = movePhase ? addToHandMoveAcks : addToHandEmphasisAcks;
+            if (map.TryGetValue(requestId, out tcs))
+            {
+                // 待っている側が Remove する。ここでは完了だけ通知する。
+            }
+        }
+
+        if (tcs == null)
+        {
+            Debug.LogWarning($"[OnlineSyncManager] 手札追加ACKに対応する待ちがありません: phase={(movePhase ? "move" : "emphasis")}, requestId={requestId}");
+            return;
+        }
+
+        tcs.TrySetResult(true);
+    }
+
+    private TaskCompletionSource<bool> BeginAddToHandEmphasisContinue(int requestId)
+    {
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (addToHandAckLock)
+        {
+            addToHandEmphasisContinues[requestId] = tcs;
+            if (addToHandEmphasisContinuePending.Remove(requestId))
+                tcs.TrySetResult(true);
         }
         return tcs;
     }
 
-    private void EndAddToHandEmphasisWait(TaskCompletionSource<bool> tcs)
+    private void EndAddToHandEmphasisContinue(int requestId, TaskCompletionSource<bool> tcs)
     {
-        if (tcs != null && addToHandEmphasisContinue == tcs)
-            addToHandEmphasisContinue = null;
+        lock (addToHandAckLock)
+        {
+            if (tcs != null
+                && addToHandEmphasisContinues.TryGetValue(requestId, out var current)
+                && current == tcs)
+            {
+                addToHandEmphasisContinues.Remove(requestId);
+            }
+
+            addToHandEmphasisContinuePending.Remove(requestId);
+        }
     }
 
     /// <summary>
-    /// 移動アニメに入れなかったときも、強調待ちの完了通知を2件返す。
+    /// 移動アニメに入れなかったときも、強調待ちの完了通知を必要な分返す。
     /// </summary>
-    private void BeginAddToHandFailureAck(bool emphasize)
+    private void BeginAddToHandFailureAck(int requestId, bool emphasize)
     {
         if (!emphasize)
         {
-            SendOpponentAnimationComplete();
+            SendAddToHandMoveComplete(requestId);
             return;
         }
 
-        _ = CompleteFailedAddToHandEmphasis();
+        _ = CompleteFailedAddToHandEmphasis(requestId);
     }
 
-    private async Task CompleteFailedAddToHandEmphasis()
+    private async Task CompleteFailedAddToHandEmphasis(int requestId)
     {
-        var continueTcs = BeginAddToHandEmphasisWait();
+        var continueTcs = BeginAddToHandEmphasisContinue(requestId);
         try
         {
-            SendOpponentAnimationComplete();
+            SendAddToHandMoveComplete(requestId);
             await continueTcs.Task;
         }
         finally
         {
-            EndAddToHandEmphasisWait(continueTcs);
-            SendOpponentAnimationComplete();
+            EndAddToHandEmphasisContinue(requestId, continueTcs);
+            SendAddToHandEmphasisComplete(requestId);
         }
     }
 
@@ -368,33 +505,32 @@ public partial class OnlineSyncManager
     }
 
     private void RemoveCardFromOpponentHand(CardKind cardKind, int cardID, int index = -1)
-    {
-        if (index >= 0 && index < opponentHand.Count)
-        {
-            opponentHand.RemoveAt(index);
-            return;
-        }
-
-        var cardToRemove = opponentHand.FirstOrDefault(c => c.カード種類 == cardKind && c.カードID == cardID);
-        if (cardToRemove != null)
-            opponentHand.Remove(cardToRemove);
-    }
+        => RemoveFromOpponentPile(opponentHand, cardKind, cardID, index);
 
     private void RemoveCardFromOpponentGraveyard(CardKind cardKind, int cardID, int index = -1)
+        => RemoveFromOpponentPile(opponentGrave, cardKind, cardID, index);
+
+    /// <summary>
+    /// 相手側の一覧から、住所が一致するならその位置、そうでなければ種類とIDで1枚取り除く。
+    /// </summary>
+    void RemoveFromOpponentPile(List<DeckCard> pile, CardKind cardKind, int cardID, int index = -1)
     {
-        if (index >= 0 && index < opponentGrave.Count)
+        if (pile == null)
+            return;
+
+        if (index >= 0 && index < pile.Count)
         {
-            var addressed = opponentGrave[index];
+            var addressed = pile[index];
             if (addressed != null && addressed.カード種類 == cardKind && addressed.カードID == cardID)
             {
-                opponentGrave.RemoveAt(index);
+                pile.RemoveAt(index);
                 return;
             }
         }
 
-        var cardToRemove = opponentGrave.FirstOrDefault(c => c.カード種類 == cardKind && c.カードID == cardID);
+        var cardToRemove = pile.Find(c => c != null && c.カード種類 == cardKind && c.カードID == cardID);
         if (cardToRemove != null)
-            opponentGrave.Remove(cardToRemove);
+            pile.Remove(cardToRemove);
     }
 
     private void ResetCardStatusForReturnToHand(CardController card)
@@ -451,22 +587,9 @@ public partial class OnlineSyncManager
     /// <summary>
     /// 相手に相手自身のカードを動かすよう頼み、終わりの合図 ReceiveOpponentOwnHandFinished まで待つ。
     /// </summary>
-    async Task AwaitOpponentOwnMove(System.Action send)
+    Task AwaitOpponentOwnMove(System.Action send)
     {
-        var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        opponentOwnHandFinished = finished;
-        BeginOperationBlock();
-        try
-        {
-            send();
-            await finished.Task;
-        }
-        finally
-        {
-            if (opponentOwnHandFinished == finished)
-                opponentOwnHandFinished = null;
-            EndOperationBlock();
-        }
+        return AwaitRemoteAction(opponentOwnHandFinished, send);
     }
 
     [PunRPC]
@@ -517,7 +640,6 @@ public partial class OnlineSyncManager
     [PunRPC]
     void ReceiveOpponentOwnHandFinished()
     {
-        opponentOwnHandFinished?.TrySetResult(true);
+        opponentOwnHandFinished.SetComplete();
     }
 }
-

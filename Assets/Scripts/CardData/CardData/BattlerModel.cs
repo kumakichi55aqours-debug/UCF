@@ -2,10 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class BattlerModel : CardDBBase
 {
-    public CardTypeList type;
+    public CardTypeList タイプ;
     public int maxHp;
     public ElementList 得意属性;
     public int 属性軽減値;
@@ -39,11 +40,7 @@ public class BattlerModel : CardDBBase
     public void Init(int cardID)
     {
         BattlerDB cardDB = BattlerAssets.Load(cardID, out bool token);
-        if (cardDB == null)
-        {
-            Debug.LogError($"バトラーまたはトークンが見つかりません: {cardID}");
-            return;
-        }
+        if (cardDB == null) return;
 
         トークン = token;
         分類 = token ? CardKind.バトラー : cardDB.分類;
@@ -52,7 +49,7 @@ public class BattlerModel : CardDBBase
         レア度 = cardDB.レア度;
         画像 = cardDB.画像;
         コスト = cardDB.コスト;
-        type = cardDB.タイプ;
+        タイプ = cardDB.タイプ;
         maxHp = cardDB.hp;
         得意属性 = cardDB.得意属性;
         属性軽減値 = cardDB.属性軽減値;

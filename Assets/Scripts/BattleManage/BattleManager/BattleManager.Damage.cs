@@ -198,6 +198,7 @@ public partial class BattleManager
     {
         var damageContext = new SkillContext(defender, defender, defender.transform);
         damageContext.SetDamageInfo(calculatedDamage, attackerElement, moveIndex, attacker);
+        damageContext.RegisterMoveParticipants(attacker, defender);
 
         if (IsOnlineMode)
         {
@@ -324,9 +325,14 @@ public partial class BattleManager
                 MarkMoveUsed(attacker);
                 defeatedByMove = true;
 
-                var defeatTrigger = (moveIndex == 0) ? SkillTrigger.技1撃破時 : SkillTrigger.技2撃破時;
-                await ProcessSkillTriggerAndWait(defeatTrigger, attacker, targetCard);
-                await ProcessSkillTriggerAndWait(SkillTrigger.技撃破時, attacker, targetCard);
+                // 攻撃者が技使用後に手札へ戻って破棄されていても、撃破時は対象側の処理を続ける。
+                // オンラインでは参照が消えていても空窓へ参加し、相手の撃破窓と食い違わないようにする。
+                if (attacker != null || IsOnlineMode)
+                {
+                    var defeatTrigger = (moveIndex == 0) ? SkillTrigger.技1撃破時 : SkillTrigger.技2撃破時;
+                    await ProcessSkillTriggerAndWait(defeatTrigger, attacker, targetCard);
+                    await ProcessSkillTriggerAndWait(SkillTrigger.技撃破時, attacker, targetCard);
+                }
                 await RetireEnhancementsIfSpent(targetCard);
 
                 // トークンの撃破では、持ち主へダメージを与えない。
@@ -352,9 +358,16 @@ public partial class BattleManager
                 await RetireEnhancementsIfSpent(targetCard);
             }
         }
-        
-        if (attacker != null)
-            attacker.GetComponent<BattleCardView>()?.UpdateCanUseMovePanel();
+
+        try
+        {
+            if (attacker != null)
+                attacker.GetComponent<BattleCardView>()?.UpdateCanUseMovePanel();
+        }
+        catch (MissingReferenceException)
+        {
+            // 技使用後バウンスで破棄済み
+        }
 
         if (selectedAttacker != null)
             EndMoveTargetSelection();

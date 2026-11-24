@@ -59,12 +59,19 @@ public class SearchCriteriaDrawer : PropertyDrawer
             }
         }
 
-        if (filters != null)
+        // ソースカード条件が「自身」の場合はフィルタを表示しない。
+        bool showFilters = filters != null &&
+            (source == null || !IsSelfSource(source));
+
+        if (showFilters)
         {
             if (draw)
                 ApplyDefaultsToNewFilters(filters);
 
-            var filtersLabel = new GUIContent("フィルタ", "追加した条件のいずれか1つに合致すれば対象。1つの条件の中では、カテゴリはすべて必要。");
+            var filtersLabel = new GUIContent(
+                "フィルタ",
+                "追加した条件のいずれか1つに合致すれば対象。1つの条件の中では、カテゴリはすべて必要。");
+
             y = PlaceProperty(filters, filtersLabel, x, y, width, spacing, draw);
 
             if (draw)
@@ -138,6 +145,21 @@ public class SearchCriteriaDrawer : PropertyDrawer
         return name == nameof(SourceCardType.処理したカード)
             || name == nameof(SourceCardType.処理したカード以外)
             || name == nameof(SourceCardType.処理したカードと同名以外);
+    }
+
+    static bool IsSelfSource(SerializedProperty source)
+    {
+        if (source == null ||
+            source.propertyType != SerializedPropertyType.Enum)
+            return false;
+
+        int index = source.enumValueIndex;
+        string[] names = source.enumNames;
+
+        if (index < 0 || index >= names.Length)
+            return false;
+
+        return names[index] == nameof(SourceCardType.自身);
     }
 
     static SerializedProperty FindSibling(SerializedProperty property, string siblingName)

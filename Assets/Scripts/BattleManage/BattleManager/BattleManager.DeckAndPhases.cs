@@ -318,33 +318,41 @@ public partial class BattleManager
         await RetireExpiredEnhancements();
 
         if (PhaseManager.Instance != null && PhaseManager.Instance.OwnsCurrentPhase)
-            await ProcessOwnPhaseTiming(SkillTrigger.自分のフェイズ終了時, TurnPhase.エンドフェイズ);
+            await ProcessPhaseTiming(SkillTrigger.自分のフェイズ終了時, TurnPhase.エンドフェイズ);
     }
 
     /// <summary>
-    /// 自分のフェイズに入った、または出たときに、そのフェイズのスキルを確認して完了まで待つ。
-    /// チェーン本体のあとへ回ったトリガーも含め、スキル処理が空になってから返す。
+    /// フェイズに入った、または出たときに、そのフェイズのスキルを確認して完了まで待つ。
+    /// オフラインは、持ち主の「自分のフェイズ」と、もう一方の「相手のフェイズ」を同じチェーンで確認する。
+    /// オンラインでこちらに候補が無いときは、相手に候補があれば相手が窓を開く。
     /// </summary>
-    public async Task ProcessOwnPhaseTiming(SkillTrigger trigger, TurnPhase phase)
+    public async Task ProcessPhaseTiming(SkillTrigger trigger, TurnPhase phase)
     {
         if (!SkillManager.IsOwnPhaseTrigger(trigger))
             return;
 
-        var context = new SkillContext(null, null, null);
-        var collected = SkillManager.CollectSkillsForTrigger(trigger, null, null, context, phase: phase);
-        bool hasSkills = collected.TPForcedSkills.Count > 0
-            || collected.TPOptionalSkills.Count > 0
-            || collected.NonTPForcedSkills.Count > 0
-            || collected.NonTPOptionalSkills.Count > 0;
-        if (!hasSkills)
-            return;
-
-        context.ProcessingCompleteTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        EventBus.Publish(new SkillTriggerEvent(trigger, null, null, context) { Phase = phase });
-
-        await context.ProcessingCompleteTcs.Task;
         if (SkillChainManager.Instance != null)
             await SkillChainManager.Instance.WaitUntilIdle();
+
+        var context = new SkillContext(null, null, null);
+        var collected = SkillManager.CollectSkillsForTrigger(trigger, null, null, context, phase: phase);
+        if (!SkillManager.HasCollectedSkills(collected))
+        {
+            if (IsOnlineMode && OnlineSyncManager.Instance != null)
+                await OnlineSyncManager.Instance.RequestOpponentPhaseChain(trigger, phase);
+            return;
+        }
+
+        collected.InvitePhasePartner = IsOnlineMode;
+        context.ProcessingCompleteTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (SkillChainManager.Instance == null)
+        {
+            context.ProcessingCompleteTcs.TrySetResult(true);
+            return;
+        }
+
+        await SkillChainManager.Instance.ProcessChainForCollectedSkills(collected);
+        await SkillChainManager.Instance.WaitUntilIdle();
     }
 
     public void IncrementTurn()
@@ -465,7 +473,9 @@ public partial class BattleManager
 
     public void UpdateEnemyHandUI()
     {
-        if (enemyHandHolds > 0)
+        // 技解決中に作り直すと、技使用後バウンスで手札へ移した攻撃者の参照が消え、
+        // 撃破時などのチェーン窓に片側だけ入って進行不能になる。
+        if (enemyHandHolds > 0 || IsResolvingMove)
         {
             enemyHandRefreshPending = true;
             return;

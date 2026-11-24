@@ -167,27 +167,15 @@ public partial class OnlineSyncManager
         deckSyncCompleted.SetComplete();
     }
 
-    TaskCompletionSource<bool> skillDrawFinished;
-
     /// <summary>
     /// 相手のクライアントに、相手自身のデッキから指定枚数引かせる。
     /// </summary>
-    public async Task RequestOpponentSkillDraw(int count)
+    public Task RequestOpponentSkillDraw(int count)
     {
         if (!IsOnlineMode || count <= 0)
-            return;
+            return Task.CompletedTask;
 
-        skillDrawFinished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        BeginOperationBlock();
-        try
-        {
-            SendRPC("ReceiveSkillDrawRequest", count);
-            await skillDrawFinished.Task;
-        }
-        finally
-        {
-            EndOperationBlock();
-        }
+        return AwaitRemoteAction(skillDrawFinished, () => SendRPC("ReceiveSkillDrawRequest", count));
     }
 
     [PunRPC]
@@ -217,6 +205,6 @@ public partial class OnlineSyncManager
     [PunRPC]
     void ReceiveSkillDrawFinished()
     {
-        skillDrawFinished?.TrySetResult(true);
+        skillDrawFinished.SetComplete();
     }
 }

@@ -45,6 +45,46 @@ public struct CardAddress
     }
 
     /// <summary>
+    /// 複数カードを RPC 用の住所配列にまとめる。
+    /// </summary>
+    public static PackedAddresses Pack(IReadOnlyList<CardController> cards)
+    {
+        var kinds = new List<string>();
+        var ids = new List<int>();
+        var zones = new List<string>();
+        var indices = new List<int>();
+        if (cards != null)
+        {
+            for (int i = 0; i < cards.Count; i++)
+                TryAdd(cards[i], kinds, ids, zones, indices);
+        }
+
+        return new PackedAddresses(kinds.ToArray(), ids.ToArray(), zones.ToArray(), indices.ToArray());
+    }
+
+    /// <summary>
+    /// カード住所の配列セット。RPC の kinds/ids/zones/indices にそのまま渡せる。
+    /// </summary>
+    public readonly struct PackedAddresses
+    {
+        public readonly string[] Kinds;
+        public readonly int[] Ids;
+        public readonly string[] Zones;
+        public readonly int[] Indices;
+
+        public PackedAddresses(string[] kinds, int[] ids, string[] zones, int[] indices)
+        {
+            Kinds = kinds ?? System.Array.Empty<string>();
+            Ids = ids ?? System.Array.Empty<int>();
+            Zones = zones ?? System.Array.Empty<string>();
+            Indices = indices ?? System.Array.Empty<int>();
+        }
+
+        public int Count => CardAddress.Count(Kinds, Ids, Zones, Indices);
+        public bool IsEmpty => Count == 0;
+    }
+
+    /// <summary>
     /// 送信者のゾーン名を受信者の盤面へ読み替えて、種類とIDが一致するカードを返す。
     /// </summary>
     public static CardController Resolve(string kindStr, int id, string zoneName, int index)
@@ -96,5 +136,21 @@ public struct CardAddress
         if (index < 0 || index >= kinds.Length || index >= ids.Length || index >= zones.Length || index >= indices.Length)
             return null;
         return Resolve(kinds[index], ids[index], zones[index], indices[index]);
+    }
+
+    /// <summary>
+    /// 住所配列から解決できたカードだけを返す。
+    /// </summary>
+    public static List<CardController> ResolveAll(string[] kinds, int[] ids, string[] zones, int[] indices)
+    {
+        int count = Count(kinds, ids, zones, indices);
+        var cards = new List<CardController>(count);
+        for (int i = 0; i < count; i++)
+        {
+            CardController card = ResolveAt(kinds, ids, zones, indices, i);
+            if (card != null)
+                cards.Add(card);
+        }
+        return cards;
     }
 }

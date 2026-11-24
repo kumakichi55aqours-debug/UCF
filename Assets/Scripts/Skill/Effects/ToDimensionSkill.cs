@@ -16,21 +16,33 @@ public class ToDimensionSkill : SkillDB
     [SerializeField] public PlayerType 選択プレイヤー = PlayerType.プレイヤー;
     [SerializeField] public bool ランダム = false;
     [SerializeField] public bool 全選択 = false;
+    [SerializeField] public SkillArg 出力キー = SkillArg.なし;
+    [SerializeField] public DimensionHpValue 出力する値 = DimensionHpValue.現在HP;
 
     [SerializeReference]
     public List<ISkillCondition> 対象状態 = new List<ISkillCondition>();
 
+    int pendingHpOutput;
+
     public override async Task ActivateEffect(SkillContext context)
     {
-        if (context != null && context.TryConsumeSelection(out var selected))
+        pendingHpOutput = 0;
+        try
         {
-            await SendPassedSelection(context, selected);
-            await Task.Delay(300);
-            return;
-        }
+            if (context != null && context.TryConsumeSelection(out var selected))
+            {
+                await SendPassedSelection(context, selected);
+                await Task.Delay(300);
+                return;
+            }
 
-        await SendCardToDimension(context, 参照条件, 参照元, 選択数, 選択プレイヤー);
-        await Task.Delay(300);
+            await SendCardToDimension(context, 参照条件, 参照元, 選択数, 選択プレイヤー);
+            await Task.Delay(300);
+        }
+        finally
+        {
+            WriteHpOutput(context);
+        }
     }
 
     public async Task SendCardToDimension(
@@ -115,7 +127,12 @@ public class ToDimensionSkill : SkillDB
         if (enemyDeck.Count > 0)
         {
             if (battle.IsOnlineMode && OnlineSyncManager.Instance != null)
-                processed.AddRange(await SendOpponentDeckCards(enemyDeck));
+            {
+                var arrived = await SendOpponentDeckCards(enemyDeck);
+                foreach (var card in arrived)
+                    CaptureHpOutput(card);
+                processed.AddRange(arrived);
+            }
             else
                 processed.AddRange(await MoveDeckCards(battle.eBattleDeck, enemyDeck, battle.eDeckZone, battle.eDimensionZone, false));
         }
@@ -202,6 +219,7 @@ public class ToDimensionSkill : SkillDB
                 TokenExit.VanishLocal(tempCard);
                 continue;
             }
+            CaptureHpOutput(tempCard);
 
             bool sentSync = false;
             if (syncToOpponent && OnlineSyncManager.Instance != null && tempCard != null)
@@ -290,6 +308,7 @@ public class ToDimensionSkill : SkillDB
                 if (offlineCpuHand)
                     RemoveOneEnemyHandCard(card);
                 OnlineSyncManager.Instance?.NoteCardLeavingOpponentPile(card);
+                CaptureHpOutput(card);
                 ResetCardState(card);
                 if (!card.isMyCard)
                     card.battleCardview?.Show(card.model);
@@ -384,6 +403,36 @@ public class ToDimensionSkill : SkillDB
             || zoneType == CardZoneType.相手Fゾーン;
     }
 
+    void CaptureHpOutput(CardController card)
+    {
+        if (出力キー == SkillArg.なし || card == null)
+            return;
+
+        pendingHpOutput += HpToOutput(card);
+    }
+
+    int HpToOutput(CardController card)
+    {
+        if (出力する値 == DimensionHpValue.最大HP)
+        {
+            if (card.model is BattlerModel battler)
+                return Mathf.Max(0, battler.maxHp);
+            if (card.model is FieldModel field)
+                return Mathf.Max(0, field.maxHp);
+            return 0;
+        }
+
+        return Mathf.Max(0, card.curHp);
+    }
+
+    void WriteHpOutput(SkillContext context)
+    {
+        if (出力キー == SkillArg.なし || context == null)
+            return;
+
+        context.SetArg(出力キー, pendingHpOutput);
+    }
+
     static void RemoveOneEnemyHandCard(CardController card)
     {
         var hand = BattleManager.Instance?.enemyHand;
@@ -399,6 +448,12 @@ public class ToDimensionSkill : SkillDB
                 return;
             }
         }
+    }
+
+    public enum DimensionHpValue
+    {
+        現在HP,
+        最大HP,
     }
 
     protected override void CopyPolymorphicFieldsTo(SkillDB clone)

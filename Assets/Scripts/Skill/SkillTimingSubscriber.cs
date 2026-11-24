@@ -19,6 +19,7 @@ public class SkillTimingSubscriber : MonoBehaviour
 
     private void OnSummonCompleted(SummonCompletedEvent e)
     {
+        // バトラー／フィールドの登場。作戦は UseCardFromHand 側へ寄せる。
         EventBus.Publish(new SkillTriggerEvent(SkillTrigger.登場時, e.Card, null, null, e.FromLocation)
         {
             SpecialSummon = e.SpecialSummon
@@ -27,6 +28,7 @@ public class SkillTimingSubscriber : MonoBehaviour
 
     private void OnUseFromHand(UseCardFromHandEvent e)
     {
+        // 作戦登場の内部トリガー。スキルデータは登場時を参照し、チェーン終了後に強化以外を墓地へ送る。
         EventBus.Publish(new SkillTriggerEvent(SkillTrigger.カード使用時, e.Card, null, null, e.FromLocation)
         {
             SpecialSummon = e.SpecialSummon
@@ -52,6 +54,10 @@ public class SummonCompletedEvent
     }
 }
 
+/// <summary>
+/// 作戦登場のシグナル。Subscriber がカード使用時（内部トリガー）へ変換する。
+/// スキルデータは登場時。チェーン終了後に強化以外は墓地へ送る。
+/// </summary>
 public class UseCardFromHandEvent
 {
     public CardController Card { get; }
@@ -85,7 +91,7 @@ public class SkillTriggerEvent
     public CardController MoveTarget { get; }
     public SkillContext Context { get; set; } // 技を受ける時などで使用
     public CardZoneType FromLocation { get; set; } // 墓地に送られた時などで使用。ローカルプレイヤー基準の絶対ゾーン
-    public TurnPhase Phase { get; set; } // 自分のフェイズ開始時・終了時で、入った／出たフェイズ
+    public TurnPhase Phase { get; set; } // フェイズ開始時・終了時で、入った／出たフェイズ
     public bool SpecialSummon { get; set; } // 登場時で、スキルによる登場か
     // 手札に戻ったカードが、ローカルプレイヤーのカードか。戻ったあとの実体は持たない
     public bool SubjectIsMyCard { get; set; }

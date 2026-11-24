@@ -26,7 +26,7 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// チェーン中に手札から出した作戦を、相手の作戦ゾーンへ出す。カード使用時の窓は開かない。
+    /// チェーン中に手札から出した作戦を、相手の作戦ゾーンへ出す。作戦登場の新しい窓は開かない。
     /// </summary>
     public void SyncAppearTacticsDuringChain(string cardKindStr, int cardID, int handIndex)
     {
@@ -36,7 +36,7 @@ public partial class OnlineSyncManager
     [PunRPC]
     private void ReceiveAppearTacticsDuringChain(string cardKindStr, int cardID, int handIndex, string targetZoneName)
     {
-        PlayOpponentCardFromHand(cardKindStr, cardID, handIndex, targetZoneName, SummonSource.手札, openUseChain: false);
+        PlayOpponentCardFromHand(cardKindStr, cardID, handIndex, targetZoneName, SummonSource.手札, openAppearanceChain: false);
     }
 
     /// <summary>
@@ -62,11 +62,11 @@ public partial class OnlineSyncManager
 
     /// <summary>
     /// 相手のカードを、手札や墓地の表示から外してから指定ゾーンへ動かす。
-    /// openUseChain が false のあいだは、着地前でも発動アニメの対象に残す。
+    /// openAppearanceChain が false のあいだは、着地前でも発動アニメの対象に残す。
     /// </summary>
-    private async Task PlayOpponentSummon(CardController card, Transform targetZone, SummonSource summonSource, int sourceIndex, bool openUseChain, bool specialSummon = false)
+    private async Task PlayOpponentSummon(CardController card, Transform targetZone, SummonSource summonSource, int sourceIndex, bool openAppearanceChain, bool specialSummon = false)
     {
-        bool trackUntilArrival = !openUseChain && card != null;
+        bool trackUntilArrival = !openAppearanceChain && card != null;
         if (trackUntilArrival)
             chainTacticsInFlight = card;
 
@@ -82,7 +82,6 @@ public partial class OnlineSyncManager
             if (fromZone != null)
             {
                 // 手札・墓地・異次元・デッキは、表示を組み直す前にキャンバスへ退避する。
-                // SummonSource.墓地 はデッキ、SummonSource.デッキ は墓地。
                 if (summonSource == SummonSource.手札 || summonSource == SummonSource.デッキ
                     || summonSource == SummonSource.異次元 || summonSource == SummonSource.墓地)
                 {
@@ -101,7 +100,7 @@ public partial class OnlineSyncManager
                         RemoveCardFromOpponentDimension(card.cardKind, card.cardID, sourceIndex);
                         BattleManager.Instance.UpdateEnemyDimensionUI();
                     }
-                    else if (summonSource == SummonSource.墓地)
+                    else if (summonSource == SummonSource.デッキ)
                     {
                         RemoveCardFromOpponentDeck(card.cardKind, card.cardID);
                     }
@@ -119,7 +118,7 @@ public partial class OnlineSyncManager
                 }
             }
 
-            await BattleManager.Instance.SummonRoutine(card, targetZone, true, summonSource, openUseChain, specialSummon);
+            await BattleManager.Instance.SummonRoutine(card, targetZone, true, summonSource, openAppearanceChain, specialSummon);
         }
         catch (System.Exception ex)
         {
@@ -145,7 +144,7 @@ public partial class OnlineSyncManager
     /// <summary>
     /// 相手の手札由来カードを生成し、指定ゾーンへ出す。
     /// </summary>
-    private void PlayOpponentCardFromHand(string cardKindStr, int cardID, int handIndex, string targetZoneName, SummonSource summonSource, bool openUseChain = true, bool specialSummon = false)
+    private void PlayOpponentCardFromHand(string cardKindStr, int cardID, int handIndex, string targetZoneName, SummonSource summonSource, bool openAppearanceChain = true, bool specialSummon = false)
     {
         if (!IsOnlineMode || BattleManager.Instance == null)
             return;
@@ -167,7 +166,7 @@ public partial class OnlineSyncManager
                 return;
             }
 
-            _ = PlayOpponentSummon(card, targetZone, summonSource, handIndex, openUseChain, specialSummon);
+            _ = PlayOpponentSummon(card, targetZone, summonSource, handIndex, openAppearanceChain, specialSummon);
         }
         catch (System.Exception ex)
         {
@@ -180,33 +179,18 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncUseMove(CardController attacker, int moveIndex, bool moveHit, int extraHits, MovePlan plan, IReadOnlyList<CardController> targets)
     {
-        if (!CardAddress.TryFrom(attacker, out CardAddress address))
-            return;
-
-        var kinds = new List<string>();
-        var ids = new List<int>();
-        var zones = new List<string>();
-        var indices = new List<int>();
-        if (targets != null)
-        {
-            foreach (var card in targets)
-                CardAddress.TryAdd(card, kinds, ids, zones, indices);
-        }
-
-        SendRPC(
+        var packed = CardAddress.Pack(targets);
+        TrySendCardRpc(
             "ReceiveUseMove",
-            address.Kind.ToString(),
-            address.Id,
-            address.ZoneName,
-            address.Index,
+            attacker,
             moveIndex,
             moveHit,
             extraHits,
             (int)plan,
-            kinds.ToArray(),
-            ids.ToArray(),
-            zones.ToArray(),
-            indices.ToArray());
+            packed.Kinds,
+            packed.Ids,
+            packed.Zones,
+            packed.Indices);
     }
 
     /// <summary>
@@ -226,14 +210,8 @@ public partial class OnlineSyncManager
         }
 
         // 対象の番号は、どのカードも動く前に解決する
-        var targets = new List<CardController>();
         int count = CardAddress.Count(targetKinds, targetIds, targetZones, targetIndices);
-        for (int i = 0; i < count; i++)
-        {
-            CardController card = CardAddress.ResolveAt(targetKinds, targetIds, targetZones, targetIndices, i);
-            if (card != null && !targets.Contains(card))
-                targets.Add(card);
-        }
+        var targets = CardAddress.ResolveAll(targetKinds, targetIds, targetZones, targetIndices);
         if (targets.Count < count)
             Debug.LogError($"[ReceiveUseMove] 技の対象が {count - targets.Count} 体見つかりません: {attacker.cardName}");
 
@@ -256,22 +234,7 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncSelectEnemyTarget(CardController attacker, CardController target, int moveIndex)
     {
-        if (!CardAddress.TryFrom(attacker, out CardAddress attackerAddress))
-            return;
-        if (!CardAddress.TryFrom(target, out CardAddress targetAddress))
-            return;
-
-        SendRPC(
-            "ReceiveSelectEnemyTarget",
-            attackerAddress.Kind.ToString(),
-            attackerAddress.Id,
-            attackerAddress.ZoneName,
-            attackerAddress.Index,
-            targetAddress.Kind.ToString(),
-            targetAddress.Id,
-            targetAddress.ZoneName,
-            targetAddress.Index,
-            moveIndex);
+        TrySendTwoCardRpc("ReceiveSelectEnemyTarget", attacker, target, moveIndex);
     }
 
     /// <summary>
@@ -309,30 +272,15 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncSelectMoveTargets(CardController attacker, IReadOnlyList<CardController> targets, int moveIndex)
     {
-        if (!CardAddress.TryFrom(attacker, out CardAddress attackerAddress))
-            return;
-
-        var kinds = new List<string>();
-        var ids = new List<int>();
-        var zones = new List<string>();
-        var indices = new List<int>();
-        if (targets != null)
-        {
-            foreach (var card in targets)
-                CardAddress.TryAdd(card, kinds, ids, zones, indices);
-        }
-
-        SendRPC(
+        var packed = CardAddress.Pack(targets);
+        TrySendCardRpc(
             "ReceiveSelectMoveTargets",
-            attackerAddress.Kind.ToString(),
-            attackerAddress.Id,
-            attackerAddress.ZoneName,
-            attackerAddress.Index,
+            attacker,
             moveIndex,
-            kinds.ToArray(),
-            ids.ToArray(),
-            zones.ToArray(),
-            indices.ToArray());
+            packed.Kinds,
+            packed.Ids,
+            packed.Zones,
+            packed.Indices);
     }
 
     /// <summary>
@@ -348,14 +296,7 @@ public partial class OnlineSyncManager
         if (attacker == null || attacker.model == null || BattleManager.Instance == null)
             return;
 
-        var targets = new List<CardController>();
-        int count = CardAddress.Count(targetKinds, targetIds, targetZones, targetIndices);
-        for (int i = 0; i < count; i++)
-        {
-            CardController card = CardAddress.ResolveAt(targetKinds, targetIds, targetZones, targetIndices, i);
-            if (card != null && !targets.Contains(card))
-                targets.Add(card);
-        }
+        var targets = CardAddress.ResolveAll(targetKinds, targetIds, targetZones, targetIndices);
 
         BattleManager.Instance.selectedAttacker = attacker;
         BattleManager.Instance.selectedMoveIndex = moveIndex;
@@ -368,10 +309,7 @@ public partial class OnlineSyncManager
     /// </summary>
     public void SyncCancelMoveTarget(CardController attacker)
     {
-        if (!CardAddress.TryFrom(attacker, out CardAddress address))
-            return;
-
-        SendRPC("ReceiveCancelMoveTarget", address.Kind.ToString(), address.Id, address.ZoneName, address.Index);
+        TrySendCardRpc("ReceiveCancelMoveTarget", attacker);
     }
 
     /// <summary>
@@ -380,11 +318,10 @@ public partial class OnlineSyncManager
     [PunRPC]
     private void ReceiveCancelMoveTarget(string cardKindStr, int cardID, string zoneName, int zoneIndex)
     {
-        CardController attacker = CardAddress.Resolve(cardKindStr, cardID, zoneName, zoneIndex);
-        if (attacker == null || BattleManager.Instance == null)
-            return;
-
-        BattleManager.Instance.AbortRemoteMoveTargetChoice(attacker);
+        WithResolvedCard(
+            cardKindStr, cardID, zoneName, zoneIndex,
+            "ReceiveCancelMoveTargetでエラー",
+            attacker => BattleManager.Instance?.AbortRemoteMoveTargetChoice(attacker));
     }
 
     /// <summary>
@@ -397,9 +334,9 @@ public partial class OnlineSyncManager
             case SummonSource.手札:
                 return BattleManager.Instance.eHandZone.GetComponent<RectTransform>();
             case SummonSource.墓地:
-                return BattleManager.Instance.eDeckZone.GetComponent<RectTransform>();
-            case SummonSource.デッキ:
                 return BattleManager.Instance.eGraveZone.GetComponent<RectTransform>();
+            case SummonSource.デッキ:
+                return BattleManager.Instance.eDeckZone.GetComponent<RectTransform>();
             case SummonSource.異次元:
                 return BattleManager.Instance.eDimensionZone != null
                     ? BattleManager.Instance.eDimensionZone.GetComponent<RectTransform>()

@@ -92,9 +92,7 @@ public partial class OnlineSyncManager
     {
         try
         {
-            var cards = new List<CardController>();
-            CollectResolvedCards(cardKinds, cardIds, zoneNames, indices, null, cards, null);
-            _ = DiscardCards(cards);
+            _ = DiscardCards(CardAddress.ResolveAll(cardKinds, cardIds, zoneNames, indices));
         }
         catch (System.Exception ex)
         {

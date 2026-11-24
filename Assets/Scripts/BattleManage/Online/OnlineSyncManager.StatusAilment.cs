@@ -12,18 +12,14 @@ public partial class OnlineSyncManager
     [PunRPC]
     private void ReceiveApplyStatus(string cardKind, int cardId, string zoneName, int index, int type, int turns, string sourceName)
     {
-        if (BattleManager.Instance == null) return;
-        var card = CardAddress.Resolve(cardKind, cardId, zoneName, index);
-        if (card == null)
+        if (BattleManager.Instance == null || !System.Enum.IsDefined(typeof(StatusAilmentType), type))
+            return;
+
+        WithResolvedCard(cardKind, cardId, zoneName, index, "ReceiveApplyStatusでエラー", card =>
         {
-            return;
-        }
-
-        if (!System.Enum.IsDefined(typeof(StatusAilmentType), type))
-            return;
-
-        // 付与RPCとは別に状態だけ届いたときも、残っている状態異常は外してから1つにする。
-        card.RemoveGrantedStatusAilments();
-        card.ApplyStatus((StatusAilmentType)type, turns, sourceName, syncOnline: false);
+            // 付与RPCとは別に状態だけ届いたときも、残っている状態異常は外してから1つにする。
+            card.RemoveGrantedStatusAilments();
+            card.ApplyStatus((StatusAilmentType)type, turns, sourceName, syncOnline: false);
+        });
     }
 }

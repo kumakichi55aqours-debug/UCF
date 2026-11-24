@@ -75,6 +75,7 @@ public enum CardCategoryList
     [CardCategory("種類", "ちょうじゅう")] 超獣 = 107,
     [CardCategory("その他", "だいかいじゅう")] 大怪獣 = 108,
     [CardCategory("その他", "ぞくせいへんか")] 属性変化 = 109,
+    [CardCategory("その他", "じょうたいいじょう")] 状態異常 = 110,
 }
 public enum ElementList
 {
@@ -119,6 +120,9 @@ public enum ActiveTiming
     他効果誘発,
     他のカードが手札に戻った時,
     他のカードが登場した時,
+    // 自分のフェイズと相手のフェイズの両方。既存の数値は変えないため末尾に足す。
+    フェイズ開始時,
+    フェイズ終了時,
 }
 
 /// <summary>
@@ -222,6 +226,7 @@ public enum SummonSource
 }
 public enum SkillTrigger
 {
+    // 作戦登場用の内部トリガー。スキルデータは登場時を参照し、解決後に強化以外を墓地へ送る目印にも使う。
     カード使用時,
     登場時,
     技使用時,
@@ -240,14 +245,17 @@ public enum SkillTrigger
     起動効果,
     自分のフェイズ開始時,
     自分のフェイズ終了時,
-    // 他カードTRG
-    他カードが墓地に送られた時,
+    // 他のカードTRG（ActiveTiming と同名にして ConvertToActiveTiming でそのまま対応させる）
+    他のカードが墓地に送られた時,
     他バトラー技使用時,
     他バトラー技使用後,
     他バトラー撃破時,
     他効果誘発,
-    他カードが手札に戻った時,
-    他カードが登場した時,
+    他のカードが手札に戻った時,
+    他のカードが登場した時,
+    // 通信の番号をずらさないため、末尾に足す
+    相手のフェイズ開始時,
+    相手のフェイズ終了時,
 }
 public enum MoveTarget
 {

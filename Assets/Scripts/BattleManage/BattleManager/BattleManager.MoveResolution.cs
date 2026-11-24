@@ -333,9 +333,9 @@ public partial class BattleManager
             labels.Add(ShowLabelEffect(position, "ミス", missColor));
         await Task.WhenAll(labels);
         ClearTargetHighlights();
-        await ProcessMoveUsedAfterSkills(attacker, moveIndex, targetCard);
-
+        // 技使用後に自身が手札へ戻ることがある。使用済みは、その前に付ける。
         MarkAttackerMoveFinished(attacker);
+        await ProcessMoveUsedAfterSkills(attacker, moveIndex, targetCard);
 
         if (selectedAttacker != null)
             EndMoveTargetSelection();
@@ -354,22 +354,118 @@ public partial class BattleManager
         // オンラインで宣言できるのは、自分のBゾーンにいるバトラーだけ
         if (IsOnlineMode && GetCardIndexInZone(attacker, pBattlerZone) < 0) return;
 
+        await DeclareAndResolveMove(attacker, moveIndex, autoChooseTargets: false);
+    }
+
+    /// <summary>
+    /// オフラインCPUの技。対象を選ぶところだけ自動で埋め、解決はプレイヤーと同じ経路を通る。
+    /// </summary>
+    public async Task ResolveCpuMove(CardController attacker, int moveIndex)
+    {
+        if (IsResolvingMove) return;
+        if (attacker == null || attacker.hasUsedMove || attacker.IsActionBlocked) return;
+        if (NoGrantMoveSkill.Blocks(attacker, moveIndex)) return;
+        if (MoveRestrictionSkill.Blocks(attacker, moveIndex)) return;
+
+        await DeclareAndResolveMove(attacker, moveIndex, autoChooseTargets: true);
+    }
+
+    /// <summary>
+    /// 命中を決めてから解決方法を決め、その方法で技を解決する。
+    /// プレイヤーは対象選択を開き、CPUは候補から選んで同じ解決へ入る。
+    /// </summary>
+    async Task DeclareAndResolveMove(CardController attacker, int moveIndex, bool autoChooseTargets)
+    {
         bool moveHit = attacker.RollMoveHit();
         int extraHits = moveHit ? MultiHitSkill.RollExtraHits(attacker, moveIndex) : 0;
         SetPendingMoveHit(moveHit, extraHits);
 
         var targets = new List<CardController>();
         MovePlan plan = DecideMovePlan(attacker, moveIndex, targets);
+        if (autoChooseTargets)
+            plan = await ChooseCpuTargets(attacker, moveIndex, plan, targets);
+
         if (plan == MovePlan.対象なし)
         {
             AbortMoveNoTarget(attacker);
             return;
         }
 
-        if (IsOnlineMode)
+        if (!autoChooseTargets && IsOnlineMode)
             OnlineSyncManager.Instance.SyncUseMove(attacker, moveIndex, moveHit, extraHits, plan, targets);
 
         await ExecuteMovePlan(attacker, moveIndex, plan, targets);
+    }
+
+    /// <summary>
+    /// プレイヤーなら選択UIになる技を、CPUは候補から選んで確定した解決方法へ変える。
+    /// 混乱は宣言時に対象が決まっているので、候補を見せるだけ。
+    /// </summary>
+    async Task<MovePlan> ChooseCpuTargets(CardController attacker, int moveIndex, MovePlan plan, List<CardController> targets)
+    {
+        if (plan == MovePlan.単体を選ぶ)
+        {
+            var legal = MoveTargetEvasion.ListLegalTargets(attacker, moveIndex);
+            if (legal.Count == 0)
+                return MovePlan.対象なし;
+
+            await PreviewCpuCandidates(legal);
+            targets.Add(legal[UnityEngine.Random.Range(0, legal.Count)]);
+            return MovePlan.単体;
+        }
+
+        if (plan == MovePlan.複数を選ぶ)
+        {
+            var select = MoveTargetEvasion.MoveSelect(attacker, moveIndex);
+            var legal = MoveTargetEvasion.ListLegalTargets(attacker, moveIndex);
+            int pickCount = select.選択方式 == CountMode.まで
+                ? Mathf.Min(select.Count, legal.Count)
+                : select.Count;
+            var picked = PickRandomTargets(legal, pickCount);
+            if (picked.Count < select.MinimumCount)
+                return MovePlan.対象なし;
+
+            await PreviewCpuCandidates(legal);
+            targets.AddRange(picked);
+            return MovePlan.複数;
+        }
+
+        if ((plan == MovePlan.単体 || plan == MovePlan.複数)
+            && MoveTargetEvasion.IsConfusedMove(attacker, moveIndex))
+            await PreviewCpuCandidates(MoveTargetEvasion.ListConfusionCandidates(attacker));
+
+        return plan;
+    }
+
+    async Task PreviewCpuCandidates(IEnumerable<CardController> candidates)
+    {
+        var list = candidates?.Where(card => card != null).Distinct().ToList();
+        if (list == null || list.Count == 0)
+            return;
+
+        ShowSpecificTargetHighlights(list);
+        await Task.Delay(200);
+    }
+
+    static List<CardController> PickRandomTargets(List<CardController> candidates, int count)
+    {
+        var pool = new List<CardController>();
+        if (candidates != null)
+            pool.AddRange(candidates);
+
+        for (int i = pool.Count - 1; i > 0; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+            var swap = pool[i];
+            pool[i] = pool[j];
+            pool[j] = swap;
+        }
+
+        if (count < 0)
+            count = 0;
+        if (pool.Count > count)
+            pool.RemoveRange(count, pool.Count - count);
+        return pool;
     }
 
     /// <summary>
@@ -603,9 +699,9 @@ public partial class BattleManager
         try
         {
             await ProcessMoveOnUseSkills(attacker, moveIndex, attacker, playActivation: false);
-            await ProcessMoveUsedAfterSkills(attacker, moveIndex, attacker);
-
+            // 技使用後に自身が手札へ戻ることがある。使用済みは、その前に付ける。
             MarkAttackerMoveFinished(attacker);
+            await ProcessMoveUsedAfterSkills(attacker, moveIndex, attacker);
         }
         finally
         {
@@ -653,40 +749,6 @@ public partial class BattleManager
         {
             EndMoveResolution();
         }
-    }
-
-    /// <summary>
-    /// 混乱中の、相手側のバトラー1体を、両Bゾーンから無作為に選んで解決する。
-    /// </summary>
-    public async Task ResolveConfusedMove(CardController attacker, int moveIndex, bool payEnergy)
-    {
-        if (attacker == null)
-            return;
-
-        var select = MoveTargetEvasion.MoveSelect(attacker, moveIndex);
-        int needed = select.Count <= 1 ? 1 : select.MinimumCount;
-        var picked = MoveTargetEvasion.PickConfusedTargets(attacker, moveIndex);
-        if (picked.Count < needed)
-        {
-            ClearTargetHighlights();
-            if (!payEnergy)
-                MarkAttackerMoveFinished(attacker, resetDamageBonus: false);
-            else
-                AbortMoveNoTarget(attacker);
-            return;
-        }
-
-        if (select.Count <= 1)
-        {
-            if (IsOnlineMode && attacker.isMyCard)
-                OnlineSyncManager.Instance?.SyncSelectEnemyTarget(attacker, picked[0], moveIndex);
-            await SelectTargetRoutine(picked[0], attacker, moveIndex, payEnergy);
-            return;
-        }
-
-        if (IsOnlineMode && attacker.isMyCard)
-            OnlineSyncManager.Instance?.SyncSelectMoveTargets(attacker, picked, moveIndex);
-        await ResolveSelectedMoveTargets(attacker, moveIndex, picked, payEnergy);
     }
 
     public async Task SelectTargetRoutine(CardController enemyCard, CardController attacker = null, int moveIndex = -1, bool payEnergy = true)
@@ -760,7 +822,8 @@ public partial class BattleManager
 
             await Task.Delay(300);
 
-            if (enemyCard.curHp <= 0)
+            // 技使用後に攻撃者が手札へ戻っていても、撃破処理は対象側だけで進める。
+            if (enemyCard != null && enemyCard.curHp <= 0)
                 await HandleGraveyardTransition(enemyCard, attacker, moveIndex);
 
             PersistentEffectManager.Instance?.RecalculateImmediately();
@@ -855,7 +918,11 @@ public partial class BattleManager
 
         // 各ターゲットの墓地への移動を処理。撃破したときは、技撃破時の前に使用済みにする
         foreach (var hit in hitBattlers)
+        {
+            if (hit == null)
+                continue;
             await HandleGraveyardTransition(hit, attacker, moveIndex);
+        }
 
         PersistentEffectManager.Instance?.RecalculateImmediately();
     }
@@ -948,16 +1015,19 @@ public partial class BattleManager
         CardZoneType fromLocation = CardZoneType.None,
         int moveIndex = -1)
     {
-        if (sourceCard == null) return;
-
-        if (SkillManager.ShouldSkipOfflineOpponentSkill(trigger, sourceCard))
+        // 技使用後バウンスなどで参照だけ消えても、オンラインでは空の窓に参加して相手と揃える。
+        if (sourceCard == null)
         {
-            Debug.Log($"[BattleManager] オフラインのため相手カード起点のスキルをスキップ: Trigger={trigger}, Source={sourceCard.cardName}");
+            if (IsOnlineMode && SkillChainManager.Instance != null)
+                await SkillChainManager.Instance.ProcessChainForCollectedSkills(SkillManager.CreateEmptyCollected(trigger));
             return;
         }
 
+        if (SkillManager.ShouldSkipOfflineOpponentSkill(trigger, sourceCard)) return;
+
         var context = SkillContext.WithAttackTarget(sourceCard, moveTarget);
         context.Attacker = sourceCard;
+        context.RegisterMoveParticipants(sourceCard, moveTarget);
         if (SkillManager.IsMoveDefeatTrigger(trigger))
             context.SetDefeatedOriginalHp(moveTarget);
         context.ProcessingCompleteTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1006,6 +1076,7 @@ public partial class BattleManager
         // 攻撃対象がいないときに、攻撃者自身を対象カードにはしない。
         var skillContext = SkillContext.WithAttackTarget(null, targetCard);
         skillContext.Attacker = attacker;
+        skillContext.RegisterMoveParticipants(attacker, targetCard);
         skillContext.MoveIndex = moveIndex;
         skillContext.ProcessingCompleteTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -1061,15 +1132,23 @@ public partial class BattleManager
     /// </summary>
     private static void MarkAttackerMoveFinished(CardController attacker, bool resetDamageBonus = true, bool setHasUsedMove = true)
     {
+        // 技使用後バウンスで破棄済みのことがある。破棄後は触らない。
         if (attacker == null)
             return;
 
-        BattleManager.Instance?.ClearMoveDamageNullification(attacker);
-        if (resetDamageBonus)
-            attacker.damageBonus = 0;
-        if (setHasUsedMove)
-            attacker.hasUsedMove = true;
-        attacker.GetComponent<BattleCardView>()?.UpdateCanUseMovePanel();
+        try
+        {
+            BattleManager.Instance?.ClearMoveDamageNullification(attacker);
+            if (resetDamageBonus)
+                attacker.damageBonus = 0;
+            if (setHasUsedMove)
+                attacker.hasUsedMove = true;
+            attacker.GetComponent<BattleCardView>()?.UpdateCanUseMovePanel();
+        }
+        catch (MissingReferenceException)
+        {
+            BattleManager.Instance?.ClearMoveDamageNullification(attacker);
+        }
     }
 
     int moveResolutionDepth;
@@ -1093,8 +1172,16 @@ public partial class BattleManager
     {
         if (moveResolutionDepth > 0)
             moveResolutionDepth--;
-        if (moveResolutionDepth == 0)
-            FlushPendingStunResolves();
+        if (moveResolutionDepth != 0)
+            return;
+
+        FlushPendingStunResolves();
+        // 技使用後バウンス中に保留した相手手札の作り直しを、解決完了後に反映する。
+        if (enemyHandRefreshPending)
+        {
+            enemyHandRefreshPending = false;
+            UpdateEnemyHandUI();
+        }
     }
 
     public bool IsStunResolvePending(CardController card)

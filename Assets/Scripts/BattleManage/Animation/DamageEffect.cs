@@ -45,10 +45,10 @@ public class DamageEffect : MonoBehaviour
 
         Sequence seq = DOTween.Sequence();
 
-        seq.AppendInterval(0.6f);
-        seq.Append(transform.DOMove(targetPosition, 0.4f));
-        seq.Join(transform.DOScale(0.2f, 0.3f));
-        seq.Join(damageText.DOFade(0f, 0.5f));
+        seq.AppendInterval(0.5f);
+        seq.Append(transform.DOMove(targetPosition, 0.45f));
+        seq.Join(transform.DOScale(0.2f, 0.25f));
+        seq.Join(damageText.DOFade(0.1f, 0.35f));
 
         return PlayEffect(seq);
     }

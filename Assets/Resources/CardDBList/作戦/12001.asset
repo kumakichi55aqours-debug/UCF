@@ -19,15 +19,15 @@ MonoBehaviour:
   "\u753B\u50CF": {fileID: 21300000, guid: 78b8ee18f9ed479429b175a9925a4833, type: 3}
   "\u30B3\u30B9\u30C8": 0
   "\u30AB\u30C6\u30B4\u30EA": 
-  "\u30C6\u30AD\u30B9\u30C8": "TRG \u76F8\u624B\u306E\u6280\u4F7F\u7528\u6642\u306B\u767A\u52D5\u3067\u304D\u308B\u3002\u305D\u306E\u6280\u306B\u3088\u308B\u30C0\u30E1\u30FC\u30B8\u30920\u306B\u3059\u308B\u3002\n\u305D\u306E\u5F8C\u30012\u30BF\u30FC\u30F3\u306E\u9593\u3001\u81EA\u5206\u30D0\u30C8\u30E9\u30FC\u306E\u30D1\u30EF\u30FC\u3092--2\u3059\u308B\u3002"
+  "\u30C6\u30AD\u30B9\u30C8": "TRG \u81EA\u5206B\u30BE\u30FC\u30F3\u306B\u30D0\u30C8\u30E9\u30FC\u304C\u3044\u306A\u3044\u5834\u5408\u3001\u76F8\u624B\u306E\u6280\u4F7F\u7528\u6642\u306B\u767A\u52D5\u3067\u304D\u308B\u3002\u305D\u306E\u6280\u306B\u3088\u308B\u30C0\u30E1\u30FC\u30B8\u30920\u306B\u3059\u308B\u3002"
   "\u30B9\u30AD\u30EB":
-  - rid: 7839874492062760960
-  type: 9
+  - rid: 7839874653458268173
+  "\u30BF\u30A4\u30D7": 9
   references:
     version: 2
     RefIds:
-    - rid: 7839874492062760960
-      type: {class: CompositeSkill, ns: , asm: Assembly-CSharp}
+    - rid: 7839874653458268173
+      type: {class: DamageNullificationSkill, ns: , asm: Assembly-CSharp}
       data:
         "\u30B9\u30AD\u30EB\u540D": TRG
         "\u30BF\u30A4\u30DF\u30F3\u30B0": 21
@@ -37,33 +37,8 @@ MonoBehaviour:
         "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
         "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
         "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
-        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
-          "\u30D5\u30A3\u30EB\u30BF": []
-        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
-        "\u767A\u52D5\u5074": 2
-        "\u5BFE\u8C61\u9078\u629E":
-          "\u9078\u629E\u6570": 1
-          "\u9078\u629E\u65B9\u5F0F": 0
-        subSkills:
-        - rid: 7839874492062760962
-        - rid: 7839874492062760965
-    - rid: 7839874492062760962
-      type: {class: DamageNullificationSkill, ns: , asm: Assembly-CSharp}
-      data:
-        "\u30B9\u30AD\u30EB\u540D": 
-        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
-        "\u5834\u6240\u30EA\u30B9\u30C8": 
-        "\u4E0A\u9650\u56DE\u6570": 1
-        "\u5F37\u5236\u767A\u52D5": 0
-        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
-        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
-        "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
+        "\u6761\u4EF6":
+        - rid: 7839874653458268175
         "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
@@ -77,29 +52,7 @@ MonoBehaviour:
           "\u9078\u629E\u65B9\u5F0F": 0
         "\u7121\u52B9\u5316\u30BF\u30A4\u30D7": 0
         "\u6E1B\u7B97\u5024": 0
-    - rid: 7839874492062760965
-      type: {class: AllPowerSkill, ns: , asm: Assembly-CSharp}
+    - rid: 7839874653458268175
+      type: {class: ZoneEmptyCondition, ns: , asm: Assembly-CSharp}
       data:
-        "\u30B9\u30AD\u30EB\u540D": 
-        "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
-        "\u5834\u6240\u30EA\u30B9\u30C8": 
-        "\u4E0A\u9650\u56DE\u6570": 1
-        "\u5F37\u5236\u767A\u52D5": 0
-        "\u901A\u5E38\u767B\u5834\u3092\u9664\u304F": 0
-        "\u7279\u6B8A\u767B\u5834\u3092\u9664\u304F": 0
-        "\u4F7F\u7528\u56DE\u6570": 0
-        "\u6761\u4EF6": []
-        "\u30C8\u30EA\u30AC\u30FC\u5BFE\u8C61\u6761\u4EF6":
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
-          "\u30D5\u30A3\u30EB\u30BF": []
-        "\u5BFE\u8C61\u5143\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3": 
-        "\u5BFE\u8C61\u30D5\u30A7\u30A4\u30BA": 0
-        "\u767A\u52D5\u5074": 2
-        "\u5BFE\u8C61\u9078\u629E":
-          "\u9078\u629E\u6570": 1
-          "\u9078\u629E\u65B9\u5F0F": 0
-        "\u52B9\u679C\u6570": -2
-        "\u6301\u7D9A\u30BF\u30FC\u30F3\u6570": 2
-        "\u5BFE\u8C61\u30D7\u30EC\u30A4\u30E4\u30FC": 0
+        zone: 2

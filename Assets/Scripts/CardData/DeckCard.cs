@@ -50,7 +50,7 @@ public class DeckCard
             {
                 var tacticsDb = Resources.Load<TacticsDB>("CardDBList/作戦/" + カードID);
                 if (tacticsDb != null)
-                    カードタイプ = tacticsDb.type;
+                    カードタイプ = tacticsDb.タイプ;
             }
 
             if (カテゴリ == null)

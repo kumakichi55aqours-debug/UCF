@@ -213,7 +213,7 @@ public class ExcavateSkill : SkillDB
                 syncBeforeMove.SyncAddToHandAnimation(
                     deckData.カード種類.ToString(),
                     deckData.カードID,
-                    (int)SummonSource.墓地);
+                    (int)SummonSource.デッキ);
             }
 
             await CardAnimationManager.Instance.AnimateDraw(
@@ -242,7 +242,7 @@ public class ExcavateSkill : SkillDB
         bool online = sync != null && sync.IsOnlineMode;
 
         if (online)
-            await sync.WaitForOpponentAnimation();
+            await sync.WaitForAddToHandMove();
 
         if (syncDeckCount && sync != null)
             sync.SyncDeckCountToOpponent();
@@ -262,7 +262,7 @@ public class ExcavateSkill : SkillDB
         finally
         {
             if (online)
-                await sync.WaitForOpponentAnimation();
+                await sync.WaitForAddToHandEmphasis();
         }
     }
 

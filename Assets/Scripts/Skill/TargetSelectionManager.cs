@@ -15,6 +15,7 @@ public class TargetSelectionManager : MonoBehaviour
     public bool IsSkillTargetSelectionMode { get; set; }
     public SearchCriteria CurrentSkillTargetCriteria { get; set; }
     public CardController CurrentSkillTargetSource { get; set; }
+    SkillContext CurrentSkillTargetContext;
     IReadOnlyList<ISkillCondition> currentTargetState;
 
     private TaskCompletionSource<CardController> targetSelectionTcs;
@@ -52,6 +53,7 @@ public class TargetSelectionManager : MonoBehaviour
         CurrentSkillTargetSide = default;
         CurrentSkillTargetCriteria = null;
         CurrentSkillTargetSource = null;
+        CurrentSkillTargetContext = null;
         currentTargetState = null;
         limitedCandidates = null;
 
@@ -233,17 +235,17 @@ public class TargetSelectionManager : MonoBehaviour
         var source = context?.発動カード;
         var preset = context?.対象カード;
         bool reusePreset = context == null || context.ReuseTargetCard;
-        if (reusePreset && IsSingleBattlerTarget(targetList) && IsAcceptableTarget(preset, targetList, side, criteria, source, cardState))
+        if (reusePreset && IsSingleBattlerTarget(targetList) && IsAcceptableTarget(preset, targetList, side, criteria, source, cardState, context))
             return preset;
 
         if (SkillContext.IsOfflineCpuResolving || IsOfflineCpuSource(source))
         {
-            var picked = PickRandomTarget(targetList, side, criteria, source, cardState);
+            var picked = PickRandomTarget(targetList, side, criteria, source, cardState, context);
             await EmphasizeChosenTargets(picked);
             return picked;
         }
 
-        BeginTargetSelection(targetList, side, criteria, source, cardState);
+        BeginTargetSelection(targetList, side, criteria, source, cardState, context);
         MessageManager.Instance?.ShowMessage(message);
         CardController selected;
         try
@@ -281,7 +283,7 @@ public class TargetSelectionManager : MonoBehaviour
             return empty;
 
         var source = context?.発動カード;
-        var candidates = BattleManager.Instance.ListSelectableSkillTargets(targetList, side, criteria, source, cardState);
+        var candidates = BattleManager.Instance.ListSelectableSkillTargets(targetList, side, criteria, source, cardState, context);
         if (candidates == null || candidates.Count < minCount)
         {
             Debug.Log(countMode == CountMode.まで
@@ -309,7 +311,7 @@ public class TargetSelectionManager : MonoBehaviour
             return picked;
         }
 
-        BeginMultiTargetSelection(targetList, side, criteria, source, selectableMax, minCount, countMode, cardState);
+        BeginMultiTargetSelection(targetList, side, criteria, source, selectableMax, minCount, countMode, cardState, context);
         string prompt = message;
         if (string.IsNullOrEmpty(prompt))
         {
@@ -402,9 +404,10 @@ public class TargetSelectionManager : MonoBehaviour
         PlayerType side,
         SearchCriteria criteria = null,
         CardController sourceCard = null,
-        IReadOnlyList<ISkillCondition> cardState = null)
+        IReadOnlyList<ISkillCondition> cardState = null,
+        SkillContext skillContext = null)
     {
-        OpenSelection(list, side, criteria, sourceCard, 1, 1, CountMode.ちょうど, multiple: false, cardState);
+        OpenSelection(list, side, criteria, sourceCard, 1, 1, CountMode.ちょうど, multiple: false, cardState, skillContext);
     }
 
     public void ConfirmSkillTargetSelection(CardController card)
@@ -420,7 +423,7 @@ public class TargetSelectionManager : MonoBehaviour
         {
             if (!PassesTargetList(card, CurrentSkillTarget, CurrentSkillTargetSide, CurrentSkillTargetSource))
                 return;
-            if (!PassesCriteria(card, CurrentSkillTargetCriteria, CurrentSkillTargetSource))
+            if (!PassesCriteria(card, CurrentSkillTargetCriteria, CurrentSkillTargetSource, CurrentSkillTargetContext))
                 return;
             if (!SkillDB.ConditionsMet(currentTargetState, card))
                 return;
@@ -448,9 +451,10 @@ public class TargetSelectionManager : MonoBehaviour
         int maxCount,
         int minCount,
         CountMode countMode,
-        IReadOnlyList<ISkillCondition> cardState)
+        IReadOnlyList<ISkillCondition> cardState,
+        SkillContext skillContext = null)
     {
-        OpenSelection(list, side, criteria, sourceCard, maxCount, minCount, countMode, multiple: true, cardState);
+        OpenSelection(list, side, criteria, sourceCard, maxCount, minCount, countMode, multiple: true, cardState, skillContext);
     }
 
     void OpenSelection(
@@ -462,7 +466,8 @@ public class TargetSelectionManager : MonoBehaviour
         int minCount,
         CountMode countMode,
         bool multiple,
-        IReadOnlyList<ISkillCondition> cardState)
+        IReadOnlyList<ISkillCondition> cardState,
+        SkillContext skillContext = null)
     {
         limitedCandidates = null;
         currentTargetState = cardState;
@@ -474,13 +479,14 @@ public class TargetSelectionManager : MonoBehaviour
         CurrentSkillTargetSide = side;
         CurrentSkillTargetCriteria = criteria;
         CurrentSkillTargetSource = sourceCard;
+        CurrentSkillTargetContext = skillContext;
         IsSkillTargetSelectionMode = true;
         if (multiple)
             multiTargetTcs = new TaskCompletionSource<List<CardController>>();
         else
             targetSelectionTcs = new TaskCompletionSource<CardController>();
 
-        BattleManager.Instance?.ShowSkillTargetHighlights(list, side, criteria, sourceCard, currentTargetState);
+        BattleManager.Instance?.ShowSkillTargetHighlights(list, side, criteria, sourceCard, currentTargetState, skillContext);
     }
 
     public void ConfirmCurrentSelection()
@@ -568,12 +574,13 @@ public class TargetSelectionManager : MonoBehaviour
         PlayerType side,
         SearchCriteria criteria,
         CardController source,
-        IReadOnlyList<ISkillCondition> cardState)
+        IReadOnlyList<ISkillCondition> cardState,
+        SkillContext skillContext = null)
     {
         if (BattleManager.Instance == null)
             return null;
 
-        var candidates = BattleManager.Instance.ListSelectableSkillTargets(targetList, side, criteria, source, cardState);
+        var candidates = BattleManager.Instance.ListSelectableSkillTargets(targetList, side, criteria, source, cardState, skillContext);
         if (candidates == null || candidates.Count == 0)
         {
             Debug.Log("[TargetSelectionManager] CPUの対象候補がありません");
@@ -609,11 +616,12 @@ public class TargetSelectionManager : MonoBehaviour
         PlayerType side,
         SearchCriteria criteria,
         CardController sourceCard,
-        IReadOnlyList<ISkillCondition> cardState)
+        IReadOnlyList<ISkillCondition> cardState,
+        SkillContext skillContext = null)
     {
         return card != null
             && PassesTargetList(card, targetList, side, sourceCard)
-            && PassesCriteria(card, criteria, sourceCard)
+            && PassesCriteria(card, criteria, sourceCard, skillContext)
             && SkillDB.ConditionsMet(cardState, card);
     }
 
@@ -641,10 +649,14 @@ public class TargetSelectionManager : MonoBehaviour
         }
     }
 
-    bool PassesCriteria(CardController card, SearchCriteria criteria, CardController sourceCard)
+    bool PassesCriteria(CardController card, SearchCriteria criteria, CardController sourceCard, SkillContext skillContext = null)
     {
         if (criteria == null)
             return true;
+
+        // 他カード系トリガーの処理カード番号0などを残す。空の Context だと「処理したカード」が落ちる。
+        if (skillContext != null)
+            return card.MeetsCriteria(criteria, skillContext);
 
         if (sourceCard != null && criteria.ソースカード条件 != SourceCardType.None)
         {

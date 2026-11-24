@@ -210,7 +210,20 @@ public class SkillContext
         copy.MoveIndex = MoveIndex;
         copy.Attacker = Attacker;
         copy.移した攻撃対象 = 移した攻撃対象;
+        copy.CopyProcessedCardsFrom(this);
         return copy;
+    }
+
+    void CopyProcessedCardsFrom(SkillContext source)
+    {
+        if (source == null)
+            return;
+
+        処理したカード.Clear();
+        処理したカード.AddRange(source.処理したカード);
+        処理カード履歴.Clear();
+        foreach (var pair in source.処理カード履歴)
+            処理カード履歴[pair.Key] = new List<CardController>(pair.Value);
     }
 
     // スキル内の対象カードを取得
@@ -268,7 +281,30 @@ public class SkillContext
     }
 
     /// <summary>
-    /// 強化作戦の付与先を処理カード番号0に登録する。
+    /// 「他のカードが〇〇した時」などのトリガー対象を、処理カード番号へ登録する。
+    /// 複合スキル内でソースカード条件「処理したカード」から参照できる。
+    /// 番号の既定は 0。
+    /// </summary>
+    public void RegisterTriggerTarget(CardController target, int number = 0)
+    {
+        if (target == null)
+            return;
+        SetProcessedCards(number, new[] { target });
+    }
+
+    /// <summary>
+    /// 技の処理中に、使用者を2番・技対象を3番へ登録する。
+    /// </summary>
+    public void RegisterMoveParticipants(CardController moveUser, CardController moveTarget)
+    {
+        if (moveUser != null)
+            SetProcessedCards(2, new[] { moveUser });
+        if (moveTarget != null)
+            SetProcessedCards(3, new[] { moveTarget });
+    }
+
+    /// <summary>
+    /// 強化作戦の付与先を処理カード番号1に登録する。
     /// </summary>
     public void RegisterEnhancementHosts(CardController source)
     {

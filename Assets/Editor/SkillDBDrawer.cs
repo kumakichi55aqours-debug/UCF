@@ -140,11 +140,24 @@ public class SkillDBDrawer : PropertyDrawer
             return y;
 
         var cursor = new Cursor { X = x, Y = y, Width = width, Draw = draw };
-        if (!IsNestedSkill(prop))
+        bool nested = IsNestedSkill(prop);
+        bool isSelectNested = IsSelectNestedSkill(prop);
+
+        if (!nested)
             LayoutCommonFields(prop, ref cursor);
+
         LayoutSpecificFields(prop, ref cursor);
-        LayoutTimingExtras(prop, ref cursor);
-        LayoutConditions(prop, ref cursor);
+
+        if (!nested)
+        {
+            LayoutTimingExtras(prop, ref cursor);
+            LayoutConditions(prop, ref cursor);
+        }
+        else if (isSelectNested)
+        {
+            // SelectSkill の内部スキルは条件だけ表示
+            LayoutConditions(prop, ref cursor);
+        }
         return cursor.Y;
     }
 
@@ -166,9 +179,11 @@ public class SkillDBDrawer : PropertyDrawer
             ActiveTiming timing = (ActiveTiming)fieldProp.enumValueIndex;
             if (TryGetMoveGroup(timing, out _))
                 cursor.LineSpan(rect => DrawMoveUseChecks(rect, fieldProp));
+            if (TryGetPhaseGroup(timing, out _))
+                cursor.LineSpan(rect => DrawPhaseSideChecks(rect, fieldProp));
             if (UsesAppearKind(timing))
                 cursor.LineSpan(rect => DrawSummonKindChecks(rect, prop));
-            if (IsOwnPhaseTiming(timing))
+            if (IsPhaseTiming(timing))
                 cursor.LineSpan(rect => DrawOwnPhaseField(rect, prop));
         }
     }
@@ -595,13 +610,25 @@ public class SkillDBDrawer : PropertyDrawer
     static bool IsNestedSkill(SerializedProperty prop)
     {
         string path = prop.propertyPath;
+
         return path.Contains("subSkills") ||
                path.Contains("Yesスキル") ||
                path.Contains("Noスキル") ||
                path.Contains("成立時スキル") ||
                path.Contains("不成立時スキル") ||
                path.Contains("付与スキル") ||
-               path.Contains("実行スキル");
+               path.Contains("実行スキル") ||
+
+               // SelectSkill の選択肢内にあるスキル
+               (path.Contains("選択肢") && path.Contains(".スキル."));
+    }
+
+    static bool IsSelectNestedSkill(SerializedProperty prop)
+    {
+        string path = prop.propertyPath;
+
+        return path.Contains("選択肢") &&
+               path.Contains(".スキル.");
     }
 
     static string SkillRoleLabel(SerializedProperty prop)
@@ -621,6 +648,8 @@ public class SkillDBDrawer : PropertyDrawer
             ActiveTiming.技撃破時 => "■ トリガー対象条件（どのカードを倒した時か）",
             ActiveTiming.技1撃破時 => "■ トリガー対象条件（どのカードを倒した時か）",
             ActiveTiming.技2撃破時 => "■ トリガー対象条件（どのカードを倒した時か）",
+            ActiveTiming.他バトラー技使用時 => "■ トリガー対象条件（どのバトラーの技使用時か）",
+            ActiveTiming.他バトラー技使用後 => "■ トリガー対象条件（どのバトラーの技使用後か）",
             ActiveTiming.他バトラー撃破時 => "■ トリガー対象条件（どのバトラーが撃破した時か）",
             ActiveTiming.他効果誘発 => "■ トリガー対象条件（どのカードの効果の発動に対してか）",
             ActiveTiming.他のカードが登場した時 => "■ トリガー対象条件（どのカードが登場した時か）",
@@ -630,9 +659,9 @@ public class SkillDBDrawer : PropertyDrawer
 
     static readonly string[] OwnPhaseOptionNames = { "ドロー", "メイン", "バトル", "エンド" };
 
-    static bool IsOwnPhaseTiming(ActiveTiming timing)
+    static bool IsPhaseTiming(ActiveTiming timing)
     {
-        return timing == ActiveTiming.自分のフェイズ開始時 || timing == ActiveTiming.自分のフェイズ終了時;
+        return TryGetPhaseGroup(timing, out _);
     }
 
     static bool UsesAppearKind(ActiveTiming timing)
@@ -690,13 +719,36 @@ public class SkillDBDrawer : PropertyDrawer
         new MoveTimingGroup { Both = ActiveTiming.技撃破時, Move1 = ActiveTiming.技1撃破時, Move2 = ActiveTiming.技2撃破時 },
     };
 
+    struct PhaseTimingGroup
+    {
+        public ActiveTiming Both;
+        public ActiveTiming Own;
+        public ActiveTiming Opponent;
+    }
+
+    static readonly PhaseTimingGroup[] PhaseGroups =
+    {
+        new PhaseTimingGroup
+        {
+            Both = ActiveTiming.フェイズ開始時,
+            Own = ActiveTiming.自分のフェイズ開始時,
+            Opponent = ActiveTiming.相手のフェイズ開始時
+        },
+        new PhaseTimingGroup
+        {
+            Both = ActiveTiming.フェイズ終了時,
+            Own = ActiveTiming.自分のフェイズ終了時,
+            Opponent = ActiveTiming.相手のフェイズ終了時
+        },
+    };
+
     static void EnsureTimingOptions()
     {
         if (_timingOptions != null)
             return;
 
         _timingOptions = ((ActiveTiming[])Enum.GetValues(typeof(ActiveTiming)))
-            .Where(t => !IsSpecificMoveTiming(t))
+            .Where(t => !IsSpecificMoveTiming(t) && !IsSpecificPhaseTiming(t))
             .ToArray();
         _timingOptionNames = _timingOptions.Select(t => t.ToString()).ToArray();
     }
@@ -704,6 +756,11 @@ public class SkillDBDrawer : PropertyDrawer
     static bool IsSpecificMoveTiming(ActiveTiming timing)
     {
         return TryGetMoveGroup(timing, out MoveTimingGroup group) && timing != group.Both;
+    }
+
+    static bool IsSpecificPhaseTiming(ActiveTiming timing)
+    {
+        return TryGetPhaseGroup(timing, out PhaseTimingGroup group) && timing != group.Both;
     }
 
     static bool TryGetMoveGroup(ActiveTiming timing, out MoveTimingGroup group)
@@ -721,10 +778,27 @@ public class SkillDBDrawer : PropertyDrawer
         return false;
     }
 
+    static bool TryGetPhaseGroup(ActiveTiming timing, out PhaseTimingGroup group)
+    {
+        foreach (PhaseTimingGroup candidate in PhaseGroups)
+        {
+            if (timing == candidate.Both || timing == candidate.Own || timing == candidate.Opponent)
+            {
+                group = candidate;
+                return true;
+            }
+        }
+
+        group = default;
+        return false;
+    }
+
     static int TimingDisplayIndex(ActiveTiming timing)
     {
-        if (TryGetMoveGroup(timing, out MoveTimingGroup group))
-            timing = group.Both;
+        if (TryGetMoveGroup(timing, out MoveTimingGroup moveGroup))
+            timing = moveGroup.Both;
+        else if (TryGetPhaseGroup(timing, out PhaseTimingGroup phaseGroup))
+            timing = phaseGroup.Both;
         int index = Array.IndexOf(_timingOptions, timing);
         return index >= 0 ? index : 0;
     }
@@ -774,6 +848,37 @@ public class SkillDBDrawer : PropertyDrawer
             next = group.Move1;
         else if (new2)
             next = group.Move2;
+        else
+            return;
+
+        timingProp.enumValueIndex = EnumIndex(timingProp, next);
+    }
+
+    static void DrawPhaseSideChecks(Rect row, SerializedProperty timingProp)
+    {
+        ActiveTiming timing = (ActiveTiming)timingProp.enumValueIndex;
+        if (!TryGetPhaseGroup(timing, out PhaseTimingGroup group))
+            return;
+
+        bool own = timing == group.Both || timing == group.Own;
+        bool opponent = timing == group.Both || timing == group.Opponent;
+
+        Rect content = EditorGUI.PrefixLabel(
+            row,
+            new GUIContent("発動する側", "自分はこのカードの側のフェイズ。相手は反対側のフェイズ。両方選ぶと、どちらのフェイズでも発動する。"));
+        float toggleW = Mathf.Min(72f, content.width * 0.5f);
+        bool newOwn = EditorGUI.ToggleLeft(new Rect(content.x, content.y, toggleW, row.height), "自分", own);
+        bool newOpponent = EditorGUI.ToggleLeft(new Rect(content.x + toggleW, content.y, toggleW, row.height), "相手", opponent);
+        if (newOwn == own && newOpponent == opponent)
+            return;
+
+        ActiveTiming next;
+        if (newOwn && newOpponent)
+            next = group.Both;
+        else if (newOwn)
+            next = group.Own;
+        else if (newOpponent)
+            next = group.Opponent;
         else
             return;
 

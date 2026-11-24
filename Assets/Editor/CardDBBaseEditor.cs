@@ -1,23 +1,23 @@
-
+ï»¿
 using UnityEditor;
 using UnityEngine;
 
-// CardDBBase‹¤’ÊInspector
+// CardDBBaseå…±é€šInspector
 public abstract class CardDBBaseEditor : Editor
 {
     protected void DrawCommonFields()
     {
-        DrawProperty("ƒJ[ƒh–¼");
-        DrawRow("•ª—Ş", "ID");
-        DrawRow("ƒŒƒA“x", "‰æ‘œ");
-        DrawProperty("ƒRƒXƒg");
+        DrawProperty("ã‚«ãƒ¼ãƒ‰å");
+        DrawRow("åˆ†é¡", "ID");
+        DrawRow("ãƒ¬ã‚¢åº¦", "ç”»åƒ");
+        DrawProperty("ã‚³ã‚¹ãƒˆ");
 
         EditorGUILayout.Space(5);
 
-        var categoryProp = serializedObject.FindProperty("ƒJƒeƒSƒŠ");
+        var categoryProp = serializedObject.FindProperty("ã‚«ãƒ†ã‚´ãƒª");
         EditorGUILayout.PropertyField(categoryProp, true);
-        DrawTextArea("ƒeƒLƒXƒg");
-        DrawProperty("ƒXƒLƒ‹", true);
+        DrawTextArea("ãƒ†ã‚­ã‚¹ãƒˆ");
+        DrawProperty("ã‚¹ã‚­ãƒ«", true);
     }
 
 
@@ -26,7 +26,7 @@ public abstract class CardDBBaseEditor : Editor
         SerializedProperty prop = serializedObject.FindProperty(name);
         if (prop == null) return;
 
-        if (name == "ƒeƒLƒXƒg")
+        if (name == "ãƒ†ã‚­ã‚¹ãƒˆ")
         {
             EditorGUILayout.PropertyField(prop, true);
         }
@@ -94,7 +94,7 @@ public abstract class CardDBBaseEditor : Editor
     }
 }
 
-// ƒoƒgƒ‰[ƒJ[ƒh
+// ãƒãƒˆãƒ©ãƒ¼ã‚«ãƒ¼ãƒ‰
 [CustomEditor(typeof(BattlerDB))]
 public class CardDBDrawer : CardDBBaseEditor
 {
@@ -103,50 +103,50 @@ public class CardDBDrawer : CardDBBaseEditor
         int previousIndent = EditorGUI.indentLevel;
         BeginInspector();
 
-        // Šî–{î•ñ
-        DrawProperty("ƒJ[ƒh–¼");
-        DrawRow("•ª—Ş", "ID");
-        DrawRow("ƒŒƒA“x", "‰æ‘œ");
+        // åŸºæœ¬æƒ…å ±
+        DrawProperty("ã‚«ãƒ¼ãƒ‰å");
+        DrawRow("åˆ†é¡", "ID");
+        DrawRow("ãƒ¬ã‚¢åº¦", "ç”»åƒ");
 
         EditorGUILayout.Space(5);
 
-        // ƒXƒe[ƒ^ƒX
-        DrawRow("ƒ^ƒCƒv", "ƒRƒXƒg", "hp");
+        // ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹
+        DrawRow("ã‚¿ã‚¤ãƒ—", "ã‚³ã‚¹ãƒˆ", "hp");
 
         EditorGUILayout.Space(5);
 
-        var categoryProp = serializedObject.FindProperty("ƒJƒeƒSƒŠ");
+        var categoryProp = serializedObject.FindProperty("ã‚«ãƒ†ã‚´ãƒª");
         EditorGUILayout.PropertyField(categoryProp, true);
-        DrawTextArea("ƒeƒLƒXƒg");
-        DrawProperty("ƒXƒLƒ‹", true);
+        DrawTextArea("ãƒ†ã‚­ã‚¹ãƒˆ");
+        DrawProperty("ã‚¹ã‚­ãƒ«", true);
 
         EditorGUILayout.Space(5);
 
-        // ‘®«î•ñ
-        DrawRow("“¾ˆÓ‘®«", "‘®«ŒyŒ¸’l");
-        DrawRow("ã“_‘®«", "‘®«‘‰Á’l");
+        // å±æ€§æƒ…å ±
+        DrawRow("å¾—æ„å±æ€§", "å±æ€§è»½æ¸›å€¤");
+        DrawRow("å¼±ç‚¹å±æ€§", "å±æ€§å¢—åŠ å€¤");
 
         EditorGUILayout.Space(10);
 
-        // ‹Z1
-        EditorGUILayout.LabelField("‹Z1", EditorStyles.boldLabel);
-        DrawProperty("‹Z–¼1");
-        DrawRow("‘®«1", "EN1", "PW1");
+        // æŠ€1
+        EditorGUILayout.LabelField("æŠ€1", EditorStyles.boldLabel);
+        DrawProperty("æŠ€å1");
+        DrawRow("å±æ€§1", "EN1", "PW1");
         DrawMoveDetails(1);
 
         EditorGUILayout.Space(10);
 
-        // ‹Z2
-        EditorGUILayout.LabelField("‹Z2", EditorStyles.boldLabel);
-        DrawProperty("‹Z–¼2");
-        DrawRow("‘®«2", "EN2", "PW2");
+        // æŠ€2
+        EditorGUILayout.LabelField("æŠ€2", EditorStyles.boldLabel);
+        DrawProperty("æŠ€å2");
+        DrawRow("å±æ€§2", "EN2", "PW2");
         DrawMoveDetails(2);
 
         EditorGUILayout.Space(10);
 
-        // ¢Š«ƒ{ƒCƒX
-        EditorGUILayout.LabelField("¢Š«ƒ{ƒCƒX", EditorStyles.boldLabel);
-        DrawProperty("ƒ{ƒCƒX");
+        // å¬å–šãƒœã‚¤ã‚¹
+        EditorGUILayout.LabelField("å¬å–šãƒœã‚¤ã‚¹", EditorStyles.boldLabel);
+        DrawProperty("ãƒœã‚¤ã‚¹");
 
         EndInspector(previousIndent);
     }
@@ -155,14 +155,14 @@ public class CardDBDrawer : CardDBBaseEditor
     {
         string suffix = index.ToString();
 
-        DrawProperty("‘ÎÛ" + suffix);
-        DrawProperty("‘ÎÛ‘¤" + suffix);
-        DrawProperty("‘ÎÛ‘I‘ğ" + suffix, true);
-        DrawProperty("Œø‰Ê" + suffix);
+        DrawProperty("å¯¾è±¡" + suffix);
+        DrawProperty("å¯¾è±¡å´" + suffix);
+        DrawProperty("å¯¾è±¡é¸æŠ" + suffix, true);
+        DrawProperty("åŠ¹æœ" + suffix);
     }
 }
 
-// ìíƒJ[ƒh
+// ä½œæˆ¦ã‚«ãƒ¼ãƒ‰
 [CustomEditor(typeof(TacticsDB))]
 public class TacticsDBEditor : CardDBBaseEditor
 {
@@ -174,13 +174,13 @@ public class TacticsDBEditor : CardDBBaseEditor
         DrawCommonFields();
 
         EditorGUILayout.Space(5);
-        DrawProperty("ƒ^ƒCƒv");
+        DrawProperty("ã‚¿ã‚¤ãƒ—");
 
         EndInspector(previousIndent);
     }
 }
 
-// ƒtƒB[ƒ‹ƒhƒJ[ƒh
+// ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã‚«ãƒ¼ãƒ‰
 [CustomEditor(typeof(FieldDB))]
 public class FieldDBEditor : CardDBBaseEditor
 {

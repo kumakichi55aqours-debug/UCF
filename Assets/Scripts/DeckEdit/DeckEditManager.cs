@@ -484,7 +484,7 @@ public class DeckEditManager : MonoBehaviour
         if (card is BattlerDB battler)
             return battler.タイプ == selectedType;
         if (card is TacticsDB tactics)
-            return tactics.type == selectedType;
+            return tactics.タイプ == selectedType;
         return false;
     }
 
@@ -686,7 +686,7 @@ public class DeckEditManager : MonoBehaviour
             if (card is BattlerDB battler)
                 cardType = battler.タイプ;
             else if (card is TacticsDB tactics)
-                cardType = tactics.type;
+                cardType = tactics.タイプ;
             List<CardCategoryList> category = card.カテゴリ != null
                 ? new List<CardCategoryList>(card.カテゴリ)
                 : new List<CardCategoryList>();

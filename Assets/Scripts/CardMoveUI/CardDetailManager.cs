@@ -110,7 +110,7 @@ public class CardDetailManager : MonoBehaviour
 
             hpText.text = (cc != null) ? cc.curHp.ToString() : battler.maxHp.ToString();
             hpText.transform.parent.gameObject.SetActive(true);
-            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(battler.type);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(battler.タイプ);
             if (battler.得意属性 != ElementList.None)
             {
                 strongElement.gameObject.SetActive(true);
@@ -158,7 +158,7 @@ public class CardDetailManager : MonoBehaviour
             onlyBattler.SetActive(false);
             onlyField.SetActive(false);
             hpText.transform.parent.gameObject.SetActive(false);
-            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.type);
+            typeImage.sprite = CardIconManager.Instance.GetCardTypeSprite(tactics.タイプ);
         }
         else if (card.model is FieldModel field)
         {

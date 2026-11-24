@@ -24,16 +24,13 @@ public partial class OnlineSyncManager
         if (BattleManager.Instance == null)
             return;
 
-        var card = CardAddress.Resolve(cardKind, cardId, zoneName, index);
-        if (card == null)
+        WithResolvedCard(cardKind, cardId, zoneName, index, "ReceiveBasePowerでエラー", card =>
         {
-            return;
-        }
-
-        card.basePower1 += delta1;
-        card.basePower2 += delta2;
-        card.RecalculateModifiedPowers();
-        card.UpdateDisplay();
+            card.basePower1 += delta1;
+            card.basePower2 += delta2;
+            card.RecalculateModifiedPowers();
+            card.UpdateDisplay();
+        });
     }
 
     /// <summary>

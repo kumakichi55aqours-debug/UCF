@@ -19,6 +19,7 @@ public class YesOrNoSelectionUI : MonoBehaviour
         || (yesOrNoSelectionUI != null && yesOrNoSelectionUI.activeInHierarchy);
 
     private CardController currentCard;
+    private CardController highlightedCard;
     private SkillDB currentSkill;
     private string customMessage;
     private Func<Task> onYesCallback;
@@ -66,6 +67,12 @@ public class YesOrNoSelectionUI : MonoBehaviour
         yesOrNoSelectionUI.SetActive(true);
         yesButton.gameObject.SetActive(true);
         noButton.gameObject.SetActive(true);
+
+        // 発動確認中は対象カードにスキル使用可能パネルを付ける
+        if (highlightedCard != null && highlightedCard != currentCard)
+            highlightedCard.SetCanUseSkillHighlightVisible(false);
+        highlightedCard = currentCard;
+        highlightedCard?.SetCanUseSkillHighlightVisible(true);
 
         if (!string.IsNullOrEmpty(customMessage))
         {
@@ -155,6 +162,8 @@ public class YesOrNoSelectionUI : MonoBehaviour
 
     private void ClearState()
     {
+        highlightedCard?.SetCanUseSkillHighlightVisible(false);
+        highlightedCard = null;
         currentCard = null;
         currentSkill = null;
         customMessage = null;

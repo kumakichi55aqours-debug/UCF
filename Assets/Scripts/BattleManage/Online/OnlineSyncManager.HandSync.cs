@@ -57,11 +57,6 @@ public partial class OnlineSyncManager
     }
 
     /// <summary>
-    /// 相手の手札情報を受信済みかどうか
-    /// </summary>
-    public bool IsOpponentHandReceived => isOpponentHandReceived;
-
-    /// <summary>
     /// 手札の詳細情報を送信
     /// </summary>
     public void SendDetailedHandInfoToOpponent()
@@ -110,7 +105,6 @@ public partial class OnlineSyncManager
                 AddParsedDeckCard(opponentHand, cardKindStr, cardID, 1);
             });
 
-            isOpponentHandReceived = true;
             opponentHandVersion++;
             BattleManager.Instance.UpdateEnemyHandUI();
         }
