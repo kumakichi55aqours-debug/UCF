@@ -70,7 +70,7 @@ public class SearchCriteriaDrawer : PropertyDrawer
 
             var filtersLabel = new GUIContent(
                 "フィルタ",
-                "追加した条件のいずれか1つに合致すれば対象。1つの条件の中では、カテゴリはすべて必要。");
+                "追加した条件のいずれか1つに合致すれば対象。1つの条件の中では、カテゴリはすべて必要。所持技属性は、入れたいずれかの技を持っていればよい。");
 
             y = PlaceProperty(filters, filtersLabel, x, y, width, spacing, draw);
 

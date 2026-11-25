@@ -16,6 +16,9 @@ public class CardDetailManager : MonoBehaviour
     [SerializeField] private Material srNameMaterial;
     [SerializeField] private TMP_ColorGradient srNameGradient;
     [SerializeField] private Image artworkImage;
+    [Header("UR演出")]
+    [Tooltip("レア度URのとき、ArtImageに虹のオーバーレイと斜めの光を載せる")]
+    [SerializeField] private Material urArtworkMaterial;
     [SerializeField] private TextMeshProUGUI skillDescriptionText;
 
     // Battler用UI
@@ -206,6 +209,8 @@ public class CardDetailManager : MonoBehaviour
 
     private void ApplyRarityVisuals(CardRarity rarity)
     {
+        ApplyArtworkEffect(rarity);
+
         if (nameText == null)
             return;
 
@@ -237,6 +242,29 @@ public class CardDetailManager : MonoBehaviour
             nameText.enableVertexGradient = defaultVertexGradientEnabled;
             nameText.colorGradientPreset = defaultNameGradient;
         }
+    }
+
+    void ApplyArtworkEffect(CardRarity rarity)
+    {
+        if (artworkImage == null)
+            return;
+
+        if (rarity != CardRarity.UR)
+        {
+            artworkImage.material = null;
+            return;
+        }
+
+        if (urArtworkMaterial == null)
+            urArtworkMaterial = Resources.Load<Material>("URArtEffect");
+
+        if (urArtworkMaterial != null)
+        {
+            Vector2 size = artworkImage.rectTransform.rect.size;
+            urArtworkMaterial.SetVector("_ArtSize", new Vector4(Mathf.Abs(size.x), Mathf.Abs(size.y), 0f, 0f));
+        }
+
+        artworkImage.material = urArtworkMaterial;
     }
 
     private string ConvertSkillDescription(string description)

@@ -15,7 +15,7 @@ MonoBehaviour:
   "\u30AB\u30FC\u30C9\u540D": "\u30A6\u30EB\u30C8\u30E9\u30DE\u30F3\u30BF\u30ED\u30A6"
   "\u5206\u985E": 1
   ID: 50102
-  "\u30EC\u30A2\u5EA6": 0
+  "\u30EC\u30A2\u5EA6": 2
   "\u753B\u50CF": {fileID: 21300000, guid: 6a0ee95137f58584c9833a3158e1435f, type: 3}
   "\u30B3\u30B9\u30C8": 4
   "\u30AB\u30C6\u30B4\u30EA": 0200000008000000
@@ -104,6 +104,7 @@ MonoBehaviour:
             "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 02000000
+            "\u6240\u6301\u6280\u5C5E\u6027": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
           - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
@@ -113,6 +114,7 @@ MonoBehaviour:
             "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0200000008000000
+            "\u6240\u6301\u6280\u5C5E\u6027": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 1
         "\u30AB\u30FC\u30C9\u72B6\u614B": []
@@ -153,6 +155,7 @@ MonoBehaviour:
             "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u6240\u6301\u6280\u5C5E\u6027": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
         "\u5BFE\u8C61\u72B6\u614B": []

@@ -62,7 +62,7 @@ public partial class OnlineSyncManager
 
     /// <summary>
     /// リソースバフを相手の視点へ同期する。受信側はすぐ適用する。
-    /// コストは以降のリセットでも維持し、エネルギーはターン番号の期間だけ維持する。
+    /// 差分は受け手のターン数だけ維持し、尽きたエンドで効果数だけ戻す。
     /// 持続ターン数0は、そのターンだけ適用してバフ表示には出さない。
     /// </summary>
     public void SyncScheduleResourceBuff(bool forPlayer, int resourceType, int amount, int durationTurns, string sourceCardName)

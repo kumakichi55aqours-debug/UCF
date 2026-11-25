@@ -20,9 +20,7 @@ public partial class BattleManager
     {
         public ResourceType Type;
         public int Amount;
-        public int RemainingResets;
-        public int StartTurn;
-        public int EndTurn;
+        public int RemainingTurns;
         public string SourceCardName;
         public bool ShowInBuffZone = true;
     }
@@ -92,8 +90,6 @@ public partial class BattleManager
     {
         bool playerChanged = IsExpiredPowerBonuses(pPowerBonuses);
         bool enemyChanged = IsExpiredPowerBonuses(ePowerBonuses);
-        
-        bool energyChanged = ExpireEnergyBuffs();
         bool playCostChanged = ExpirePlayCostBuffs();
 
         // パワーボーナスが変更された場合は、すべてのバトラーの表示を更新
@@ -101,7 +97,7 @@ public partial class BattleManager
             RefreshAllBattlerDisplays();
         if (playCostChanged)
             RefreshVisibleHandCosts();
-        if (playerChanged || enemyChanged || energyChanged || playCostChanged)
+        if (playerChanged || enemyChanged || playCostChanged)
             PowerBonusUI.Instance?.UpdateUI();
     }
 
@@ -154,10 +150,10 @@ public partial class BattleManager
     #endregion
 
     #region リソースバフ
-    // コストは毎ターンのリセットで消えるので、持続中はリセットのあとに同じ差分を足し直す。
-    // エネルギーは全体パワーと同じく、付与したターンから数えて持続ターン数のあいだだけ有効。
-    // 自分のドローでエネルギーがターン数に戻ったあとも、まだ期間内なら同じ差分を足し直す。
-    // 期間を過ぎたときは、リセット前の残量から同じ差分を引く。
+    // 素のコストとエネルギーをターン数へ戻すのは、その側のドローフェイズだけ。
+    // スキル差分は、受け手のターンを数えて持続する。付与した受け手のターンを1回目にする。
+    // 自分のドローではターン数にしたあと、まだ残っている差分を足し直す。
+    // 持続が尽きた受け手のエンドでは、差分だけ戻し、ターン数への上書きはしない。
     // 持続ターン数0は、効果だけそのターン分適用し、バフ表示には出さない。
     public void ScheduleResourceBuff(bool forPlayer, ResourceType type, int amount, int durationTurns, string sourceCardName, bool syncOnline)
     {
@@ -172,9 +168,7 @@ public partial class BattleManager
         {
             Type = type,
             Amount = amount,
-            RemainingResets = type == ResourceType.エネルギー ? 0 : duration - 1,
-            StartTurn = curTurn,
-            EndTurn = curTurn + duration - 1,
+            RemainingTurns = duration,
             SourceCardName = string.IsNullOrEmpty(sourceCardName) ? "不明" : sourceCardName,
             ShowInBuffZone = showInBuffZone
         });
@@ -316,34 +310,38 @@ public partial class BattleManager
     }
 
     // その側のコスト・エネルギーをターン数へ戻した直後に呼ぶ。
+    // ここに残っている差分はまだ持続中なので、引き算せず足し直す。
     public void OnResourcesReset(bool forPlayer)
     {
         var list = forPlayer ? pResourceBuffs : eResourceBuffs;
         var resources = forPlayer ? pResources : eResources;
 
+        for (int i = 0; i < list.Count; i++)
+        {
+            var buff = list[i];
+            ApplyResourceAmount(resources, buff.Type, buff.Amount);
+        }
+    }
+
+    // 手番側のエンドで、その側のリソース差分を1ターン進める。
+    // 持続が尽きた分は、今の所持量から効果数だけ戻す。
+    public void ExpireOwnerResourceBuffs()
+    {
+        bool forPlayer = IsMyTurn;
+        var list = forPlayer ? pResourceBuffs : eResourceBuffs;
+        if (list.Count == 0)
+            return;
+
+        var resources = forPlayer ? pResources : eResources;
         for (int i = list.Count - 1; i >= 0; i--)
         {
             var buff = list[i];
-            if (buff.Type == ResourceType.エネルギー)
-            {
-                if (curTurn < buff.StartTurn || curTurn > buff.EndTurn)
-                {
-                    list.RemoveAt(i);
-                    continue;
-                }
-
-                ApplyResourceAmount(resources, ResourceType.エネルギー, buff.Amount);
+            buff.RemainingTurns--;
+            if (buff.RemainingTurns > 0)
                 continue;
-            }
 
-            if (buff.RemainingResets <= 0)
-            {
-                list.RemoveAt(i);
-                continue;
-            }
-
-            ApplyResourceAmount(resources, buff.Type, buff.Amount);
-            buff.RemainingResets--;
+            RevertResourceAmount(resources, buff.Type, buff.Amount);
+            list.RemoveAt(i);
         }
 
         PowerBonusUI.Instance?.UpdateUI();
@@ -363,15 +361,7 @@ public partial class BattleManager
         foreach (var state in resources)
         {
             if (!state.ShowInBuffZone) continue;
-
-            if (state.Type == ResourceType.エネルギー)
-            {
-                if (curTurn < state.StartTurn || curTurn > state.EndTurn) continue;
-                result.Add(new ActiveBuffView(state.SourceCardName, state.EndTurn - curTurn + 1));
-                continue;
-            }
-
-            result.Add(new ActiveBuffView(state.SourceCardName, state.RemainingResets + 1));
+            result.Add(new ActiveBuffView(state.SourceCardName, state.RemainingTurns));
         }
 
         var playCosts = forPlayer ? pPlayCostBuffs : ePlayCostBuffs;
@@ -382,31 +372,6 @@ public partial class BattleManager
         }
 
         return result;
-    }
-
-    // ターン番号が進んで期間を外れたエネルギーを、残量から戻す。
-    bool ExpireEnergyBuffs()
-    {
-        bool changed = RevertExpiredEnergy(pResourceBuffs, pResources);
-        changed |= RevertExpiredEnergy(eResourceBuffs, eResources);
-        return changed;
-    }
-
-    bool RevertExpiredEnergy(List<ResourceBuffState> list, ResourceGroup resources)
-    {
-        bool changed = false;
-        for (int i = list.Count - 1; i >= 0; i--)
-        {
-            var buff = list[i];
-            if (buff.Type != ResourceType.エネルギー) continue;
-            if (curTurn >= buff.StartTurn && curTurn <= buff.EndTurn) continue;
-
-            RevertResourceEnergy(resources, buff.Amount);
-            list.RemoveAt(i);
-            changed = true;
-        }
-
-        return changed;
     }
 
     static void ApplyResourceAmount(ResourceGroup resources, ResourceType type, int amount)
@@ -424,13 +389,23 @@ public partial class BattleManager
         }
     }
 
-    static void RevertResourceEnergy(ResourceGroup resources, int amount)
+    static void RevertResourceAmount(ResourceGroup resources, ResourceType type, int amount)
     {
-        if (resources?.Energy == null || amount == 0) return;
-        if (amount > 0)
-            resources.Energy.TakeEnergy(amount);
-        else
-            resources.Energy.AddEnegry(-amount);
+        if (resources == null || amount == 0) return;
+
+        switch (type)
+        {
+            case ResourceType.エネルギー:
+                if (resources.Energy == null) return;
+                if (amount > 0)
+                    resources.Energy.TakeEnergy(amount);
+                else
+                    resources.Energy.AddEnegry(-amount);
+                break;
+            case ResourceType.コスト:
+                resources.Cost?.AddCost(-amount);
+                break;
+        }
     }
     #endregion
 }

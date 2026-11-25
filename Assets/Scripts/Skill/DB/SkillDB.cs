@@ -383,6 +383,7 @@ public abstract class SkillDB
 /// <summary>
 /// 1件分のカード条件。リストに並べたときは、いずれか1件に合致すれば対象になる。
 /// カテゴリを複数入れたときは、そのすべてを持っているカードだけが対象。
+/// 所持技属性を複数入れたときは、いずれかの属性の技を持っていれば対象。
 /// </summary>
 [Serializable]
 public class CardSearchFilter
@@ -396,6 +397,8 @@ public class CardSearchFilter
     [HideInInspector] public bool コスト比較設定済み;
     public List<CardTypeList> カードのタイプ = new List<CardTypeList>();
     public List<CardCategoryList> カードのカテゴリ = new List<CardCategoryList>();
+    [Tooltip("空なら技の属性では絞らない。指定した属性の技を1つでも持つバトラーだけが対象。場のカードは今の技属性、デッキのカードはカードに書かれた技属性を見る。")]
+    public List<ElementList> 所持技属性 = new List<ElementList>();
     public string サーチワード;
     public bool 満たさない時 = false;
 
@@ -406,7 +409,22 @@ public class CardSearchFilter
                コスト < 0 &&
                (カードのタイプ == null || カードのタイプ.Count == 0) &&
                (カードのカテゴリ == null || カードのカテゴリ.Count == 0) &&
+               !HasHeldMoveElement() &&
                string.IsNullOrEmpty(サーチワード);
+    }
+
+    public bool HasHeldMoveElement()
+    {
+        if (所持技属性 == null)
+            return false;
+
+        for (int i = 0; i < 所持技属性.Count; i++)
+        {
+            if (所持技属性[i] != ElementList.None)
+                return true;
+        }
+
+        return false;
     }
 }
 
@@ -459,6 +477,7 @@ public class SearchCriteria
                 コスト比較設定済み = true,
                 カードのタイプ = filter.カードのタイプ != null ? new List<CardTypeList>(filter.カードのタイプ) : new List<CardTypeList>(),
                 カードのカテゴリ = filter.カードのカテゴリ != null ? new List<CardCategoryList>(filter.カードのカテゴリ) : new List<CardCategoryList>(),
+                所持技属性 = filter.所持技属性 != null ? new List<ElementList>(filter.所持技属性) : new List<ElementList>(),
                 サーチワード = filter.サーチワード,
                 満たさない時 = filter.満たさない時,
             });
@@ -736,6 +755,9 @@ public class SearchCriteria
                 return false;
         }
 
+        if (!MatchesHeldMove(filter, card))
+            return false;
+
         if (string.IsNullOrEmpty(filter.サーチワード))
             return true;
         if (string.IsNullOrEmpty(card.cardName))
@@ -770,7 +792,51 @@ public class SearchCriteria
                 return false;
         }
 
+        if (!MatchesHeldMove(filter, deck))
+            return false;
+
         return deck.MatchesSearchWord(filter.サーチワード, exactMatch: !partialName);
+    }
+
+    static bool MatchesHeldMove(CardSearchFilter filter, CardController card)
+    {
+        if (filter == null || !filter.HasHeldMoveElement())
+            return true;
+
+        if (card == null || card.cardKind != CardKind.バトラー)
+            return false;
+
+        return HeldMoveIsListed(filter, card.moveElement1, card.moveElement2);
+    }
+
+    static bool MatchesHeldMove(CardSearchFilter filter, DeckCard deck)
+    {
+        if (filter == null || !filter.HasHeldMoveElement())
+            return true;
+
+        if (deck == null || deck.カード種類 != CardKind.バトラー)
+            return false;
+
+        BattlerDB battler = BattlerAssets.Load(deck.カードID, out _);
+        if (battler == null)
+            return false;
+
+        return HeldMoveIsListed(filter, battler.属性1, battler.属性2);
+    }
+
+    static bool HeldMoveIsListed(CardSearchFilter filter, ElementList first, ElementList second)
+    {
+        for (int i = 0; i < filter.所持技属性.Count; i++)
+        {
+            ElementList required = filter.所持技属性[i];
+            if (required == ElementList.None)
+                continue;
+
+            if (first == required || second == required)
+                return true;
+        }
+
+        return false;
     }
 }
 

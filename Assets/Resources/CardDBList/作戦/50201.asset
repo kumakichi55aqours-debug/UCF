@@ -21,7 +21,7 @@ MonoBehaviour:
   "\u30AB\u30C6\u30B4\u30EA": 02000000
   "\u30C6\u30AD\u30B9\u30C8": "\u30AB\u30C6\u30B4\u30EA \u30A6\u30EB\u30C8\u30E9\nACT1
     \u81EA\u5206B\u30BE\u30FC\u30F3\u306E\u30D0\u30C8\u30E9\u30FC1\u4F53\u306EHP\u3092++6\u56DE\u5FA9\u3059\u308B\u3002\nACT2
-    \u5893\u5730\u306E\u3053\u306E\u30AB\u30FC\u30C9\u3092\u7570\u6B21\u5143\u3078\u9001\u308A\u3001\u81EA\u5206B\u30BE\u30FC\u30F3\u306E\u300C\u30A6\u30EB\u30C8\u30E9\u300D\u30D0\u30C8\u30E9\u30FC1\u4F53\u306EHP\u3092++2\u56DE\u5FA9\u3059\u308B\u3002"
+    \u5893\u5730\u306E\u3053\u306E\u30AB\u30FC\u30C9\u3092\u7570\u6B21\u5143\u3078\u9001\u308A\u3001\u81EA\u5206\u306E\u30C7\u30C3\u30AD\u304B\u3089\u300C\u30A6\u30EB\u30C8\u30E9/\u30BF\u30ED\u30A6\u30D0\u30C8\u30E9\u30FC1\u4F53\u3092\u624B\u672D\u306B\u52A0\u3048\u308B\u3002"
   "\u30B9\u30AD\u30EB":
   - rid: 7839874248144846869
   - rid: 7839874509070925906
@@ -66,6 +66,7 @@ MonoBehaviour:
             "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u6240\u6301\u6280\u5C5E\u6027": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
         "\u5BFE\u8C61\u72B6\u614B":
@@ -94,6 +95,7 @@ MonoBehaviour:
             "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
             "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 
+            "\u6240\u6301\u6280\u5C5E\u6027": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
         "\u30AB\u30FC\u30C9\u72B6\u614B":
@@ -134,7 +136,7 @@ MonoBehaviour:
           "\u9078\u629E\u65B9\u5F0F": 0
         subSkills:
         - rid: 7839874509070925907
-        - rid: 7839874509070925908
+        - rid: 7839874713251741698
     - rid: 7839874509070925907
       type: {class: ToDimensionSkill, ns: , asm: Assembly-CSharp}
       data:
@@ -169,9 +171,41 @@ MonoBehaviour:
         "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
         "\u30E9\u30F3\u30C0\u30E0": 0
         "\u5168\u9078\u629E": 0
+        "\u51FA\u529B\u30AD\u30FC": 0
+        "\u51FA\u529B\u3059\u308B\u5024": 0
         "\u5BFE\u8C61\u72B6\u614B": []
-    - rid: 7839874509070925908
-      type: {class: HealSkill, ns: , asm: Assembly-CSharp}
+    - rid: 7839874509070925911
+      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 06000000
+        searchCriteria:
+          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
+          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
+          "\u30D5\u30A3\u30EB\u30BF":
+          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
+            "\u30AB\u30FC\u30C9ID": 0
+            "\u30B3\u30B9\u30C8": -1
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
+            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
+            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0200000008000000
+            "\u6240\u6301\u6280\u5C5E\u6027": 
+            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
+            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
+        "\u30AB\u30FC\u30C9\u72B6\u614B":
+        - rid: 7839874509070925912
+        "\u6570\u3048\u65B9": 0
+        "\u57FA\u6E96\u679A\u6570": 1
+        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
+    - rid: 7839874509070925912
+      type: {class: HpCondition, ns: , asm: Assembly-CSharp}
+      data:
+        "\u898B\u308B\u30AB\u30FC\u30C9": 0
+        "\u95BE\u5024\u30BF\u30A4\u30D7": 1
+        "\u57FA\u6E96HP": 0
+        "\u57FA\u6E96HP\u6BD4\u7387": 0.99
+    - rid: 7839874713251741698
+      type: {class: ToHandSkill, ns: , asm: Assembly-CSharp}
       data:
         "\u30B9\u30AD\u30EB\u540D": 
         "\u30BF\u30A4\u30DF\u30F3\u30B0": 0
@@ -193,9 +227,7 @@ MonoBehaviour:
         "\u5BFE\u8C61\u9078\u629E":
           "\u9078\u629E\u6570": 1
           "\u9078\u629E\u65B9\u5F0F": 0
-        "\u52B9\u679C\u5BFE\u8C61": 1
-        "\u5BFE\u8C61\u5074": 0
-        "\u5BFE\u8C61\u6761\u4EF6":
+        "\u53C2\u7167\u6761\u4EF6":
           "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
           "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
           "\u30D5\u30A3\u30EB\u30BF":
@@ -205,46 +237,19 @@ MonoBehaviour:
             "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
             "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
             "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
-            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 02000000
+            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 0200000008000000
+            "\u6240\u6301\u6280\u5C5E\u6027": 
             "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
             "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
-        "\u5BFE\u8C61\u72B6\u614B":
-        - rid: 7839874509070925909
-        "\u52B9\u679C\u6570": 2
-        "\u52B9\u679C\u6570\u30AD\u30FC": 0
-    - rid: 7839874509070925909
-      type: {class: HpCondition, ns: , asm: Assembly-CSharp}
-      data:
-        "\u898B\u308B\u30AB\u30FC\u30C9": 0
-        "\u95BE\u5024\u30BF\u30A4\u30D7": 1
-        "\u57FA\u6E96HP": 0
-        "\u57FA\u6E96HP\u6BD4\u7387": 0.99
-    - rid: 7839874509070925911
-      type: {class: CardExistsCondition, ns: , asm: Assembly-CSharp}
-      data:
-        "\u5BFE\u8C61\u30BE\u30FC\u30F3\u30EA\u30B9\u30C8": 02000000
-        searchCriteria:
-          "\u30BD\u30FC\u30B9\u30AB\u30FC\u30C9\u6761\u4EF6": 0
-          "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 
-          "\u30D5\u30A3\u30EB\u30BF":
-          - "\u30AB\u30FC\u30C9\u306E\u7A2E\u985E": 1
-            "\u30AB\u30FC\u30C9ID": 0
-            "\u30B3\u30B9\u30C8": -1
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03": 2
-            "\u30B3\u30B9\u30C8\u6BD4\u8F03\u8A2D\u5B9A\u6E08\u307F": 1
-            "\u30AB\u30FC\u30C9\u306E\u30BF\u30A4\u30D7": 
-            "\u30AB\u30FC\u30C9\u306E\u30AB\u30C6\u30B4\u30EA": 02000000
-            "\u30B5\u30FC\u30C1\u30EF\u30FC\u30C9": 
-            "\u6E80\u305F\u3055\u306A\u3044\u6642": 0
-        "\u30AB\u30FC\u30C9\u72B6\u614B":
-        - rid: 7839874509070925912
-        "\u6570\u3048\u65B9": 0
-        "\u57FA\u6E96\u679A\u6570": 1
-        "\u6BD4\u8F03\u30BF\u30A4\u30D7": 0
-    - rid: 7839874509070925912
-      type: {class: HpCondition, ns: , asm: Assembly-CSharp}
-      data:
-        "\u898B\u308B\u30AB\u30FC\u30C9": 0
-        "\u95BE\u5024\u30BF\u30A4\u30D7": 1
-        "\u57FA\u6E96HP": 0
-        "\u57FA\u6E96HP\u6BD4\u7387": 0.99
+        "\u51E6\u7406\u30AB\u30FC\u30C9\u756A\u53F7": 0
+        "\u53C2\u7167\u5834\u6240": 
+        "\u9078\u629E\u6570": 1
+        "\u9078\u629E\u6570\u306E\u6271\u3044": 0
+        "\u9078\u629E\u30D7\u30EC\u30A4\u30E4\u30FC": 0
+        "\u30E9\u30F3\u30C0\u30E0": 0
+        "\u5168\u9078\u629E": 0
+        "\u6BD4\u8F03\u6761\u4EF6":
+          "\u7570\u306A\u308B\u30BF\u30A4\u30D7": 0
+          "\u7570\u306A\u308B\u30B3\u30B9\u30C8": 0
+          "\u767A\u52D5\u30AB\u30FC\u30C9\u3068\u7570\u306A\u308B\u30BF\u30A4\u30D7": 0
+          "\u767A\u52D5\u30AB\u30FC\u30C9\u3068\u7570\u306A\u308B\u30B3\u30B9\u30C8": 0

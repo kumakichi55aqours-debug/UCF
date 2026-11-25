@@ -271,6 +271,8 @@ public class BattleCardView : MonoBehaviour
         onlyBattler.SetActive(false);
         onlyTactics.SetActive(false);
         onlyField.SetActive(false);
+        if (hpText != null)
+            hpText.transform.parent.gameObject.SetActive(false);
         HideStatusIcons();
     }
 

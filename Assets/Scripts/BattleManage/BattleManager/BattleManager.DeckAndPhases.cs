@@ -299,6 +299,7 @@ public partial class BattleManager
         RefreshCanUseMovePanels();
 
         RemovePowerBonuses();
+        ExpireOwnerResourceBuffs();
 
         await Task.Yield();
 
